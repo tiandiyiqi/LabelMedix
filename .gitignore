@@ -1,0 +1,83 @@
+# 依赖目录
+node_modules/
+.pnp/
+.pnp.js
+
+# 测试覆盖率
+coverage/
+
+# next.js
+.next/
+out/
+build/
+dist/
+
+# 生产环境文件
+/build
+/dist
+
+# 调试文件
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 本地环境文件
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE配置文件
+.idea/
+.vscode/*
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 包管理器锁定文件
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# 临时文件
+*.log
+*.tmp
+*.temp
+.cache/
+
+# Python相关
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env/
+.venv/
+ENV/
+
+# 数据库文件
+*.sqlite
+*.db
+
+# PDF文件（根据需要配置）
+# *.pdf
+
+# 日志文件
+logs/
+*.log
+
+# 备份文件
+*.bak
+*.backup
+*~
+
+# 其他
+.vercel
+.turbo
