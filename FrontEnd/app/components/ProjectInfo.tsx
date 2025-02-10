@@ -1,15 +1,20 @@
 "use client"
 
+import { useContext } from "react"
 import { FileDown, Save } from "lucide-react"
+import { ThemeContext } from "./Layout"
 
 interface ProjectInfoProps {
   projectName: string
   onSave: () => void
   onExport: () => void
-  theme: any
 }
 
-export default function ProjectInfo({ projectName, onSave, onExport, theme }: ProjectInfoProps) {
+export default function ProjectInfo({ projectName, onSave, onExport }: ProjectInfoProps) {
+  const themeContext = useContext(ThemeContext)
+  if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
+  const { theme } = themeContext
+
   return (
     <div
       className="p-4 rounded-lg shadow-lg mb-4 transition-shadow hover:shadow-xl border"

@@ -2,6 +2,7 @@
 node_modules/
 .pnp/
 .pnp.js
+*.key
 
 # 测试覆盖率
 coverage/

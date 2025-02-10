@@ -1,9 +1,14 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useContext } from "react"
 import { Eye, Save } from "lucide-react"
+import { ThemeContext } from "./Layout"
 
-export default function LabelPreview({ theme }) {
+export default function LabelPreview() {
+  const themeContext = useContext(ThemeContext)
+  if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
+  const { theme } = themeContext
+
   const [labelWidth, setLabelWidth] = useState(120)
   const [labelHeight, setLabelHeight] = useState(80)
   const previewContainerRef = useRef<HTMLDivElement>(null)

@@ -1,9 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useContext } from "react"
 import { ChevronDown } from "lucide-react"
+import { ThemeContext } from "./Layout"
 
-export default function LabelEditor({ theme }) {
+interface LabelData {
+  aInfo: string
+  bInfo: string
+  cInfo1: string
+  cInfo2: string
+  cInfo3: string
+}
+
+export default function LabelEditor() {
+  const themeContext = useContext(ThemeContext)
+  if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
+  const { theme } = themeContext
+
   const languages = [
     { name: "阿拉伯语", code: "AR" },
     { name: "保加利亚语", code: "BG" },
@@ -43,7 +56,7 @@ export default function LabelEditor({ theme }) {
 
   const numbers = Array.from({ length: 30 }, (_, i) => (i + 1).toString())
 
-  const [labelData, setLabelData] = useState(
+  const [labelData, setLabelData] = useState<Record<string, LabelData>>(
     Object.fromEntries(
       languages.map((lang) => [
         lang.code,
@@ -54,15 +67,15 @@ export default function LabelEditor({ theme }) {
           cInfo2: "",
           cInfo3: "",
         },
-      ]),
-    ),
+      ])
+    )
   )
 
-  const handleInputChange = (field, value) => {
-    setLabelData((prevData) => ({
-      ...prevData,
+  const handleInputChange = (field: keyof LabelData, value: string) => {
+    setLabelData((prev) => ({
+      ...prev,
       [selectedLanguage]: {
-        ...prevData[selectedLanguage],
+        ...prev[selectedLanguage],
         [field]: value,
       },
     }))
