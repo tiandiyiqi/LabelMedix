@@ -5,11 +5,7 @@ import { ChevronDown } from "lucide-react"
 import { ThemeContext } from "./Layout"
 
 interface LabelData {
-  aInfo: string
-  bInfo: string
-  cInfo1: string
-  cInfo2: string
-  cInfo3: string
+  drugInfo: string
 }
 
 export default function LabelEditor() {
@@ -61,11 +57,7 @@ export default function LabelEditor() {
       languages.map((lang) => [
         lang.code,
         {
-          aInfo: "",
-          bInfo: "",
-          cInfo1: "",
-          cInfo2: "",
-          cInfo3: "",
+          drugInfo: "",
         },
       ])
     )
@@ -82,12 +74,12 @@ export default function LabelEditor() {
   }
 
   return (
-    <div className="h-full flex flex-col card p-4 rounded-lg shadow" style={{ borderColor: theme.border }}>
+    <div className="h-full w-full flex flex-col card p-4 rounded-lg shadow" style={{ borderColor: theme.border }}>
       <h2 className="text-xl font-bold mb-4" style={{ color: theme.primary }}>
         标签编辑器
       </h2>
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1" style={{ color: theme.text }}>
+        <label className="block text-sm font-medium mb-2" style={{ color: theme.text }}>
           选择语言
         </label>
         <div className="grid grid-cols-2 gap-4">
@@ -136,48 +128,23 @@ export default function LabelEditor() {
         </div>
       </div>
       <div className="flex-grow space-y-6 overflow-y-auto">
-        {" "}
-        {/* Updated space-y-6 here */}
-        {["A类信息", "B类信息"].map((label, index) => (
-          <div key={index}>
-            <label className="block text-sm font-medium mb-1" style={{ color: theme.text }}>
-              {label}
-            </label>
-            <textarea
-              value={labelData[selectedLanguage][`${label.charAt(0).toLowerCase()}Info`]}
-              onChange={(e) => handleInputChange(`${label.charAt(0).toLowerCase()}Info`, e.target.value)}
-              className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-              style={{
-                borderColor: theme.border,
-                borderWidth: "1px",
-                color: theme.text,
-                backgroundColor: "white",
-              }}
-              rows={3}
-            />
-          </div>
-        ))}
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: theme.text }}>
-            C类信息
+            药品信息
           </label>
-          <div className="space-y-2">
-            {[1, 2, 3].map((num) => (
-              <textarea
-                key={num}
-                value={labelData[selectedLanguage][`cInfo${num}`]}
-                onChange={(e) => handleInputChange(`cInfo${num}`, e.target.value)}
-                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-                style={{
-                  borderColor: theme.border,
-                  borderWidth: "1px",
-                  color: theme.text,
-                  backgroundColor: "white",
-                }}
-                rows={num === 2 ? 5 : 1}
-              />
-            ))}
-          </div>
+          <textarea
+            value={labelData[selectedLanguage].drugInfo}
+            onChange={(e) => handleInputChange("drugInfo", e.target.value)}
+            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+            style={{
+              borderColor: theme.border,
+              borderWidth: "1px",
+              color: theme.text,
+              backgroundColor: "white",
+              minHeight: "400px",
+              resize: "none"
+            }}
+          />
         </div>
       </div>
     </div>

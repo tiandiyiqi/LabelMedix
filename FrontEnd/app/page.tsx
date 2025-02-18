@@ -30,7 +30,9 @@ export default function Home() {
             <ProjectInfo projectName={projectName} onSave={handleSave} onExport={handleExportPDF} />
             <div className="flex gap-4 flex-1">
               <div className="w-[45%] flex">
-                <LabelEditor />
+                <div className="w-full">
+                  <LabelEditor />
+                </div>
               </div>
               <div className="w-[55%] flex">
                 <LabelPreview />
