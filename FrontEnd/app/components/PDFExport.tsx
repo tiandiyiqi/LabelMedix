@@ -73,9 +73,10 @@ export default function PDFExport() {
       const doc = new jsPDF({
         orientation: labelWidth > labelHeight ? 'landscape' : 'portrait',
         unit: 'mm',
-        format: [Math.max(labelWidth, 1), Math.max(labelHeight, 1)]
+        format: [Math.max(labelWidth, 1), Math.max(labelHeight, 1)],
+        putOnlyUsedFonts: true,
+        compress: true
       })
-      console.log('PDF文档创建成功')
 
       // 设置字体大小（将pt转换为mm）
       const adjustedFontSize = fontSize * 0.352778
@@ -86,31 +87,70 @@ export default function PDFExport() {
       const margin = 5 // 5mm边距
       const availableWidth = labelWidth - (margin * 2)
       const availableHeight = labelHeight - (margin * 2)
-      console.log('页面布局:', { availableWidth, availableHeight, margin })
-
-      // 添加文本内容
-      console.log('处理文本内容...')
-      const lines = doc.splitTextToSize(drugInfo || '', availableWidth)
-      console.log('文本行数:', lines.length)
-
-      // 检查是否需要多页
       const lineHeight = adjustedFontSize * 0.3528 // 转换为mm
       const linesPerPage = Math.floor(availableHeight / lineHeight)
-      console.log('每页行数:', linesPerPage)
+      console.log('页面布局:', { availableWidth, availableHeight, margin, linesPerPage })
 
-      // 分页处理
-      console.log('开始分页处理...')
-      for (let i = 0; i < lines.length; i += linesPerPage) {
-        if (i > 0) {
-          console.log(`添加第 ${Math.floor(i/linesPerPage) + 1} 页`)
-          doc.addPage([labelWidth, labelHeight])
+      // 处理文本内容
+      console.log('处理文本内容...')
+      let lines: string[] = []
+
+      if (selectedLanguage === "CN") {
+        // 使用默认字体，但启用编码
+        doc.setFont('helvetica', 'normal');
+        
+        // 将文本转换为UTF-16BE编码
+        const encoder = new TextEncoder();
+        const encoded = encoder.encode(drugInfo || '');
+        const decoded = new TextDecoder('utf-8').decode(encoded);
+        
+        // 手动处理文本换行
+        const chars = decoded.split('');
+        const charsPerLine = Math.floor(availableWidth / (adjustedFontSize * 0.6));
+        
+        // 按照每行字符数分组
+        for (let i = 0; i < chars.length; i += charsPerLine) {
+          lines.push(chars.slice(i, i + charsPerLine).join(''));
         }
-        const pageLines = lines.slice(i, i + linesPerPage)
-        console.log(`写入第 ${Math.floor(i/linesPerPage) + 1} 页, ${pageLines.length} 行`)
-        doc.text(pageLines, margin, margin + lineHeight, {
-          baseline: 'top',
-          maxWidth: availableWidth
-        })
+
+        // 直接写入文本，不使用splitTextToSize
+        for (let i = 0; i < lines.length; i++) {
+          if (i > 0 && i % linesPerPage === 0) {
+            doc.addPage([labelWidth, labelHeight]);
+          }
+          const y = margin + (i % linesPerPage + 1) * lineHeight;
+          doc.text(lines[i], margin, y, {
+            baseline: 'top',
+            charSpace: 0,
+            renderingMode: 'fill',
+            flags: {
+              noBOM: true,
+              autoencode: true
+            }
+          });
+        }
+      } else {
+        // 非中文文本处理
+        if (selectedLanguage === "TH" || selectedLanguage === "AE") {
+          doc.setFont("Arial Unicode MS");
+        } else {
+          doc.setFont("Arial");
+        }
+        
+        // 使用正常的文本分行
+        lines = doc.splitTextToSize(drugInfo || '', availableWidth);
+        
+        // 分页处理
+        for (let i = 0; i < lines.length; i += linesPerPage) {
+          if (i > 0) {
+            doc.addPage([labelWidth, labelHeight]);
+          }
+          const pageLines = lines.slice(i, i + linesPerPage);
+          doc.text(pageLines, margin, margin + lineHeight, {
+            baseline: 'top',
+            maxWidth: availableWidth
+          });
+        }
       }
 
       // 生成文件名

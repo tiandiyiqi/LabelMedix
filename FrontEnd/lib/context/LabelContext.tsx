@@ -21,8 +21,8 @@ const defaultLabelData: LabelData = {
   selectedNumber: '1',
   drugInfo: '',
   fontSize: 12,
-  labelWidth: 120,
-  labelHeight: 80
+  labelWidth: 120,  // 120mm - PDF实际宽度
+  labelHeight: 80   // 80mm - PDF实际高度
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)

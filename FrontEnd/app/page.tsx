@@ -3,7 +3,7 @@
 import { LabelProvider } from "../lib/context/LabelContext"
 import ProjectInfo from "./components/ProjectInfo"
 import LabelEditor from "./components/LabelEditor"
-import LabelPreview from "./components/LabelPreview"
+import PDFPreview from "./components/PDFPreview"
 import Layout from "./components/Layout"
 
 export default function Home() {
@@ -56,7 +56,7 @@ export default function Home() {
                   <h2 className="text-xl font-bold mb-4 text-purple-700 flex items-center">
                     标签预览
                   </h2>
-                  <LabelPreview />
+                  <PDFPreview />
                 </div>
               </div>
             </div>
