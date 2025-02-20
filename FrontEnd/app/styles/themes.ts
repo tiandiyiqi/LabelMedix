@@ -59,7 +59,7 @@ export const themes = {
     primary: "#07889B",
     secondary: "#66B9BF",
     background: "#F5F9FA",
-    accent: "#E37222",
+    accent: "#E9967A",
     text: "#2C3E50",
     lightText: "#607D8B",
     border: "#66B9BF",

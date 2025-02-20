@@ -1,12 +1,14 @@
 "use client"
 
-import { createContext, useContext, useState, ReactNode } from "react"
+import React, { createContext, useContext, useState } from 'react'
 
 interface LabelData {
-  drugInfo: string
-  fontSize: number
   selectedLanguage: string
   selectedNumber: string
+  drugInfo: string
+  fontSize: number
+  labelWidth: number
+  labelHeight: number
 }
 
 interface LabelContextType {
@@ -15,22 +17,21 @@ interface LabelContextType {
 }
 
 const defaultLabelData: LabelData = {
-  drugInfo: "",
-  fontSize: 12, // 默认字体大小 12pt
-  selectedLanguage: "CN",
-  selectedNumber: "1"
+  selectedLanguage: 'CN',
+  selectedNumber: '1',
+  drugInfo: '',
+  fontSize: 12,
+  labelWidth: 120,
+  labelHeight: 80
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)
 
-export function LabelProvider({ children }: { children: ReactNode }) {
+export function LabelProvider({ children }: { children: React.ReactNode }) {
   const [labelData, setLabelData] = useState<LabelData>(defaultLabelData)
 
-  const updateLabelData = (newData: Partial<LabelData>) => {
-    setLabelData(prev => ({
-      ...prev,
-      ...newData
-    }))
+  const updateLabelData = (data: Partial<LabelData>) => {
+    setLabelData(prev => ({ ...prev, ...data }))
   }
 
   return (
@@ -43,7 +44,7 @@ export function LabelProvider({ children }: { children: ReactNode }) {
 export function useLabelContext() {
   const context = useContext(LabelContext)
   if (context === undefined) {
-    throw new Error("useLabelContext must be used within a LabelProvider")
+    throw new Error('useLabelContext must be used within a LabelProvider')
   }
   return context
 } 

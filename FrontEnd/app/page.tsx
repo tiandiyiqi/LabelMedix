@@ -1,46 +1,68 @@
 "use client"
 
-import { useContext } from "react"
-import Layout from "./components/Layout"
-import ProjectList from "./components/ProjectList"
+import { LabelProvider } from "../lib/context/LabelContext"
 import ProjectInfo from "./components/ProjectInfo"
 import LabelEditor from "./components/LabelEditor"
 import LabelPreview from "./components/LabelPreview"
-import { ThemeContext } from "./components/Layout"
+import Layout from "./components/Layout"
 
 export default function Home() {
-  const projectName = "示例项目"
-
-  const handleSave = () => {
-    console.log("Saving project")
-  }
-
-  const handleExportPDF = () => {
-    console.log("Exporting PDF")
-  }
-
   return (
     <Layout>
-      <div className="container mx-auto max-w-[1600px]">
-        <div className="flex min-h-[calc(100vh-8rem)]">
+      <LabelProvider>
+        <div className="flex h-[calc(100vh-theme(spacing.16))]">
+          {/* 左侧项目列表 */}
           <div className="w-1/4 p-4 bg-white bg-opacity-75 rounded-lg shadow mr-4">
-            <ProjectList />
+            <h2 className="text-xl font-bold mb-4">项目管理</h2>
+            <div className="relative mb-4">
+              <input
+                type="text"
+                placeholder="搜索项目..."
+                className="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2"
+              />
+            </div>
+            <div className="space-y-2">
+              {/* 项目列表项 */}
+              <div className="p-3 rounded-lg bg-white shadow hover:shadow-md transition-shadow cursor-pointer">
+                <div className="font-medium">阿司匹林</div>
+                <div className="text-sm text-gray-500">中文, English, Español</div>
+              </div>
+              <div className="p-3 rounded-lg bg-white shadow hover:shadow-md transition-shadow cursor-pointer">
+                <div className="font-medium">布洛芬</div>
+                <div className="text-sm text-gray-500">中文, English, Français</div>
+              </div>
+              <div className="p-3 rounded-lg bg-white shadow hover:shadow-md transition-shadow cursor-pointer">
+                <div className="font-medium">对乙酰氨基酚</div>
+                <div className="text-sm text-gray-500">中文, English, Deutsch</div>
+              </div>
+            </div>
+            <button className="w-full mt-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors">
+              + 新建项目
+            </button>
           </div>
-          <div className="w-3/4 p-8 h-full bg-white bg-opacity-75 rounded-lg shadow flex flex-col overflow-auto">
-            <ProjectInfo projectName={projectName} onSave={handleSave} onExport={handleExportPDF} />
-            <div className="flex gap-4 flex-1">
-              <div className="w-[45%] flex">
-                <div className="w-full">
+
+          {/* 右侧主要内容区域 */}
+          <div className="flex-1 flex flex-col bg-white bg-opacity-75 rounded-lg shadow overflow-hidden">
+            <ProjectInfo />
+            <div className="flex-1 p-8 overflow-auto">
+              <div className="grid grid-cols-2 gap-8 h-full">
+                <div className="flex flex-col">
+                  <h2 className="text-xl font-bold mb-4 text-purple-700 flex items-center">
+                    标签编辑器
+                  </h2>
                   <LabelEditor />
                 </div>
-              </div>
-              <div className="w-[55%] flex">
-                <LabelPreview />
+                <div className="flex flex-col">
+                  <h2 className="text-xl font-bold mb-4 text-purple-700 flex items-center">
+                    标签预览
+                  </h2>
+                  <LabelPreview />
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </LabelProvider>
     </Layout>
   )
 }

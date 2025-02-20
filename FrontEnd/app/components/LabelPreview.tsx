@@ -1,19 +1,18 @@
 "use client"
 
-import { useEffect, useRef, useContext, useState } from "react"
-import { Eye, Save } from "lucide-react"
+import { useEffect, useRef, useContext } from "react"
+import { Eye } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
+import PDFExport from "./PDFExport"
 
 export default function LabelPreview() {
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
 
-  const { labelData } = useLabelContext()
-  const { drugInfo, fontSize, selectedLanguage } = labelData
-  const [labelWidth, setLabelWidth] = useState(120)
-  const [labelHeight, setLabelHeight] = useState(80)
+  const { labelData, updateLabelData } = useLabelContext()
+  const { drugInfo, fontSize, selectedLanguage, labelWidth, labelHeight } = labelData
   const previewContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -29,11 +28,6 @@ export default function LabelPreview() {
     window.addEventListener("resize", resizePreviewContainer)
     return () => window.removeEventListener("resize", resizePreviewContainer)
   }, [labelWidth, labelHeight])
-
-  const handleSaveLabel = () => {
-    console.log("Saving label...")
-    // Add save functionality here
-  }
 
   // 获取当前语言对应的字体
   const getFontFamily = () => {
@@ -60,7 +54,7 @@ export default function LabelPreview() {
           <input
             type="number"
             value={labelWidth}
-            onChange={(e) => setLabelWidth(Number(e.target.value))}
+            onChange={(e) => updateLabelData({ labelWidth: Number(e.target.value) })}
             className="w-full rounded-md shadow-md px-3 py-2 border"
             style={{
               borderColor: theme.border,
@@ -76,7 +70,7 @@ export default function LabelPreview() {
           <input
             type="number"
             value={labelHeight}
-            onChange={(e) => setLabelHeight(Number(e.target.value))}
+            onChange={(e) => updateLabelData({ labelHeight: Number(e.target.value) })}
             className="w-full rounded-md shadow-md px-3 py-2 border"
             style={{
               borderColor: theme.border,
@@ -121,20 +115,7 @@ export default function LabelPreview() {
           )}
         </div>
       </div>
-      <div className="mt-auto">
-        <button
-          onClick={handleSaveLabel}
-          className="w-full py-3 px-4 rounded-lg flex items-center justify-center transition-all hover:opacity-90 shadow-md"
-          style={{
-            backgroundColor: theme.primary,
-            color: "white",
-            border: `1px solid ${theme.border}`,
-          }}
-        >
-          <Save className="mr-2" size={20} />
-          保存标签
-        </button>
-      </div>
+      <PDFExport />
     </div>
   )
 }
