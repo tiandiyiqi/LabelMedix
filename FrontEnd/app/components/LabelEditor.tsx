@@ -168,6 +168,7 @@ export default function LabelEditor() {
               <input
                 type="number"
                 value={fontSize}
+                step={0.1}
                 onChange={(e) => updateLabelData({ fontSize: Number(e.target.value) })}
                 className="w-full px-3 py-2 focus:outline-none"
                 style={{
@@ -185,6 +186,7 @@ export default function LabelEditor() {
               <input
                 type="number"
                 value={spacing}
+                step={0.1}
                 onChange={(e) => updateLabelData({ spacing: Number(e.target.value) })}
                 className="w-full px-3 py-2 focus:outline-none"
                 style={{
@@ -202,6 +204,7 @@ export default function LabelEditor() {
               <input
                 type="number"
                 value={lineHeight}
+                step={0.1}
                 onChange={(e) => updateLabelData({ lineHeight: Number(e.target.value) })}
                 className="w-full px-3 py-2 focus:outline-none"
                 style={{

@@ -237,7 +237,9 @@ export default function PDFPreview() {
   // 创建动态内容样式
   const contentStyle = {
     ...getContentStyle(),
-    fontSize: mmToPt(fontSize / 2.835), // 将pt转换为mm
+    fontSize: mmToPt(fontSize),
+    fontFamily: fontFamily,
+    lineHeight: lineHeight,
   };
 
   // 处理文本
@@ -245,6 +247,24 @@ export default function PDFPreview() {
   const processedFirstParagraph = paragraphs.length > 0 ? processFirstParagraph(paragraphs[0]) : [];
   const processedSecondParagraph = paragraphs.length > 1 ? processOtherParagraph(paragraphs[1]) : [];
   const processedRemainingParagraphs = paragraphs.slice(2).map(para => processRemainingParagraphs(para));
+
+  // 更新样式以使用动态参数
+  const dynamicStyles = StyleSheet.create({
+    ...styles,
+    contentItem: {
+      ...styles.contentItem,
+      fontFamily: fontFamily,
+      fontSize: fontSize,
+      lineHeight: lineHeight,
+    },
+    remainingContentItem: {
+      ...styles.remainingContentItem,
+      fontFamily: fontFamily,
+      fontSize: fontSize,
+      lineHeight: lineHeight,
+      marginRight: mmToPt(spacing), // 使用间距参数
+    },
+  });
 
   // 导出PDF功能
   const handleExportPDF = async () => {
@@ -254,9 +274,9 @@ export default function PDFPreview() {
           <View style={{ margin: mmToPt(5) }}>
             {/* 渲染第一段（带罗马序号） */}
             {processedFirstParagraph.map((groupLines, groupIndex) => (
-              <View key={`first-${groupIndex}`} style={styles.contentRow}>
+              <View key={`first-${groupIndex}`} style={dynamicStyles.contentRow}>
                 {groupLines.map((line, lineIndex) => (
-                  <Text key={`first-line-${lineIndex}`} style={styles.contentItem}>
+                  <Text key={`first-line-${lineIndex}`} style={dynamicStyles.contentItem}>
                     {line}
                   </Text>
                 ))}
@@ -265,11 +285,11 @@ export default function PDFPreview() {
             
             {/* 渲染第二段（分组但不带序号，带下划线） */}
             {processedSecondParagraph.length > 0 && (
-              <View style={{ marginTop: mmToPt(2) }}>
+              <View style={{ marginTop: mmToPt(spacing) }}>
                 {processedSecondParagraph.map((lines, groupIndex) => (
-                  <View key={`second-${groupIndex}`} style={styles.contentRow}>
+                  <View key={`second-${groupIndex}`} style={dynamicStyles.contentRow}>
                     {lines.map((line, lineIndex) => (
-                      <Text key={`line-${lineIndex}`} style={styles.contentItem}>
+                      <Text key={`line-${lineIndex}`} style={dynamicStyles.contentItem}>
                         {line}
                       </Text>
                     ))}
@@ -280,11 +300,11 @@ export default function PDFPreview() {
             
             {/* 渲染第三段及之后的段落 */}
             {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-              <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(2) }}>
+              <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing) }}>
                 {paragraph.map((group, groupIndex) => (
-                  <View key={`group-${groupIndex}`} style={styles.remainingContentRow}>
+                  <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
                     {group.map((line, lineIndex) => (
-                      <Text key={`line-${lineIndex}`} style={styles.remainingContentItem}>
+                      <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
                         {line}
                       </Text>
                     ))}
@@ -361,9 +381,9 @@ export default function PDFPreview() {
               <View style={{ margin: mmToPt(5) }}>
                 {/* 渲染第一段（带罗马序号） */}
                 {processedFirstParagraph.map((groupLines, groupIndex) => (
-                  <View key={`first-${groupIndex}`} style={styles.contentRow}>
+                  <View key={`first-${groupIndex}`} style={dynamicStyles.contentRow}>
                     {groupLines.map((line, lineIndex) => (
-                      <Text key={`first-line-${lineIndex}`} style={styles.contentItem}>
+                      <Text key={`first-line-${lineIndex}`} style={dynamicStyles.contentItem}>
                         {line}
                       </Text>
                     ))}
@@ -372,11 +392,11 @@ export default function PDFPreview() {
                 
                 {/* 渲染第二段（分组但不带序号，带下划线） */}
                 {processedSecondParagraph.length > 0 && (
-                  <View style={{ marginTop: mmToPt(2) }}>
+                  <View style={{ marginTop: mmToPt(spacing) }}>
                     {processedSecondParagraph.map((lines, groupIndex) => (
-                      <View key={`second-${groupIndex}`} style={styles.contentRow}>
+                      <View key={`second-${groupIndex}`} style={dynamicStyles.contentRow}>
                         {lines.map((line, lineIndex) => (
-                          <Text key={`line-${lineIndex}`} style={styles.contentItem}>
+                          <Text key={`line-${lineIndex}`} style={dynamicStyles.contentItem}>
                             {line}
                           </Text>
                         ))}
@@ -387,11 +407,11 @@ export default function PDFPreview() {
                 
                 {/* 渲染第三段及之后的段落 */}
                 {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-                  <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(2) }}>
+                  <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing) }}>
                     {paragraph.map((group, groupIndex) => (
-                      <View key={`group-${groupIndex}`} style={styles.remainingContentRow}>
+                      <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
                         {group.map((line, lineIndex) => (
-                          <Text key={`line-${lineIndex}`} style={styles.remainingContentItem}>
+                          <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
                             {line}
                           </Text>
                         ))}
@@ -406,7 +426,7 @@ export default function PDFPreview() {
       </div>
 
       {/* 操作按钮 */}
-      <div className="grid grid-cols-2 h-full items-center">
+      <div className="grid grid-cols-2 gap-4 mt-6 mb-6 h-full items-center">
         <button
           className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
           style={{
