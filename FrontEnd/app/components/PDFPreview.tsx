@@ -234,6 +234,40 @@ export default function PDFPreview() {
     ...styles.page,
   };
 
+  // 验证并获取有效的尺寸值
+  const getValidDimension = (value: number) => {
+    const minSize = 20; // PDF模块要求的最小安全尺寸
+    const maxSize = 1000;
+    return Math.max(minSize, Math.min(maxSize, value));
+  };
+
+  // 处理尺寸输入
+  const handleDimensionInput = (e: React.KeyboardEvent<HTMLInputElement>, type: 'width' | 'height') => {
+    if (e.key === 'Enter') {
+      const value = Number(e.currentTarget.value);
+      const validValue = getValidDimension(value);
+      
+      if (value !== validValue) {
+        // 如果值被调整，通知用户
+        alert(`输入的值 ${value}mm 已被调整为安全值 ${validValue}mm\n（最小值: 40mm, 最大值: 1000mm）`);
+      }
+      
+      updateLabelData(
+        type === 'width' 
+          ? { labelWidth: validValue }
+          : { labelHeight: validValue }
+      );
+
+      // 更新输入框显示的值
+      e.currentTarget.value = validValue.toString();
+    }
+  };
+
+  // 处理尺寸微调
+  const handleDimensionStep = (e: React.ChangeEvent<HTMLInputElement>, type: 'width' | 'height') => {
+    // 移除即时更新，让用户按回车确认
+  };
+
   // 创建动态内容样式
   const contentStyle = {
     ...getContentStyle(),
@@ -341,8 +375,9 @@ export default function PDFPreview() {
               <div className="flex-1">
                 <input
                   type="number"
-                  value={labelWidth}
-                  onChange={(e) => updateLabelData({ labelWidth: Number(e.target.value) })}
+                  defaultValue={labelWidth}
+                  placeholder="最小值: 40mm"
+                  onKeyDown={(e) => handleDimensionInput(e, 'width')}
                   className="w-full px-3 py-2 focus:outline-none"
                   style={{
                     color: theme.text,
@@ -360,8 +395,9 @@ export default function PDFPreview() {
               <div className="flex-1">
                 <input
                   type="number"
-                  value={labelHeight}
-                  onChange={(e) => updateLabelData({ labelHeight: Number(e.target.value) })}
+                  defaultValue={labelHeight}
+                  placeholder="最小值: 40mm"
+                  onKeyDown={(e) => handleDimensionInput(e, 'height')}
                   className="w-full px-3 py-2 focus:outline-none"
                   style={{
                     color: theme.text,
