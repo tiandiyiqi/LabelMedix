@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
 
 export default function PDFPreview() {
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -252,40 +252,56 @@ export default function PDFPreview() {
         <Eye className="mr-2" size={24} />
         标签预览
       </h2>
-      <div className="mb-6 flex space-x-4">
-        <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: theme.text }}>
-            标签宽度 (mm)
-          </label>
-          <input
-            type="number"
-            value={labelWidth}
-            onChange={(e) => updateLabelData({ labelWidth: Number(e.target.value) })}
-            className="w-full rounded-md shadow-md px-3 py-2 border"
-            style={{
-              borderColor: theme.border,
-              color: theme.text,
-              backgroundColor: "white",
-            }}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: theme.text }}>
-            标签高度 (mm)
-          </label>
-          <input
-            type="number"
-            value={labelHeight}
-            onChange={(e) => updateLabelData({ labelHeight: Number(e.target.value) })}
-            className="w-full rounded-md shadow-md px-3 py-2 border"
-            style={{
-              borderColor: theme.border,
-              color: theme.text,
-              backgroundColor: "white",
-            }}
-          />
+      <div className="mb-6 space-y-4">
+        {/* 宽度和高度 */}
+        <div className="flex space-x-4">
+          <div className="flex-1">
+            <div className="flex items-center border border-[#30B8D6] rounded-md">
+              <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+                标签宽度：
+              </label>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={labelWidth}
+                  onChange={(e) => updateLabelData({ labelWidth: Number(e.target.value) })}
+                  className="w-full px-3 py-2 focus:outline-none"
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                  }}
+                />
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                  mm
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center border border-[#30B8D6] rounded-md">
+              <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+                标签高度：
+              </label>
+              <div className="flex-1">
+                <input
+                  type="number"
+                  value={labelHeight}
+                  onChange={(e) => updateLabelData({ labelHeight: Number(e.target.value) })}
+                  className="w-full px-3 py-2 focus:outline-none"
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                  }}
+                />
+                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                  mm
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
       <div className="flex-grow">
         <PDFViewer width="100%" height="600px" showToolbar={true}>
           <Document>

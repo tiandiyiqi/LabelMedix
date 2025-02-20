@@ -1,7 +1,7 @@
 "use client"
 
 import { useContext } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Edit3 } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 
@@ -11,7 +11,7 @@ export default function LabelEditor() {
   const { theme } = themeContext
 
   const { labelData, updateLabelData } = useLabelContext()
-  const { selectedLanguage, selectedNumber, drugInfo } = labelData
+  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight } = labelData
 
   const languages = [
     { name: "AE-阿联酋-阿拉伯语", code: "AE" },
@@ -44,39 +44,50 @@ export default function LabelEditor() {
 
   const numbers = Array.from({ length: 30 }, (_, i) => (i + 1).toString())
 
+  const fonts = [
+    { name: "STHeiti", value: "STHeiti" },
+    { name: "Arial", value: "Arial" },
+    { name: "Arial Bold", value: "Arial Bold" },
+    { name: "Arial Italic", value: "Arial Italic" },
+    { name: "Arial Unicode", value: "Arial Unicode" },
+    { name: "Arial Bold Italic", value: "Arial Bold Italic" }
+  ]
+
   const handleInputChange = (value: string) => {
     updateLabelData({ drugInfo: value })
   }
 
   return (
     <div className="h-full w-full flex flex-col card p-4 rounded-lg shadow" style={{ borderColor: theme.border }}>
-      <h2 className="text-xl font-bold mb-4" style={{ color: theme.primary }}>
+      <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
+        <Edit3 className="mr-2" size={24} />
         标签编辑器
       </h2>
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-2" style={{ color: theme.text }}>
-          选择语言
-        </label>
         <div className="grid grid-cols-2 gap-4">
-          <div className="relative">
-            <select
-              value={selectedNumber}
-              onChange={(e) => updateLabelData({ selectedNumber: e.target.value })}
-              className="block w-full pl-3 pr-10 py-2 text-base rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-md border"
-              style={{
-                borderColor: theme.border,
-                color: theme.text,
-                backgroundColor: "white",
-              }}
-            >
-              {numbers.map((num) => (
-                <option key={num} value={num}>
-                  {num}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-              <ChevronDown className="h-4 w-4" style={{ color: theme.lightText }} />
+          <div className="flex items-center border border-[#30B8D6] rounded-md">
+            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+              序号：
+            </label>
+            <div className="flex-1">
+              <select
+                value={selectedNumber}
+                onChange={(e) => updateLabelData({ selectedNumber: e.target.value })}
+                className="w-full px-3 py-2 focus:outline-none appearance-none"
+                style={{
+                  color: theme.text,
+                  backgroundColor: "white",
+                }}
+              >
+                {numbers.map((num) => (
+                  <option key={num} value={num}>
+                    {num}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="pointer-events-none absolute right-3 flex items-center">
+              <ChevronDown className="h-4 w-4" style={{ color: theme.text }} />
             </div>
           </div>
           <div className="relative">
@@ -97,7 +108,7 @@ export default function LabelEditor() {
               ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-              <ChevronDown className="h-4 w-4" style={{ color: theme.lightText }} />
+              <ChevronDown className="h-4 w-4" style={{ color: theme.text }} />
             </div>
           </div>
         </div>
@@ -120,6 +131,86 @@ export default function LabelEditor() {
               resize: "none"
             }}
           />
+        </div>
+
+        {/* 字体相关参数 */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex items-center border border-[#30B8D6] rounded-md">
+            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+              字体名称：
+            </label>
+            <div className="flex-1">
+              <select
+                value={fontFamily}
+                onChange={(e) => updateLabelData({ fontFamily: e.target.value })}
+                className="w-full px-3 py-2 focus:outline-none appearance-none"
+                style={{
+                  color: theme.text,
+                  backgroundColor: "white",
+                }}
+              >
+                {fonts.map((font) => (
+                  <option key={font.value} value={font.value}>
+                    {font.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="pointer-events-none absolute right-3 flex items-center">
+              <ChevronDown className="h-4 w-4" style={{ color: theme.text }} />
+            </div>
+          </div>
+          <div className="flex items-center border border-[#30B8D6] rounded-md">
+            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+              字体大小：
+            </label>
+            <div className="flex-1">
+              <input
+                type="number"
+                value={fontSize}
+                onChange={(e) => updateLabelData({ fontSize: Number(e.target.value) })}
+                className="w-full px-3 py-2 focus:outline-none"
+                style={{
+                  color: theme.text,
+                  backgroundColor: "white",
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex items-center border border-[#30B8D6] rounded-md">
+            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+              间距：
+            </label>
+            <div className="flex-1">
+              <input
+                type="number"
+                value={spacing}
+                onChange={(e) => updateLabelData({ spacing: Number(e.target.value) })}
+                className="w-full px-3 py-2 focus:outline-none"
+                style={{
+                  color: theme.text,
+                  backgroundColor: "white",
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex items-center border border-[#30B8D6] rounded-md">
+            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+              行距：
+            </label>
+            <div className="flex-1">
+              <input
+                type="number"
+                value={lineHeight}
+                onChange={(e) => updateLabelData({ lineHeight: Number(e.target.value) })}
+                className="w-full px-3 py-2 focus:outline-none"
+                style={{
+                  color: theme.text,
+                  backgroundColor: "white",
+                }}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>

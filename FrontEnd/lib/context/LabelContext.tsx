@@ -9,6 +9,9 @@ interface LabelData {
   fontSize: number
   labelWidth: number
   labelHeight: number
+  fontFamily: string
+  spacing: number
+  lineHeight: number
 }
 
 interface LabelContextType {
@@ -22,7 +25,10 @@ const defaultLabelData: LabelData = {
   drugInfo: '',
   fontSize: 12,
   labelWidth: 120,  // 120mm - PDF实际宽度
-  labelHeight: 80   // 80mm - PDF实际高度
+  labelHeight: 80,  // 80mm - PDF实际高度
+  fontFamily: 'STHeiti',
+  spacing: 1,
+  lineHeight: 1.1
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)
