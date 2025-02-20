@@ -47,15 +47,9 @@ export default function Home() {
             <div className="flex-1 p-8 overflow-auto">
               <div className="grid grid-cols-2 gap-8 h-full">
                 <div className="flex flex-col">
-                  <h2 className="text-xl font-bold mb-4 text-purple-700 flex items-center">
-                    标签编辑器
-                  </h2>
                   <LabelEditor />
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-xl font-bold mb-4 text-purple-700 flex items-center">
-                    标签预览
-                  </h2>
                   <PDFPreview />
                 </div>
               </div>
