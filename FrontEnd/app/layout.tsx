@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { LabelProvider } from "../lib/context/LabelContext"
 
 export const metadata: Metadata = {
   title: 'v0 App',
@@ -13,7 +14,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <LabelProvider>
+          {children}
+        </LabelProvider>
+      </body>
     </html>
   )
 }

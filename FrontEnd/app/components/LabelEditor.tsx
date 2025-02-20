@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useContext } from "react"
+import { useContext } from "react"
 import { ChevronDown } from "lucide-react"
 import { ThemeContext } from "./Layout"
-
-interface LabelData {
-  drugInfo: string
-}
+import { useLabelContext } from "../../lib/context/LabelContext"
 
 export default function LabelEditor() {
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
+
+  const { labelData, updateLabelData } = useLabelContext()
+  const { selectedLanguage, selectedNumber, drugInfo } = labelData
 
   const languages = [
     { name: "AE-阿联酋-阿拉伯语", code: "AE" },
@@ -42,30 +42,10 @@ export default function LabelEditor() {
     { name: "VN-越南-越南语", code: "VN" }
   ]
 
-  const [selectedLanguage, setSelectedLanguage] = useState("CN")
-  const [selectedNumber, setSelectedNumber] = useState("1")
-
   const numbers = Array.from({ length: 30 }, (_, i) => (i + 1).toString())
 
-  const [labelData, setLabelData] = useState<Record<string, LabelData>>(
-    Object.fromEntries(
-      languages.map((lang) => [
-        lang.code,
-        {
-          drugInfo: "",
-        },
-      ])
-    )
-  )
-
-  const handleInputChange = (field: keyof LabelData, value: string) => {
-    setLabelData((prev) => ({
-      ...prev,
-      [selectedLanguage]: {
-        ...prev[selectedLanguage],
-        [field]: value,
-      },
-    }))
+  const handleInputChange = (value: string) => {
+    updateLabelData({ drugInfo: value })
   }
 
   return (
@@ -81,7 +61,7 @@ export default function LabelEditor() {
           <div className="relative">
             <select
               value={selectedNumber}
-              onChange={(e) => setSelectedNumber(e.target.value)}
+              onChange={(e) => updateLabelData({ selectedNumber: e.target.value })}
               className="block w-full pl-3 pr-10 py-2 text-base rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-md border"
               style={{
                 borderColor: theme.border,
@@ -102,7 +82,7 @@ export default function LabelEditor() {
           <div className="relative">
             <select
               value={selectedLanguage}
-              onChange={(e) => setSelectedLanguage(e.target.value)}
+              onChange={(e) => updateLabelData({ selectedLanguage: e.target.value })}
               className="block w-full pl-3 pr-10 py-2 text-base rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-md border"
               style={{
                 borderColor: theme.border,
@@ -128,8 +108,8 @@ export default function LabelEditor() {
             药品信息
           </label>
           <textarea
-            value={labelData[selectedLanguage].drugInfo}
-            onChange={(e) => handleInputChange("drugInfo", e.target.value)}
+            value={drugInfo}
+            onChange={(e) => handleInputChange(e.target.value)}
             className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
             style={{
               borderColor: theme.border,

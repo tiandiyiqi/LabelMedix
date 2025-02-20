@@ -1,14 +1,17 @@
 "use client"
 
-import { useEffect, useRef, useState, useContext } from "react"
+import { useEffect, useRef, useContext, useState } from "react"
 import { Eye, Save } from "lucide-react"
 import { ThemeContext } from "./Layout"
+import { useLabelContext } from "../../lib/context/LabelContext"
 
 export default function LabelPreview() {
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
 
+  const { labelData } = useLabelContext()
+  const { drugInfo, fontSize, selectedLanguage } = labelData
   const [labelWidth, setLabelWidth] = useState(120)
   const [labelHeight, setLabelHeight] = useState(80)
   const previewContainerRef = useRef<HTMLDivElement>(null)
@@ -30,6 +33,17 @@ export default function LabelPreview() {
   const handleSaveLabel = () => {
     console.log("Saving label...")
     // Add save functionality here
+  }
+
+  // 获取当前语言对应的字体
+  const getFontFamily = () => {
+    if (selectedLanguage === "TH" || selectedLanguage === "AE") {
+      return "Arial Unicode MS"
+    }
+    if (selectedLanguage === "CN") {
+      return "黑体"
+    }
+    return "Arial"
   }
 
   return (
@@ -87,7 +101,24 @@ export default function LabelPreview() {
             boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
           }}
         >
-          <p style={{ color: theme.lightText }}>标签预览将在这里显示</p>
+          {drugInfo ? (
+            <div
+              style={{
+                fontFamily: getFontFamily(),
+                fontSize: `${fontSize}pt`,
+                padding: "10px",
+                width: "100%",
+                height: "100%",
+                overflow: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word"
+              }}
+            >
+              {drugInfo}
+            </div>
+          ) : (
+            <p style={{ color: theme.lightText }}>标签预览将在这里显示</p>
+          )}
         </div>
       </div>
       <div className="mt-auto">
