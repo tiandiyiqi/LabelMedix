@@ -105,15 +105,14 @@ export default function ProjectInfo() {
 
   return (
     <div 
-      className="flex items-center justify-between p-4"
+      className="flex items-center justify-between h-[60px] px-6"
       style={{ 
         backgroundColor: theme.secondary,
         borderBottom: `1px solid ${theme.neutral}`
       }}
     >
-      <div className="text-xl font-bold" style={{ color: theme.text }}>
-        <span style={{ color: theme.highlight }}>示例</span>
-        项目
+      <div className="text-xl font-bold text-white">
+        示例项目
       </div>
       <div className="flex gap-4">
         <button

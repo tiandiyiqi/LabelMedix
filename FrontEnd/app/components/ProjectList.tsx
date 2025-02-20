@@ -32,12 +32,21 @@ export default function ProjectList() {
   }
 
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4" style={{ color: theme.primary }}>
-        项目管理
-      </h2>
-      <div className="mb-4">
-        <div className="relative">
+    <div className="flex flex-col h-full bg-white bg-opacity-75">
+      <div 
+        className="flex items-center h-[60px] px-6"
+        style={{ 
+          backgroundColor: theme.secondary,
+          borderBottom: `1px solid ${theme.neutral}`
+        }}
+      >
+        <div className="text-xl font-bold text-white">
+          项目管理
+        </div>
+      </div>
+
+      <div className="p-4 flex-1">
+        <div className="relative mb-4">
           <input
             type="text"
             placeholder="搜索项目..."
@@ -48,77 +57,77 @@ export default function ProjectList() {
               color: theme.text,
             }}
           />
-          <Search className="absolute left-3 top-2.5" style={{ color: theme.lightText }} size={20} />
+          <Search className="absolute left-3 top-2.5" style={{ color: theme.subtext }} size={20} />
         </div>
-      </div>
-      <ul className="space-y-2">
-        {projects.map((project) => (
-          <li
-            key={project.id}
-            className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-            style={{ 
-              backgroundColor: "white",
-              borderColor: theme.border,
-              borderWidth: "1px",
-            }}
-          >
-            {editingId === project.id ? (
-              <div className="flex items-center justify-between">
-                <input
-                  type="text"
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  className="flex-1 px-2 py-1 rounded mr-2"
-                  style={{ 
-                    borderColor: theme.border,
-                    backgroundColor: "white",
-                    color: theme.text,
-                  }}
-                />
-                <button
-                  onClick={() => handleSave(project.id)}
-                  className="p-1 rounded hover:opacity-80 transition-opacity"
-                  style={{ backgroundColor: theme.primary, color: "white" }}
-                >
-                  <Save size={18} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-medium" style={{ color: theme.text }}>{project.name}</div>
-                  <div className="text-sm" style={{ color: theme.lightText }}>
-                    {project.languages.join(", ")}
+        <ul className="space-y-2">
+          {projects.map((project) => (
+            <li
+              key={project.id}
+              className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+              style={{ 
+                backgroundColor: "white",
+                borderColor: theme.border,
+                borderWidth: "1px",
+              }}
+            >
+              {editingId === project.id ? (
+                <div className="flex items-center justify-between">
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    className="flex-1 px-2 py-1 rounded mr-2"
+                    style={{ 
+                      borderColor: theme.border,
+                      backgroundColor: "white",
+                      color: theme.text,
+                    }}
+                  />
+                  <button
+                    onClick={() => handleSave(project.id)}
+                    className="p-1 rounded hover:opacity-80 transition-opacity"
+                    style={{ backgroundColor: theme.primary, color: "white" }}
+                  >
+                    <Save size={18} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium" style={{ color: theme.text }}>{project.name}</div>
+                    <div className="text-sm" style={{ color: theme.subtext }}>
+                      {project.languages.join(", ")}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleEdit(project)}
+                      className="p-1 rounded hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: theme.secondary, color: theme.buttonText }}
+                    >
+                      <Edit size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(project.id)}
+                      className="p-1 rounded hover:opacity-80 transition-opacity"
+                      style={{ backgroundColor: theme.accent, color: theme.buttonText }}
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleEdit(project)}
-                    className="p-1 rounded hover:opacity-80 transition-opacity"
-                    style={{ backgroundColor: theme.secondary, color: theme.buttonText }}
-                  >
-                    <Edit size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(project.id)}
-                    className="p-1 rounded hover:opacity-80 transition-opacity"
-                    style={{ backgroundColor: theme.accent, color: theme.buttonText }}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-      <button
-        className="w-full mt-4 py-2 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity shadow-sm"
-        style={{ backgroundColor: theme.primary, color: "white" }}
-      >
-        <Plus size={20} className="mr-2" />
-        新建项目
-      </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <button
+          className="w-full mt-4 py-2 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity shadow-sm"
+          style={{ backgroundColor: theme.primary, color: "white" }}
+        >
+          <Plus size={20} className="mr-2" />
+          新建项目
+        </button>
+      </div>
     </div>
   )
 }

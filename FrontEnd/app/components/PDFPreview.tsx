@@ -1,10 +1,10 @@
 "use client"
 
 import { useContext } from 'react'
-import { Document, Page, Text, View, StyleSheet, PDFViewer, Font } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, PDFViewer, Font, pdf } from '@react-pdf/renderer'
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
-import { Eye } from "lucide-react"
+import { Eye, Save, FileDown } from "lucide-react"
 
 // 罗马数字转换函数
 const toRoman = (num: number): string => {
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
 
 export default function PDFPreview() {
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -246,8 +246,66 @@ export default function PDFPreview() {
   const processedSecondParagraph = paragraphs.length > 1 ? processOtherParagraph(paragraphs[1]) : [];
   const processedRemainingParagraphs = paragraphs.slice(2).map(para => processRemainingParagraphs(para));
 
+  // 导出PDF功能
+  const handleExportPDF = async () => {
+    const blob = await pdf(
+      <Document>
+        <Page size={[mmToPt(labelWidth), mmToPt(labelHeight)]} style={pageStyle}>
+          <View style={{ margin: mmToPt(5) }}>
+            {/* 渲染第一段（带罗马序号） */}
+            {processedFirstParagraph.map((groupLines, groupIndex) => (
+              <View key={`first-${groupIndex}`} style={styles.contentRow}>
+                {groupLines.map((line, lineIndex) => (
+                  <Text key={`first-line-${lineIndex}`} style={styles.contentItem}>
+                    {line}
+                  </Text>
+                ))}
+              </View>
+            ))}
+            
+            {/* 渲染第二段（分组但不带序号，带下划线） */}
+            {processedSecondParagraph.length > 0 && (
+              <View style={{ marginTop: mmToPt(2) }}>
+                {processedSecondParagraph.map((lines, groupIndex) => (
+                  <View key={`second-${groupIndex}`} style={styles.contentRow}>
+                    {lines.map((line, lineIndex) => (
+                      <Text key={`line-${lineIndex}`} style={styles.contentItem}>
+                        {line}
+                      </Text>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            )}
+            
+            {/* 渲染第三段及之后的段落 */}
+            {processedRemainingParagraphs.map((paragraph, paraIndex) => (
+              <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(2) }}>
+                {paragraph.map((group, groupIndex) => (
+                  <View key={`group-${groupIndex}`} style={styles.remainingContentRow}>
+                    {group.map((line, lineIndex) => (
+                      <Text key={`line-${lineIndex}`} style={styles.remainingContentItem}>
+                        {line}
+                      </Text>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        </Page>
+      </Document>
+    ).toBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `label-${selectedLanguage}-${selectedNumber}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="h-full flex flex-col card p-6 rounded-lg shadow w-full" style={{ borderColor: theme.border }}>
+    <div className="h-full flex flex-col card rounded-lg shadow w-full" style={{ borderColor: theme.border }}>
       <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
         <Eye className="mr-2" size={24} />
         标签预览
@@ -271,9 +329,6 @@ export default function PDFPreview() {
                     backgroundColor: "white",
                   }}
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
-                  mm
-                </span>
               </div>
             </div>
           </div>
@@ -293,9 +348,6 @@ export default function PDFPreview() {
                     backgroundColor: "white",
                   }}
                 />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
-                  mm
-                </span>
               </div>
             </div>
           </div>
@@ -303,7 +355,7 @@ export default function PDFPreview() {
       </div>
 
       <div className="flex-grow">
-        <PDFViewer width="100%" height="600px" showToolbar={true}>
+        <PDFViewer width="100%" height="400px" showToolbar={true} style={{ backgroundColor: theme.background }}>
           <Document>
             <Page size={[mmToPt(labelWidth), mmToPt(labelHeight)]} style={pageStyle}>
               <View style={{ margin: mmToPt(5) }}>
@@ -351,6 +403,38 @@ export default function PDFPreview() {
             </Page>
           </Document>
         </PDFViewer>
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="grid grid-cols-2 h-full items-center">
+        <button
+          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
+          style={{
+            backgroundColor: theme.accent,
+            color: theme.buttonText,
+            border: `1px solid ${theme.neutral}`,
+            boxShadow: `0 2px 4px ${theme.neutral}33`
+          }}
+          onClick={() => {
+            // TODO: 实现保存标签数据功能
+          }}
+        >
+          <Save className="mr-2" size={20} />
+          保存标签数据
+        </button>
+        <button
+          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
+          style={{
+            backgroundColor: theme.accent,
+            color: theme.buttonText,
+            border: `1px solid ${theme.neutral}`,
+            boxShadow: `0 2px 4px ${theme.neutral}33`
+          }}
+          onClick={handleExportPDF}
+        >
+          <FileDown className="mr-2" size={20} />
+          导出PDF
+        </button>
       </div>
     </div>
   );

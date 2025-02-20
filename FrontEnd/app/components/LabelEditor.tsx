@@ -58,7 +58,7 @@ export default function LabelEditor() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col card p-4 rounded-lg shadow" style={{ borderColor: theme.border }}>
+    <div className="h-full w-full flex flex-col card rounded-lg shadow" style={{ borderColor: theme.border }}>
       <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
         <Edit3 className="mr-2" size={24} />
         标签编辑器
@@ -69,7 +69,7 @@ export default function LabelEditor() {
             <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
               序号：
             </label>
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <select
                 value={selectedNumber}
                 onChange={(e) => updateLabelData({ selectedNumber: e.target.value })}
@@ -85,9 +85,9 @@ export default function LabelEditor() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="pointer-events-none absolute right-3 flex items-center">
-              <ChevronDown className="h-4 w-4" style={{ color: theme.text }} />
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
+                <ChevronDown className="h-4 w-4" style={{ color: theme.text }} />
+              </div>
             </div>
           </div>
           <div className="relative">
