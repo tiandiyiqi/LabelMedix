@@ -14,40 +14,35 @@ export default function LabelEditor() {
   const { theme } = themeContext
 
   const languages = [
-    { name: "阿拉伯语", code: "AR" },
-    { name: "保加利亚语", code: "BG" },
-    { name: "丹麦语", code: "DK" },
-    { name: "德语", code: "DE" },
-    { name: "俄语", code: "RU" },
-    { name: "法语", code: "FR" },
-    { name: "芬兰语", code: "FI" },
-    { name: "荷兰语", code: "NL" },
-    { name: "韩语", code: "KO" },
-    { name: "汉语", code: "ZH" },
-    { name: "克罗地亚语", code: "HR" },
-    { name: "捷克语", code: "CS" },
-    { name: "罗马尼亚语", code: "RO" },
-    { name: "马来语", code: "MS" },
-    { name: "挪威语", code: "NO" },
-    { name: "葡萄牙语", code: "PT" },
-    { name: "日语", code: "JP" },
-    { name: "瑞典语", code: "SV" },
-    { name: "塞尔维亚语", code: "SR" },
-    { name: "西班牙语", code: "ES" },
-    { name: "希腊语", code: "EL" },
-    { name: "匈牙利语", code: "HU" },
-    { name: "意大利语", code: "IT" },
-    { name: "印地语", code: "HI" },
-    { name: "印尼语", code: "ID" },
-    { name: "英语", code: "EN" },
-    { name: "越南语", code: "VI" },
-    { name: "希伯来语", code: "HE" },
-    { name: "土耳其语", code: "TR" },
-    { name: "泰语", code: "TH" },
-    { name: "波兰语", code: "PL" },
+    { name: "AE-阿联酋-阿拉伯语", code: "AE" },
+    { name: "BG-保加利亚-保加利亚语", code: "BG" },
+    { name: "CN-中国-汉语", code: "CN" },
+    { name: "CZ-捷克-捷克语", code: "CZ" },
+    { name: "DE-德国-德语", code: "DE" },
+    { name: "DK-丹麦-丹麦语", code: "DK" },
+    { name: "GB-英国-英语", code: "GB" },
+    { name: "GR-希腊-希腊语", code: "GR" },
+    { name: "ID-印度尼西亚-印尼语", code: "ID" },
+    { name: "IL-以色列-希伯来语", code: "IL" },
+    { name: "IN-印度-印地语", code: "IN" },
+    { name: "IT-意大利-意大利语", code: "IT" },
+    { name: "JP-日本-日语", code: "JP" },
+    { name: "KR-韩国-韩语", code: "KR" },
+    { name: "MY-马来西亚-马来语", code: "MY" },
+    { name: "NL-荷兰-荷兰语", code: "NL" },
+    { name: "NO-挪威-挪威语", code: "NO" },
+    { name: "PL-波兰-波兰语", code: "PL" },
+    { name: "PT-葡萄牙-葡萄牙语", code: "PT" },
+    { name: "RO-罗马尼亚-罗马尼亚语", code: "RO" },
+    { name: "RS-塞尔维亚-塞尔维亚语", code: "RS" },
+    { name: "RU-俄罗斯-俄语", code: "RU" },
+    { name: "SE-瑞典-瑞典语", code: "SE" },
+    { name: "TH-泰国-泰语", code: "TH" },
+    { name: "TR-土耳其-土耳其语", code: "TR" },
+    { name: "VN-越南-越南语", code: "VN" }
   ]
 
-  const [selectedLanguage, setSelectedLanguage] = useState("ZH")
+  const [selectedLanguage, setSelectedLanguage] = useState("CN")
   const [selectedNumber, setSelectedNumber] = useState("1")
 
   const numbers = Array.from({ length: 30 }, (_, i) => (i + 1).toString())
@@ -117,7 +112,7 @@ export default function LabelEditor() {
             >
               {languages.map((lang) => (
                 <option key={lang.code} value={lang.code}>
-                  {lang.name} ({lang.code})
+                  {lang.name}
                 </option>
               ))}
             </select>
