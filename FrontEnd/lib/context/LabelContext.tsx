@@ -23,7 +23,7 @@ const defaultLabelData: LabelData = {
   selectedLanguage: 'CN',
   selectedNumber: '1',
   drugInfo: '',
-  fontSize: 12,
+  fontSize: 10,
   labelWidth: 120,  // 120mm - PDF实际宽度
   labelHeight: 80,  // 80mm - PDF实际高度
   fontFamily: 'STHeiti',

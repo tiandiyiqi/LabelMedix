@@ -37,11 +37,6 @@ const mmToPt = (mm: number) => mm * MM_TO_PT;
 
 // 注册字体
 Font.register({
-  family: 'STHeiti',
-  src: '/fonts/STHeiti.ttf'
-});
-
-Font.register({
   family: 'Arial',
   src: '/fonts/Arial.ttf',
   fonts: [
@@ -53,8 +48,28 @@ Font.register({
 });
 
 Font.register({
+  family: 'STHeiti',
+  src: '/fonts/STHeiti.ttf',
+  charset: '[\u4E00-\u9FA5]' // 只用于中文字符范围
+});
+
+Font.register({
   family: 'Arial Unicode',
   src: '/fonts/Arial Unicode.ttf'
+});
+
+// 创建字体回退配置
+Font.registerHyphenationCallback((word: string) => {
+  return [word];
+});
+
+// 创建复合字体
+Font.register({
+  family: 'Composite',
+  fonts: [
+    { src: '/fonts/STHeiti.ttf' },
+    { src: '/fonts/Arial.ttf' }
+  ]
 });
 
 // 文本分段处理函数
@@ -144,43 +159,25 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   content: {
-    fontFamily: 'STHeiti',
     fontSize: 10,
     lineHeight: 1.1,
   },
   contentRow: {
     display: 'flex',
     flexDirection: 'row',
-    justifyContent: 'space-between', // 平均分配空间
+    justifyContent: 'space-between',
     width: '100%',
     marginBottom: mmToPt(1),
   },
   contentItem: {
-    fontFamily: 'STHeiti',
-    fontSize: 12,
-    flexGrow: 1, // 允许伸展以平均分配空间
-    flexBasis: 0, // 所有列从相同的基础开始
+    fontSize: 10,
+    flexGrow: 1,
+    flexBasis: 0,
     textAlign: 'left',
     paddingRight: mmToPt(2),
   },
-  contentTH: {
-    fontFamily: 'Arial Unicode',
-    fontSize: 12,
-    lineHeight: 0.5,
-  },
-  contentAE: {
-    fontFamily: 'Arial Unicode',
-    fontSize: 12,
-    lineHeight: 0.5,
-  },
-  contentDefault: {
-    fontFamily: 'Arial',
-    fontSize: 12,
-    lineHeight: 0.5,
-  },
   contentItemWithUnderline: {
-    fontFamily: 'STHeiti',
-    fontSize: 12,
+    fontSize: 10,
     flexGrow: 1,
     textAlign: 'left',
     position: 'relative',
@@ -191,8 +188,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: '100%',
     right: 0,
-    marginLeft: mmToPt(2),  // 文字和下划线之间的间距
-    marginRight: mmToPt(2), // 下划线和下一个文字之间的间距
+    marginLeft: mmToPt(2),
+    marginRight: mmToPt(2),
   },
   remainingContentRow: {
     display: 'flex',
@@ -201,10 +198,12 @@ const styles = StyleSheet.create({
     marginBottom: mmToPt(1),
   },
   remainingContentItem: {
-    fontFamily: 'STHeiti',
-    fontSize: 12,
+    fontSize: 10,
     marginRight: mmToPt(4),
   },
+  chineseText: {
+    fontFamily: 'STHeiti'
+  }
 });
 
 export default function PDFPreview() {
@@ -214,20 +213,6 @@ export default function PDFPreview() {
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
-
-  // 根据语言选择字体样式
-  const getContentStyle = () => {
-    switch (selectedLanguage) {
-      case 'CN':
-        return styles.content;
-      case 'TH':
-        return styles.contentTH;
-      case 'AE':
-        return styles.contentAE;
-      default:
-        return styles.contentDefault;
-    }
-  };
 
   // 创建动态页面样式
   const pageStyle = {
@@ -270,10 +255,12 @@ export default function PDFPreview() {
 
   // 创建动态内容样式
   const contentStyle = {
-    ...getContentStyle(),
+    ...styles.content,
     fontSize: mmToPt(fontSize),
     fontFamily: fontFamily,
     lineHeight: lineHeight,
+    textAlign: selectedLanguage === 'AE' ? 'right' : 'left',  // 阿拉伯语右对齐
+    direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
   };
 
   // 处理文本
@@ -290,15 +277,46 @@ export default function PDFPreview() {
       fontFamily: fontFamily,
       fontSize: fontSize,
       lineHeight: lineHeight,
+      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',  // 阿拉伯语右对齐
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
     },
     remainingContentItem: {
       ...styles.remainingContentItem,
       fontFamily: fontFamily,
       fontSize: fontSize,
       lineHeight: lineHeight,
-      marginRight: mmToPt(spacing), // 使用间距参数
+      marginRight: mmToPt(spacing),
+      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',  // 阿拉伯语右对齐
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
+    },
+    contentRow: {
+      ...styles.contentRow,
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
+    },
+    remainingContentRow: {
+      ...styles.remainingContentRow,
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
+      justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',  // 阿拉伯语靠右对齐
     },
   });
+
+  // 处理文本，分离中文和非中文字符
+  const processText = (text: string) => {
+    // 如果是阿拉伯语，不需要分离文字
+    if (selectedLanguage === 'AE') {
+      return <Text>{text}</Text>;
+    }
+    
+    const parts = text.split(/([^\u4E00-\u9FA5]+)/);
+    return parts.map((part, index) => {
+      if (part.match(/[\u4E00-\u9FA5]/)) {
+        // 中文文本
+        return <Text key={index} style={styles.chineseText}>{part}</Text>;
+      }
+      // 非中文文本
+      return <Text key={index}>{part}</Text>;
+    });
+  };
 
   // 导出PDF功能
   const handleExportPDF = async () => {
@@ -311,7 +329,7 @@ export default function PDFPreview() {
               <View key={`first-${groupIndex}`} style={dynamicStyles.contentRow}>
                 {groupLines.map((line, lineIndex) => (
                   <Text key={`first-line-${lineIndex}`} style={dynamicStyles.contentItem}>
-                    {line}
+                    {processText(line)}
                   </Text>
                 ))}
               </View>
@@ -324,7 +342,7 @@ export default function PDFPreview() {
                   <View key={`second-${groupIndex}`} style={dynamicStyles.contentRow}>
                     {lines.map((line, lineIndex) => (
                       <Text key={`line-${lineIndex}`} style={dynamicStyles.contentItem}>
-                        {line}
+                        {processText(line)}
                       </Text>
                     ))}
                   </View>
@@ -339,7 +357,7 @@ export default function PDFPreview() {
                   <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
                     {group.map((line, lineIndex) => (
                       <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
-                        {line}
+                        {processText(line)}
                       </Text>
                     ))}
                   </View>
@@ -420,7 +438,7 @@ export default function PDFPreview() {
                   <View key={`first-${groupIndex}`} style={dynamicStyles.contentRow}>
                     {groupLines.map((line, lineIndex) => (
                       <Text key={`first-line-${lineIndex}`} style={dynamicStyles.contentItem}>
-                        {line}
+                        {processText(line)}
                       </Text>
                     ))}
                   </View>
@@ -433,7 +451,7 @@ export default function PDFPreview() {
                       <View key={`second-${groupIndex}`} style={dynamicStyles.contentRow}>
                         {lines.map((line, lineIndex) => (
                           <Text key={`line-${lineIndex}`} style={dynamicStyles.contentItem}>
-                            {line}
+                            {processText(line)}
                           </Text>
                         ))}
                       </View>
@@ -448,7 +466,7 @@ export default function PDFPreview() {
                       <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
                         {group.map((line, lineIndex) => (
                           <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
-                            {line}
+                            {processText(line)}
                           </Text>
                         ))}
                       </View>

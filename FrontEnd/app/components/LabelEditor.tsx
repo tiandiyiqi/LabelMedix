@@ -57,6 +57,27 @@ export default function LabelEditor() {
     updateLabelData({ drugInfo: value })
   }
 
+  // 处理语言选择变化
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLanguage = e.target.value;
+    let newFontFamily = 'Arial Unicode';  // 默认字体
+    
+    // 根据语言设置对应的字体
+    if (newLanguage === 'CN') {
+      newFontFamily = 'STHeiti';
+    } else if (newLanguage === 'TH' || newLanguage === 'AE') {
+      newFontFamily = 'Arial Unicode';
+    } else {
+      newFontFamily = 'Arial';
+    }
+    
+    // 更新语言和字体
+    updateLabelData({
+      selectedLanguage: newLanguage,
+      fontFamily: newFontFamily
+    });
+  };
+
   return (
     <div className="h-full w-full flex flex-col card rounded-lg shadow" style={{ borderColor: theme.border }}>
       <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
@@ -93,7 +114,7 @@ export default function LabelEditor() {
           <div className="relative">
             <select
               value={selectedLanguage}
-              onChange={(e) => updateLabelData({ selectedLanguage: e.target.value })}
+              onChange={handleLanguageChange}
               className="block w-full pl-3 pr-10 py-2 text-base rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-md border"
               style={{
                 borderColor: theme.border,
