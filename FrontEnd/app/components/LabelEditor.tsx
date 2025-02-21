@@ -219,7 +219,7 @@ export default function LabelEditor() {
           </div>
           <div className="flex items-center border border-[#30B8D6] rounded-md">
             <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
-              行距：
+              行高：
             </label>
             <div className="flex-1">
               <input

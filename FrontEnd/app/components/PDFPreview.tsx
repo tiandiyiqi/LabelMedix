@@ -161,13 +161,14 @@ const styles = StyleSheet.create({
   content: {
     fontSize: 10,
     lineHeight: 1.1,
+    marginBottom: mmToPt(1), // 基础段落间距
   },
   contentRow: {
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    marginBottom: mmToPt(1),
+    marginBottom: mmToPt(1), // 基础行间距
   },
   contentItem: {
     fontSize: 10,
@@ -175,12 +176,14 @@ const styles = StyleSheet.create({
     flexBasis: 0,
     textAlign: 'left',
     paddingRight: mmToPt(2),
+    marginBottom: mmToPt(1), // 基础项目间距
   },
   contentItemWithUnderline: {
     fontSize: 10,
     flexGrow: 1,
     textAlign: 'left',
     position: 'relative',
+    marginBottom: mmToPt(1), // 基础下划线项目间距
   },
   underline: {
     borderBottom: '1pt solid black',
@@ -195,11 +198,12 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: mmToPt(1),
+    marginBottom: mmToPt(1), // 基础剩余内容行间距
   },
   remainingContentItem: {
     fontSize: 10,
     marginRight: mmToPt(4),
+    marginBottom: mmToPt(1), // 基础剩余内容项目间距
   },
   chineseText: {
     fontFamily: 'STHeiti'
@@ -272,31 +276,42 @@ export default function PDFPreview() {
   // 更新样式以使用动态参数
   const dynamicStyles = StyleSheet.create({
     ...styles,
+    content: {
+      ...styles.content,
+      fontSize: mmToPt(fontSize),
+      fontFamily: fontFamily,
+      lineHeight: lineHeight,
+      marginBottom: mmToPt(spacing), // 动态段落间距
+    },
+    contentRow: {
+      ...styles.contentRow,
+      marginBottom: mmToPt(spacing), // 动态行间距
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+    },
     contentItem: {
       ...styles.contentItem,
       fontFamily: fontFamily,
       fontSize: fontSize,
       lineHeight: lineHeight,
-      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',  // 阿拉伯语右对齐
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
+      marginBottom: mmToPt(spacing), // 动态项目间距
+      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+    },
+    remainingContentRow: {
+      ...styles.remainingContentRow,
+      marginBottom: mmToPt(spacing), // 动态剩余内容行间距
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+      justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',
     },
     remainingContentItem: {
       ...styles.remainingContentItem,
       fontFamily: fontFamily,
       fontSize: fontSize,
       lineHeight: lineHeight,
-      marginRight: mmToPt(spacing),
-      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',  // 阿拉伯语右对齐
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
-    },
-    contentRow: {
-      ...styles.contentRow,
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
-    },
-    remainingContentRow: {
-      ...styles.remainingContentRow,
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
-      justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',  // 阿拉伯语靠右对齐
+      marginRight: mmToPt(spacing), // 动态右边距
+      marginBottom: mmToPt(spacing), // 动态底部间距
+      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
     },
   });
 
