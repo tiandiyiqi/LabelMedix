@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   underline: {
     position: 'absolute',
-    bottom: mmToPt(0.4),  // 设置下划线位置在文本底部下方0.5mm处
+    bottom: mmToPt(0.4),  // 这个固定值将在动态样式中被覆盖
     left: '100%',
     height: mmToPt(0.2),
     backgroundColor: 'black',
@@ -340,6 +340,11 @@ export default function PDFPreview() {
       lineHeight: lineHeight,
       textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
       direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+    },
+    underline: {
+      ...styles.underline,
+      // 计算下划线位置：先将字体大小转换为点，再计算行间距
+      bottom: mmToPt(fontSize) * (lineHeight - 1)/2-1,
     },
     remainingContentRow: {
       ...styles.remainingContentRow,
