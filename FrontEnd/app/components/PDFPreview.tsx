@@ -219,21 +219,21 @@ const styles = StyleSheet.create({
   },
   underline: {
     position: 'absolute',
-    bottom: 0,
+    bottom: mmToPt(0.4),  // 设置下划线位置在文本底部下方0.5mm处
     left: '100%',
-    height: mmToPt(0.2),  // 设置下划线高度为0.2mm
+    height: mmToPt(0.2),
     backgroundColor: 'black',
   },
   remainingContentRow: {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: mmToPt(1),
+    marginBottom: mmToPt(1),  // 设置默认值
   },
   remainingContentItem: {
     fontSize: 10,
     marginRight: mmToPt(4),
-    marginBottom: mmToPt(1),
+    marginBottom: 0,  // 移除项目级的垂直间距
   },
   chineseText: {
     fontFamily: 'STHeiti'
@@ -311,7 +311,7 @@ export default function PDFPreview() {
       fontSize: mmToPt(fontSize),
       fontFamily: fontFamily,
       lineHeight: lineHeight,
-      marginBottom: mmToPt(spacing),
+      marginBottom: mmToPt(spacing*5),
     },
     firstParagraphRow: {
       ...styles.firstParagraphRow,
@@ -343,7 +343,7 @@ export default function PDFPreview() {
     },
     remainingContentRow: {
       ...styles.remainingContentRow,
-      marginBottom: mmToPt(spacing),
+      marginBottom: mmToPt(spacing),  // 在动态样式中使用 spacing 参数
       direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
       justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',
     },
@@ -353,7 +353,7 @@ export default function PDFPreview() {
       fontSize: fontSize,
       lineHeight: lineHeight,
       marginRight: mmToPt(spacing),
-      marginBottom: mmToPt(spacing),
+      marginBottom: 0,  // 移除项目级的垂直间距
       textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
       direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
     },
@@ -405,7 +405,7 @@ export default function PDFPreview() {
                       key={`first-line-${lineIndex}`} 
                       style={[
                         dynamicStyles.firstParagraphItem,
-                        { marginRight: 0 }  // 移除固定间距，使用gap代替
+                        { marginRight: 0 }
                       ]}
                     >
                       {processText(line)}
@@ -417,7 +417,7 @@ export default function PDFPreview() {
             
             {/* 渲染第二段（分组但不带序号，带下划线） */}
             {processedSecondParagraph.length > 0 && (
-              <View style={{ marginTop: mmToPt(spacing) }}>
+              <View style={{ marginTop: mmToPt(spacing * 2) }}>
                 {processedSecondParagraph.map((lines, groupIndex) => {
                   const lineSpacing = calculateSpacing(
                     mmToPt(labelWidth), 
@@ -456,7 +456,7 @@ export default function PDFPreview() {
             
             {/* 渲染第三段及之后的段落 */}
             {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-              <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing) }}>
+              <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
                 {paragraph.map((group, groupIndex) => (
                   <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
                     {group.map((line, lineIndex) => (
@@ -559,7 +559,7 @@ export default function PDFPreview() {
                           key={`first-line-${lineIndex}`} 
                           style={[
                             dynamicStyles.firstParagraphItem,
-                            { marginRight: 0 }  // 移除固定间距，使用gap代替
+                            { marginRight: 0 }
                           ]}
                         >
                           {processText(line)}
@@ -571,7 +571,7 @@ export default function PDFPreview() {
                 
                 {/* 渲染第二段（分组但不带序号，带下划线） */}
                 {processedSecondParagraph.length > 0 && (
-                  <View style={{ marginTop: mmToPt(spacing) }}>
+                  <View style={{ marginTop: mmToPt(spacing * 2) }}>
                     {processedSecondParagraph.map((lines, groupIndex) => {
                       const lineSpacing = calculateSpacing(
                         mmToPt(labelWidth), 
@@ -610,7 +610,7 @@ export default function PDFPreview() {
                 
                 {/* 渲染第三段及之后的段落 */}
                 {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-                  <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing) }}>
+                  <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
                     {paragraph.map((group, groupIndex) => (
                       <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
                         {group.map((line, lineIndex) => (
