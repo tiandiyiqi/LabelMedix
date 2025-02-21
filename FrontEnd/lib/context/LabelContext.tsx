@@ -28,7 +28,7 @@ const defaultLabelData: LabelData = {
   labelHeight: 80,  // 80mm - PDF实际高度
   fontFamily: 'STHeiti',
   spacing: 1,
-  lineHeight: 1.1
+  lineHeight: 1.2
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)

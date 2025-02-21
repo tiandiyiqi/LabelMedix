@@ -189,7 +189,7 @@ export default function LabelEditor() {
               <input
                 type="number"
                 value={fontSize}
-                step={0.1}
+                step={0.5}
                 onChange={(e) => updateLabelData({ fontSize: Number(e.target.value) })}
                 className="w-full px-3 py-2 focus:outline-none"
                 style={{
