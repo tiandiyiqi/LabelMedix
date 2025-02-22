@@ -199,6 +199,12 @@ const charWidthMap: CharWidthMap = {
 
 // 添加文本宽度测量函数
 const measureTextWidth = (text: string, fontSize: number, fontFamily: string): number => {
+  // 检查是否在客户端环境
+  if (typeof window === 'undefined') {
+    // 服务器端渲染时返回一个估算值
+    return text.length * fontSize;
+  }
+
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   if (context) {
@@ -209,34 +215,24 @@ const measureTextWidth = (text: string, fontSize: number, fontFamily: string): n
     const chars = Array.from(text);
     let totalWidth = 0;
     
-    console.group('文本宽度计算详情');
-    console.log('文本:', text);
-    console.log('字体大小:', fontSize, 'pt');
-    
     chars.forEach(char => {
       let charWidth = 0;
       
       if (/[\u4E00-\u9FA5]/.test(char)) {
         // 中文字符
         charWidth = fontSize * charWidthMap.chinese;
-        console.log(`中文字符 "${char}": ${charWidth.toFixed(2)}pt`);
       } else if (char in charWidthMap) {
         // 使用映射表中的宽度
         charWidth = fontSize * charWidthMap[char];
-        console.log(`已知字符 "${char}": ${charWidth.toFixed(2)}pt`);
       } else {
         // 未知字符使用canvas测量
         charWidth = context.measureText(char).width;
-        console.log(`未知字符 "${char}": ${charWidth.toFixed(2)}pt (通过canvas测量)`);
         // 缓存测量结果
         charWidthMap[char] = charWidth / fontSize;
       }
       
       totalWidth += charWidth;
     });
-    
-    console.log('总宽度:', totalWidth.toFixed(2), 'pt');
-    console.groupEnd();
     
     return totalWidth;
   }
@@ -245,30 +241,16 @@ const measureTextWidth = (text: string, fontSize: number, fontFamily: string): n
 
 // 修改间距计算函数，添加最小间距保护
 const calculateSpacing = (containerWidth: number, elements: string[], fontSize: number, fontFamily: string): number => {
-  console.group('间距计算过程');
-  console.log('容器宽度(pt):', containerWidth);
-  console.log('容器宽度(mm):', containerWidth / MM_TO_PT);
-  console.log('字体大小:', fontSize, 'pt');
-  console.log('字体:', fontFamily);
-  console.log('元素数量:', elements.length);
-  console.log('元素内容:', elements);
-
   // 1. 计算所有元素的总宽度
   const elementsWidth = elements.map(text => {
     const width = measureTextWidth(text, fontSize, fontFamily);
     return { text, width };
   });
 
-  console.log('各元素宽度(pt):', elementsWidth);
-
   const totalContentWidth = elementsWidth.reduce((sum, item) => sum + item.width, 0);
-  console.log('内容总宽度(pt):', totalContentWidth);
-  console.log('内容总宽度(mm):', totalContentWidth / MM_TO_PT);
   
   // 2. 从容器宽度中减去总宽度得到可用空间
   const availableSpace = containerWidth - totalContentWidth;
-  console.log('可用空间(pt):', availableSpace);
-  console.log('可用空间(mm):', availableSpace / MM_TO_PT);
   
   // 3. 将可用空间除以元素数量得到基础间距（每个元素后面都需要一个间隔）
   // 添加最小间距保护
@@ -276,10 +258,6 @@ const calculateSpacing = (containerWidth: number, elements: string[], fontSize: 
   const calculatedSpacing = availableSpace / elements.length;
   const spacing = Math.max(calculatedSpacing, minSpacing);
   
-  console.log('计算得到的间距(pt):', spacing);
-  console.log('计算得到的间距(mm):', spacing / MM_TO_PT);
-  
-  console.groupEnd();
   return spacing;
 };
 
