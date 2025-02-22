@@ -656,83 +656,99 @@ export default function PDFPreview() {
         </div>
 
         {/* 页面尺寸和边距 */}
-        <div className="border border-[#30B8D6] rounded-md p-3 space-y-2">
+        <div className="rounded-lg p-2.5 space-y-1.5" style={{ backgroundColor: '#f3f4f6' }}>
           <div className="flex items-center">
-            <label className="text-sm font-medium min-w-[80px]" style={{ color: theme.text }}>
+            <label className="text-sm font-medium min-w-[80px]" style={{ color: '#666666' }}>
               页面尺寸：
             </label>
-            <div className="flex items-center space-x-1">
-              <input
-                type="text"
-                className="w-20 px-2 py-1 border rounded focus:outline-none text-sm"
-                style={{
-                  color: theme.text,
-                  backgroundColor: "white",
-                }}
-              />
-              <span className="text-sm">×</span>
-              <input
-                type="text"
-                className="w-20 px-2 py-1 border rounded focus:outline-none text-sm"
-                style={{
-                  color: theme.text,
-                  backgroundColor: "white",
-                }}
-              />
-              <span className="text-sm">mm</span>
+            <div className="flex items-center">
+              <div className="flex-1 flex items-center" style={{ width: '280px' }}>
+                <input
+                  type="text"
+                  value={currentWidth.toFixed(1)}
+                  className="w-24 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
+                  style={{
+                    color: '#666666',
+                    borderColor: '#9ca3af'
+                  }}
+                  onChange={(e) => e.target.value}
+                />
+                <span className="text-sm mx-2" style={{ color: '#666666' }}>×</span>
+                <input
+                  type="text"
+                  value={labelHeight}
+                  className="w-24 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
+                  style={{
+                    color: '#666666',
+                    borderColor: '#9ca3af'
+                  }}
+                  onChange={(e) => e.target.value}
+                />
+                <span className="text-sm ml-2" style={{ width: '30px', color: '#666666' }}>mm</span>
+              </div>
             </div>
           </div>
           
           <div className="flex items-center">
-            <label className="text-sm font-medium min-w-[80px]" style={{ color: theme.text }}>
+            <label className="text-sm font-medium min-w-[80px]" style={{ color: '#666666' }}>
               页面边距：
             </label>
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center">
-                <span className="text-sm mr-1">上</span>
-                <input
-                  type="text"
-                  className="w-12 px-1 py-1 border rounded focus:outline-none text-sm"
-                  style={{
-                    color: theme.text,
-                    backgroundColor: "white",
-                  }}
-                />
+            <div className="flex items-center" style={{ width: '280px' }}>
+              <div className="flex items-center flex-1 justify-between">
+                <div className="flex items-center">
+                  <span className="text-sm mr-1" style={{ color: '#666666' }}>上</span>
+                  <input
+                    type="text"
+                    value={margins.top}
+                    className="w-12 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
+                    style={{
+                      color: '#666666',
+                      borderColor: '#9ca3af'
+                    }}
+                    onChange={(e) => e.target.value}
+                  />
+                </div>
+                <div className="flex items-center">
+                  <span className="text-sm mr-1" style={{ color: '#666666' }}>下</span>
+                  <input
+                    type="text"
+                    value={margins.bottom}
+                    className="w-12 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
+                    style={{
+                      color: '#666666',
+                      borderColor: '#9ca3af'
+                    }}
+                    onChange={(e) => e.target.value}
+                  />
+                </div>
+                <div className="flex items-center">
+                  <span className="text-sm mr-1" style={{ color: '#666666' }}>左</span>
+                  <input
+                    type="text"
+                    value={margins.left}
+                    className="w-12 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
+                    style={{
+                      color: '#666666',
+                      borderColor: '#9ca3af'
+                    }}
+                    onChange={(e) => e.target.value}
+                  />
+                </div>
+                <div className="flex items-center">
+                  <span className="text-sm mr-1" style={{ color: '#666666' }}>右</span>
+                  <input
+                    type="text"
+                    value={margins.right}
+                    className="w-12 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
+                    style={{
+                      color: '#666666',
+                      borderColor: '#9ca3af'
+                    }}
+                    onChange={(e) => e.target.value}
+                  />
+                </div>
+                <span className="text-sm" style={{ width: '30px', color: '#666666' }}>mm</span>
               </div>
-              <div className="flex items-center">
-                <span className="text-sm mr-1">下</span>
-                <input
-                  type="text"
-                  className="w-12 px-1 py-1 border rounded focus:outline-none text-sm"
-                  style={{
-                    color: theme.text,
-                    backgroundColor: "white",
-                  }}
-                />
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm mr-1">左</span>
-                <input
-                  type="text"
-                  className="w-12 px-1 py-1 border rounded focus:outline-none text-sm"
-                  style={{
-                    color: theme.text,
-                    backgroundColor: "white",
-                  }}
-                />
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm mr-1">右</span>
-                <input
-                  type="text"
-                  className="w-12 px-1 py-1 border rounded focus:outline-none text-sm"
-                  style={{
-                    color: theme.text,
-                    backgroundColor: "white",
-                  }}
-                />
-              </div>
-              <span className="text-sm">mm</span>
             </div>
           </div>
         </div>
@@ -860,10 +876,10 @@ export default function PDFPreview() {
       </div>
 
       {/* 显示当前页面尺寸和页边距信息 */}
-      <div className="text-sm text-gray-500 mt-4 mb-4">
+      {/* <div className="text-sm text-gray-500 mt-4 mb-4">
         <div>当前页面尺寸：{currentWidth.toFixed(1)}mm × {labelHeight}mm</div>
         <div>页边距：上{margins.top}mm 下{margins.bottom}mm 左{margins.left}mm 右{margins.right}mm</div>
-      </div>
+      </div> */}
 
       {/* 操作按钮 */}
       <div className="grid grid-cols-2 gap-4 mt-6 mb-6 h-full items-center">

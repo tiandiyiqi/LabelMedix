@@ -23,7 +23,8 @@ interface LabelContextType {
 const defaultLabelData: LabelData = {
   selectedLanguage: 'CN',
   selectedNumber: '1',
-  drugInfo: `方案编号:
+  drugInfo: 
+  `方案编号:
 包装批号:
 
 有效期至(月/年):
@@ -55,8 +56,8 @@ const defaultLabelData: LabelData = {
 临床试验申请人:
 百济神州(苏州)生物科技有限公司`,
   fontSize: 10,
-  labelWidth: 120,  // 120mm - PDF实际宽度
-  labelHeight: 80,  // 80mm - PDF实际高度
+  labelWidth: 100,  // 120mm - PDF实际宽度
+  labelHeight: 60,  // 80mm - PDF实际高度
   fontFamily: 'STHeiti',
   spacing: 1,
   lineHeight: 1.2,
