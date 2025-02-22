@@ -654,11 +654,87 @@ export default function PDFPreview() {
             </div>
           </div>
         </div>
-        {/* 显示当前页面尺寸 */}
-        <div className="text-sm text-gray-500">
-          当前页面尺寸：{currentWidth.toFixed(1)}mm × {labelHeight}mm
-          <br />
-          页边距：上{margins.top}mm 下{margins.bottom}mm 左{margins.left}mm 右{margins.right}mm
+
+        {/* 页面尺寸和边距 */}
+        <div className="border border-[#30B8D6] rounded-md p-3 space-y-2">
+          <div className="flex items-center">
+            <label className="text-sm font-medium min-w-[80px]" style={{ color: theme.text }}>
+              页面尺寸：
+            </label>
+            <div className="flex items-center space-x-1">
+              <input
+                type="text"
+                className="w-20 px-2 py-1 border rounded focus:outline-none text-sm"
+                style={{
+                  color: theme.text,
+                  backgroundColor: "white",
+                }}
+              />
+              <span className="text-sm">×</span>
+              <input
+                type="text"
+                className="w-20 px-2 py-1 border rounded focus:outline-none text-sm"
+                style={{
+                  color: theme.text,
+                  backgroundColor: "white",
+                }}
+              />
+              <span className="text-sm">mm</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center">
+            <label className="text-sm font-medium min-w-[80px]" style={{ color: theme.text }}>
+              页面边距：
+            </label>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center">
+                <span className="text-sm mr-1">上</span>
+                <input
+                  type="text"
+                  className="w-12 px-1 py-1 border rounded focus:outline-none text-sm"
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                  }}
+                />
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm mr-1">下</span>
+                <input
+                  type="text"
+                  className="w-12 px-1 py-1 border rounded focus:outline-none text-sm"
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                  }}
+                />
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm mr-1">左</span>
+                <input
+                  type="text"
+                  className="w-12 px-1 py-1 border rounded focus:outline-none text-sm"
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                  }}
+                />
+              </div>
+              <div className="flex items-center">
+                <span className="text-sm mr-1">右</span>
+                <input
+                  type="text"
+                  className="w-12 px-1 py-1 border rounded focus:outline-none text-sm"
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                  }}
+                />
+              </div>
+              <span className="text-sm">mm</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -781,6 +857,12 @@ export default function PDFPreview() {
             </Page>
           </Document>
         </PDFViewer>
+      </div>
+
+      {/* 显示当前页面尺寸和页边距信息 */}
+      <div className="text-sm text-gray-500 mt-4 mb-4">
+        <div>当前页面尺寸：{currentWidth.toFixed(1)}mm × {labelHeight}mm</div>
+        <div>页边距：上{margins.top}mm 下{margins.bottom}mm 左{margins.left}mm 右{margins.right}mm</div>
       </div>
 
       {/* 操作按钮 */}
