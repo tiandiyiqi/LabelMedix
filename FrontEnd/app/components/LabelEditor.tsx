@@ -1,9 +1,10 @@
 "use client"
 
-import { useContext } from "react"
+import { useContext, useState } from "react"
 import { ChevronDown, Edit3 } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
+import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'; // 导入函数
 
 export default function LabelEditor() {
   const themeContext = useContext(ThemeContext)
@@ -11,7 +12,9 @@ export default function LabelEditor() {
   const { theme } = themeContext
 
   const { labelData, updateLabelData } = useLabelContext()
-  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight } = labelData
+  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight } = labelData
+
+  const [selectedNumberState, setSelectedNumberState] = useState<number>(Number(selectedNumber))
 
   const languages = [
     { name: "AE-阿联酋-阿拉伯语", code: "AE" },
@@ -78,6 +81,36 @@ export default function LabelEditor() {
     });
   };
 
+  // 处理序号选择变化
+  const handleNumberChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newNumber = Number(e.target.value);
+    setSelectedNumberState(newNumber);
+    
+    // 计算当前页面宽度和边距
+    const currentWidth = calculatePageWidth(labelWidth, newNumber);
+    const margins = calculatePageMargins(newNumber);
+    
+    // 输出页面相关信息
+    console.log('页面参数变化:', {
+      序号: newNumber,
+      初始宽度: labelWidth,
+      当前宽度: currentWidth.toFixed(1),
+      高度: labelHeight,
+      页边距: {
+        上: margins.top,
+        下: margins.bottom,
+        左: margins.left,
+        右: margins.right
+      }
+    });
+    
+    // 更新上下文中的序号和当前宽度
+    updateLabelData({ 
+      selectedNumber: e.target.value,
+      currentWidth
+    });
+  };
+
   return (
     <div className="h-full w-full flex flex-col card rounded-lg shadow" style={{ borderColor: theme.border }}>
       <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
@@ -92,8 +125,8 @@ export default function LabelEditor() {
             </label>
             <div className="flex-1 relative">
               <select
-                value={selectedNumber}
-                onChange={(e) => updateLabelData({ selectedNumber: e.target.value })}
+                value={selectedNumberState}
+                onChange={handleNumberChange}
                 className="w-full px-3 py-2 focus:outline-none appearance-none"
                 style={{
                   color: theme.text,

@@ -5,6 +5,7 @@ import { Document, Page, Text, View, StyleSheet, PDFViewer, Font, pdf } from '@r
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { Eye, Save, FileDown } from "lucide-react"
+import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
 
 // 罗马数字转换函数
 const toRoman = (num: number): string => {
@@ -148,38 +149,161 @@ const processRemainingParagraphs = (paragraph: string): Array<Array<string>> => 
   });
 };
 
+// 字符宽度映射表类型
+interface CharWidthMap {
+  chinese: number;
+  [key: string]: number;
+}
+
+// 字符宽度映射表（相对于字体大小的比例）
+const charWidthMap: CharWidthMap = {
+  // 中文字符
+  chinese: 1.0,  // 中文字符固定为字体大小
+  
+  // 大写英文字母
+  'A': 0.722, 'B': 0.667, 'C': 0.722, 'D': 0.722, 'E': 0.611,
+  'F': 0.556, 'G': 0.722, 'H': 0.722, 'I': 0.278, 'J': 0.5,
+  'K': 0.667, 'L': 0.556, 'M': 0.833, 'N': 0.722, 'O': 0.778,
+  'P': 0.667, 'Q': 0.778, 'R': 0.722, 'S': 0.667, 'T': 0.611,
+  'U': 0.722, 'V': 0.667, 'W': 0.944, 'X': 0.667, 'Y': 0.667,
+  'Z': 0.611,
+  
+  // 小写英文字母
+  'a': 0.556, 'b': 0.556, 'c': 0.5, 'd': 0.556, 'e': 0.556,
+  'f': 0.278, 'g': 0.556, 'h': 0.556, 'i': 0.222, 'j': 0.222,
+  'k': 0.5, 'l': 0.222, 'm': 0.833, 'n': 0.556, 'o': 0.556,
+  'p': 0.556, 'q': 0.556, 'r': 0.333, 's': 0.5, 't': 0.278,
+  'u': 0.556, 'v': 0.5, 'w': 0.722, 'x': 0.5, 'y': 0.5,
+  'z': 0.5,
+  
+  // 数字
+  '0': 0.556, '1': 0.556, '2': 0.556, '3': 0.556, '4': 0.556,
+  '5': 0.556, '6': 0.556, '7': 0.556, '8': 0.556, '9': 0.556,
+  
+  // 标点符号
+  '.': 0.527, ',': 0.25, ':': 0.277, ';': 0.277, '!': 0.333,
+  '?': 0.556, '"': 0.556, "'": 0.222, '`': 0.222, '(': 0.333,
+  ')': 0.333, '[': 0.333, ']': 0.333, '{': 0.333, '}': 0.333,
+  '/': 0.278, '\\': 0.278, '|': 0.222, '-': 0.333, '_': 0.556,
+  '+': 0.584, '=': 0.584, '*': 0.389, '&': 0.722, '#': 0.556,
+  '%': 0.889, '$': 0.556, '@': 1.015,
+  
+  // 空格
+  ' ': 0.25,
+  
+  // 其他特殊字符
+  '·': 0.333, '—': 1.0, '…': 1.0, '™': 1.0, '©': 1.0, '®': 1.0,
+  '°': 0.4, '′': 0.333, '″': 0.556, '§': 0.556, '¶': 0.556,
+  '†': 0.556, '‡': 0.556, '•': 0.35
+};
+
 // 添加文本宽度测量函数
 const measureTextWidth = (text: string, fontSize: number, fontFamily: string): number => {
   const canvas = document.createElement('canvas');
   const context = canvas.getContext('2d');
   if (context) {
+    // 设置字体
     context.font = `${fontSize}pt ${fontFamily}`;
-    return context.measureText(text).width;
+    
+    // 将文本分成字符
+    const chars = Array.from(text);
+    let totalWidth = 0;
+    
+    console.group('文本宽度计算详情');
+    console.log('文本:', text);
+    console.log('字体大小:', fontSize, 'pt');
+    
+    chars.forEach(char => {
+      let charWidth = 0;
+      
+      if (/[\u4E00-\u9FA5]/.test(char)) {
+        // 中文字符
+        charWidth = fontSize * charWidthMap.chinese;
+        console.log(`中文字符 "${char}": ${charWidth.toFixed(2)}pt`);
+      } else if (char in charWidthMap) {
+        // 使用映射表中的宽度
+        charWidth = fontSize * charWidthMap[char];
+        console.log(`已知字符 "${char}": ${charWidth.toFixed(2)}pt`);
+      } else {
+        // 未知字符使用canvas测量
+        charWidth = context.measureText(char).width;
+        console.log(`未知字符 "${char}": ${charWidth.toFixed(2)}pt (通过canvas测量)`);
+        // 缓存测量结果
+        charWidthMap[char] = charWidth / fontSize;
+      }
+      
+      totalWidth += charWidth;
+    });
+    
+    console.log('总宽度:', totalWidth.toFixed(2), 'pt');
+    console.groupEnd();
+    
+    return totalWidth;
   }
   return 0;
 };
 
-// 修改间距计算函数
+// 修改间距计算函数，添加最小间距保护
 const calculateSpacing = (containerWidth: number, elements: string[], fontSize: number, fontFamily: string): number => {
+  console.group('间距计算过程');
+  console.log('容器宽度(pt):', containerWidth);
+  console.log('容器宽度(mm):', containerWidth / MM_TO_PT);
+  console.log('字体大小:', fontSize, 'pt');
+  console.log('字体:', fontFamily);
+  console.log('元素数量:', elements.length);
+  console.log('元素内容:', elements);
+
   // 1. 计算所有元素的总宽度
-  const totalContentWidth = elements.reduce((sum, text) => {
-    return sum + measureTextWidth(text, fontSize, fontFamily);
-  }, 0);
+  const elementsWidth = elements.map(text => {
+    const width = measureTextWidth(text, fontSize, fontFamily);
+    return { text, width };
+  });
+
+  console.log('各元素宽度(pt):', elementsWidth);
+
+  const totalContentWidth = elementsWidth.reduce((sum, item) => sum + item.width, 0);
+  console.log('内容总宽度(pt):', totalContentWidth);
+  console.log('内容总宽度(mm):', totalContentWidth / MM_TO_PT);
   
-  // 2. 从容器宽度中减去总宽度和边距（10mm）得到可用空间
-  const availableSpace = containerWidth - totalContentWidth - mmToPt(10);
+  // 2. 从容器宽度中减去总宽度得到可用空间
+  const availableSpace = containerWidth - totalContentWidth;
+  console.log('可用空间(pt):', availableSpace);
+  console.log('可用空间(mm):', availableSpace / MM_TO_PT);
   
   // 3. 将可用空间除以元素数量得到基础间距（每个元素后面都需要一个间隔）
-  return availableSpace / elements.length;  // n个元素需要n个间隔
+  // 添加最小间距保护
+  const minSpacing = mmToPt(2); // 最小2mm的间距
+  const calculatedSpacing = availableSpace / elements.length;
+  const spacing = Math.max(calculatedSpacing, minSpacing);
+  
+  console.log('计算得到的间距(pt):', spacing);
+  console.log('计算得到的间距(mm):', spacing / MM_TO_PT);
+  
+  console.groupEnd();
+  return spacing;
 };
 
 // 创建样式
 const styles = StyleSheet.create({
   page: {
-    paddingTop: mmToPt(5),
-    paddingBottom: mmToPt(5),
-    paddingLeft: mmToPt(5),
-    paddingRight: mmToPt(5),
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'relative',
+    backgroundColor: 'white',
+    justifyContent: 'center',
+  },
+  marginBox: {
+    position: 'absolute',
+    borderStyle: 'dashed',
+    borderColor: 'rgb(48, 184, 214)',
+    borderWidth: 0.5,
+    pointerEvents: 'none',
+    zIndex: 1,
+  },
+  contentWrapper: {
+    position: 'relative',
+    zIndex: 2,
+    width: '100%',
     display: 'flex',
     flexDirection: 'column',
   },
@@ -201,7 +325,6 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: 'auto',
-    marginRight: mmToPt(20),  // 添加固定的右边距
   },
   secondParagraphRow: {  // 第二段的行样式
     display: 'flex',
@@ -232,7 +355,6 @@ const styles = StyleSheet.create({
   },
   remainingContentItem: {
     fontSize: 10,
-    marginRight: mmToPt(4),
     marginBottom: 0,  // 移除项目级的垂直间距
   },
   chineseText: {
@@ -247,6 +369,10 @@ export default function PDFPreview() {
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
+
+  // 计算当前页面宽度和边距
+  const currentWidth = calculatePageWidth(labelWidth, Number(selectedNumber));
+  const margins = calculatePageMargins(Number(selectedNumber));
 
   // 创建动态页面样式
   const pageStyle = {
@@ -325,8 +451,6 @@ export default function PDFPreview() {
       lineHeight: lineHeight,
       textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
       direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
-      marginRight: selectedLanguage === 'AE' ? 0 : mmToPt(20),  // 根据文字方向调整边距
-      marginLeft: selectedLanguage === 'AE' ? mmToPt(20) : 0,   // 根据文字方向调整边距
     },
     secondParagraphRow: {
       ...styles.secondParagraphRow,
@@ -357,8 +481,7 @@ export default function PDFPreview() {
       fontFamily: fontFamily,
       fontSize: fontSize,
       lineHeight: lineHeight,
-      marginRight: mmToPt(spacing),
-      marginBottom: 0,  // 移除项目级的垂直间距
+      marginBottom: 0,
       textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
       direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
     },
@@ -386,93 +509,111 @@ export default function PDFPreview() {
   const handleExportPDF = async () => {
     const blob = await pdf(
       <Document>
-        <Page size={[mmToPt(labelWidth), mmToPt(labelHeight)]} style={pageStyle}>
-          <View style={{ margin: mmToPt(5) }}>
-            {/* 渲染第一段（带罗马序号） */}
-            {processedFirstParagraph.map((groupLines, groupIndex) => {
-              const lineSpacing = calculateSpacing(
-                mmToPt(labelWidth),
-                groupLines,
-                fontSize,
-                fontFamily
-              );
-              
-              return (
-                <View 
-                  key={`first-${groupIndex}`} 
-                  style={[
-                    dynamicStyles.firstParagraphRow,
-                    { gap: lineSpacing }
-                  ]}
-                >
-                  {groupLines.map((line, lineIndex) => (
-                    <Text 
-                      key={`first-line-${lineIndex}`} 
-                      style={[
-                        dynamicStyles.firstParagraphItem,
-                        { marginRight: 0 }
-                      ]}
-                    >
-                      {processText(line)}
-                    </Text>
-                  ))}
-                </View>
-              );
-            })}
-            
-            {/* 渲染第二段（分组但不带序号，带下划线） */}
-            {processedSecondParagraph.length > 0 && (
-              <View style={{ marginTop: mmToPt(spacing * 2) }}>
-                {processedSecondParagraph.map((lines, groupIndex) => {
-                  const lineSpacing = calculateSpacing(
-                    mmToPt(labelWidth), 
-                    lines, 
-                    fontSize, 
-                    fontFamily
-                  );
-                  
-                  return (
-                    <View 
-                      key={`second-${groupIndex}`} 
-                      style={[
-                        dynamicStyles.secondParagraphRow,
-                        { gap: lineSpacing }
-                      ]}
-                    >
-                      {lines.map((line, lineIndex) => (
-                        <View 
-                          key={`line-${lineIndex}`} 
-                          style={dynamicStyles.secondParagraphItem}
-                        >
-                          <Text>{processText(line)}</Text>
-                          <View 
-                            style={[
-                              dynamicStyles.underline,
-                              { width: lineSpacing - mmToPt(1.5) }  // 下划线长度比间距少1.5mm
-                            ]} 
-                          />
-                        </View>
-                      ))}
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-            
-            {/* 渲染第三段及之后的段落 */}
-            {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-              <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
-                {paragraph.map((group, groupIndex) => (
-                  <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
-                    {group.map((line, lineIndex) => (
-                      <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
+        <Page size={[mmToPt(currentWidth), mmToPt(labelHeight)]} style={pageStyle}>
+          <View style={[
+            styles.marginBox,
+            {
+              top: mmToPt(margins.top),
+              left: mmToPt(margins.left),
+              width: mmToPt(currentWidth - margins.left - margins.right),
+              height: mmToPt(labelHeight - margins.top - margins.bottom),
+            }
+          ]} />
+          <View style={[
+            styles.contentWrapper,
+            {
+              marginTop: mmToPt(margins.top),
+              marginBottom: mmToPt(margins.bottom),
+              marginLeft: mmToPt(margins.left),
+              marginRight: mmToPt(margins.right),
+              minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
+              justifyContent: 'center',
+            }
+          ]}>
+            <View style={{ width: '100%' }}>
+              {processedFirstParagraph.map((groupLines, groupIndex) => {
+                const lineSpacing = calculateSpacing(
+                  mmToPt(currentWidth - margins.left - margins.right),
+                  groupLines,
+                  fontSize,
+                  fontFamily
+                );
+                
+                return (
+                  <View 
+                    key={`first-${groupIndex}`} 
+                    style={[
+                      dynamicStyles.firstParagraphRow,
+                      { gap: lineSpacing }
+                    ]}
+                  >
+                    {groupLines.map((line, lineIndex) => (
+                      <Text 
+                        key={`first-line-${lineIndex}`} 
+                        style={[
+                          dynamicStyles.firstParagraphItem,
+                          { marginRight: 0 }
+                        ]}
+                      >
                         {processText(line)}
                       </Text>
                     ))}
                   </View>
-                ))}
-              </View>
-            ))}
+                );
+              })}
+              
+              {processedSecondParagraph.length > 0 && (
+                <View style={{ marginTop: mmToPt(spacing * 2) }}>
+                  {processedSecondParagraph.map((lines, groupIndex) => {
+                    const lineSpacing = calculateSpacing(
+                      mmToPt(currentWidth - margins.left - margins.right),
+                      lines,
+                      fontSize,
+                      fontFamily
+                    );
+                    
+                    return (
+                      <View 
+                        key={`second-${groupIndex}`} 
+                        style={[
+                          dynamicStyles.secondParagraphRow,
+                          { gap: lineSpacing }
+                        ]}
+                      >
+                        {lines.map((line, lineIndex) => (
+                          <View 
+                            key={`line-${lineIndex}`} 
+                            style={dynamicStyles.secondParagraphItem}
+                          >
+                            <Text>{processText(line)}</Text>
+                            <View 
+                              style={[
+                                dynamicStyles.underline,
+                                { width: lineSpacing - mmToPt(1.5) }
+                              ]} 
+                            />
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+              
+              {processedRemainingParagraphs.map((paragraph, paraIndex) => (
+                <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
+                  {paragraph.map((group, groupIndex) => (
+                    <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
+                      {group.map((line, lineIndex) => (
+                        <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
+                          {processText(line)}
+                        </Text>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
           </View>
         </Page>
       </Document>
@@ -498,135 +639,166 @@ export default function PDFPreview() {
             <div className="flex items-center border border-[#30B8D6] rounded-md">
               <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
                 标签宽度：
-          </label>
+              </label>
               <div className="flex-1">
-          <input
-            type="number"
+                <input
+                  type="number"
                   defaultValue={labelWidth}
                   placeholder="最小值: 40mm"
                   onKeyDown={(e) => handleDimensionInput(e, 'width')}
                   className="w-full px-3 py-2 focus:outline-none"
-            style={{
-              color: theme.text,
-              backgroundColor: "white",
-            }}
-          />
-        </div>
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                  }}
+                />
+              </div>
             </div>
           </div>
           <div className="flex-1">
             <div className="flex items-center border border-[#30B8D6] rounded-md">
               <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
                 标签高度：
-          </label>
+              </label>
               <div className="flex-1">
-          <input
-            type="number"
+                <input
+                  type="number"
                   defaultValue={labelHeight}
                   placeholder="最小值: 40mm"
                   onKeyDown={(e) => handleDimensionInput(e, 'height')}
                   className="w-full px-3 py-2 focus:outline-none"
-            style={{
-              color: theme.text,
-              backgroundColor: "white",
-            }}
-          />
-        </div>
-      </div>
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                  }}
+                />
+              </div>
+            </div>
           </div>
+        </div>
+        {/* 显示当前页面尺寸 */}
+        <div className="text-sm text-gray-500">
+          当前页面尺寸：{currentWidth.toFixed(1)}mm × {labelHeight}mm
+          <br />
+          页边距：上{margins.top}mm 下{margins.bottom}mm 左{margins.left}mm 右{margins.right}mm
         </div>
       </div>
 
       <div className="flex-grow">
         <PDFViewer width="100%" height="400px" showToolbar={true} style={{ backgroundColor: theme.background }}>
           <Document>
-            <Page size={[mmToPt(labelWidth), mmToPt(labelHeight)]} style={pageStyle}>
-              <View style={{ margin: mmToPt(5) }}>
-                {/* 渲染第一段（带罗马序号） */}
-                {processedFirstParagraph.map((groupLines, groupIndex) => {
-                  const lineSpacing = calculateSpacing(
-                    mmToPt(labelWidth),
-                    groupLines,
-                    fontSize,
-                    fontFamily
-                  );
-                  
-                  return (
-                    <View 
-                      key={`first-${groupIndex}`} 
-                      style={[
-                        dynamicStyles.firstParagraphRow,
-                        { gap: lineSpacing }
-                      ]}
-                    >
-                      {groupLines.map((line, lineIndex) => (
-                        <Text 
-                          key={`first-line-${lineIndex}`} 
-                          style={[
-                            dynamicStyles.firstParagraphItem,
-                            { marginRight: 0 }
-                          ]}
-                        >
-                          {processText(line)}
-                        </Text>
-                      ))}
-                    </View>
-                  );
-                })}
-                
-                {/* 渲染第二段（分组但不带序号，带下划线） */}
-                {processedSecondParagraph.length > 0 && (
-                  <View style={{ marginTop: mmToPt(spacing * 2) }}>
-                    {processedSecondParagraph.map((lines, groupIndex) => {
-                      const lineSpacing = calculateSpacing(
-                        mmToPt(labelWidth), 
-                        lines, 
-                        fontSize, 
-                        fontFamily
-                      );
-                      
-                      return (
-                        <View 
-                          key={`second-${groupIndex}`} 
-                          style={[
-                            dynamicStyles.secondParagraphRow,
-                            { gap: lineSpacing }
-                          ]}
-                        >
-                          {lines.map((line, lineIndex) => (
-                            <View 
-                              key={`line-${lineIndex}`} 
-                              style={dynamicStyles.secondParagraphItem}
-                            >
-                              <Text>{processText(line)}</Text>
-                              <View 
-                                style={[
-                                  dynamicStyles.underline,
-                                  { width: lineSpacing - mmToPt(1.5) }  // 下划线长度比间距少1.5mm
-                                ]} 
-                              />
-                            </View>
-                          ))}
-                        </View>
-                      );
-                    })}
-                  </View>
-                )}
-                
-                {/* 渲染第三段及之后的段落 */}
-                {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-                  <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
-                    {paragraph.map((group, groupIndex) => (
-                      <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
-                        {group.map((line, lineIndex) => (
-                          <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
+            <Page size={[mmToPt(currentWidth), mmToPt(labelHeight)]} style={pageStyle}>
+              {/* 添加页边距矩形框 */}
+              <View style={[
+                styles.marginBox,
+                {
+                  top: mmToPt(margins.top),
+                  left: mmToPt(margins.left),
+                  width: mmToPt(currentWidth - margins.left - margins.right),
+                  height: mmToPt(labelHeight - margins.top - margins.bottom),
+                }
+              ]} />
+              
+              {/* 内容包装器 */}
+              <View style={[
+                styles.contentWrapper,
+                {
+                  marginTop: mmToPt(margins.top),
+                  marginBottom: mmToPt(margins.bottom),
+                  marginLeft: mmToPt(margins.left),
+                  marginRight: mmToPt(margins.right),
+                  minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
+                  justifyContent: 'center',
+                }
+              ]}>
+                {/* 内容容器 */}
+                <View style={{ width: '100%' }}>
+                  {/* 渲染第一段（带罗马序号） */}
+                  {processedFirstParagraph.map((groupLines, groupIndex) => {
+                    const lineSpacing = calculateSpacing(
+                      mmToPt(currentWidth - margins.left - margins.right),
+                      groupLines,
+                      fontSize,
+                      fontFamily
+                    );
+                    
+                    return (
+                      <View 
+                        key={`first-${groupIndex}`} 
+                        style={[
+                          dynamicStyles.firstParagraphRow,
+                          { gap: lineSpacing }
+                        ]}
+                      >
+                        {groupLines.map((line, lineIndex) => (
+                          <Text 
+                            key={`first-line-${lineIndex}`} 
+                            style={[
+                              dynamicStyles.firstParagraphItem,
+                              { marginRight: 0 }
+                            ]}
+                          >
                             {processText(line)}
                           </Text>
                         ))}
                       </View>
-                    ))}
-                  </View>
-                ))}
+                    );
+                  })}
+                  
+                  {/* 渲染第二段（分组但不带序号，带下划线） */}
+                  {processedSecondParagraph.length > 0 && (
+                    <View style={{ marginTop: mmToPt(spacing * 2) }}>
+                      {processedSecondParagraph.map((lines, groupIndex) => {
+                        const lineSpacing = calculateSpacing(
+                          mmToPt(currentWidth - margins.left - margins.right),
+                          lines,
+                          fontSize,
+                          fontFamily
+                        );
+                        
+                        return (
+                          <View 
+                            key={`second-${groupIndex}`} 
+                            style={[
+                              dynamicStyles.secondParagraphRow,
+                              { gap: lineSpacing }
+                            ]}
+                          >
+                            {lines.map((line, lineIndex) => (
+                              <View 
+                                key={`line-${lineIndex}`} 
+                                style={dynamicStyles.secondParagraphItem}
+                              >
+                                <Text>{processText(line)}</Text>
+                                <View 
+                                  style={[
+                                    dynamicStyles.underline,
+                                    { width: lineSpacing - mmToPt(1.5) }
+                                  ]} 
+                                />
+                              </View>
+                            ))}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                  
+                  {/* 渲染第三段及之后的段落 */}
+                  {processedRemainingParagraphs.map((paragraph, paraIndex) => (
+                    <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
+                      {paragraph.map((group, groupIndex) => (
+                        <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
+                          {group.map((line, lineIndex) => (
+                            <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
+                              {processText(line)}
+                            </Text>
+                          ))}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
               </View>
             </Page>
           </Document>

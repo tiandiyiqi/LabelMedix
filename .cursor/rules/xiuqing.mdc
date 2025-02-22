@@ -3,7 +3,7 @@ description: 任务完成的回复
 globs: 
 ---
 
-# Your rule content
+# 我的规则
 
 - 当任务完成后，一律回答：秀琴把活干完，回来了。
 
