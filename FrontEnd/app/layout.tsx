@@ -3,8 +3,8 @@ import './globals.css'
 import { LabelProvider } from "../lib/context/LabelContext"
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'LabelMedix',
+  description: 'Created with tiandiyiqi',
 }
 
 export default function RootLayout({
