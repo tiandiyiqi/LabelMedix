@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useContext } from "react"
+import { useEffect, useRef, useContext, useCallback } from "react"
 import { Eye } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
@@ -21,7 +21,7 @@ export default function LabelPreview() {
   const previewRef = useRef<HTMLDivElement>(null)
 
   // 获取当前语言对应的字体
-  const getFontFamily = () => {
+  const getFontFamily = useCallback(() => {
     if (selectedLanguage === "TH" || selectedLanguage === "AE") {
       return "Arial Unicode MS"
     }
@@ -29,7 +29,7 @@ export default function LabelPreview() {
       return "STHeiti"
     }
     return "Arial"
-  }
+  }, [selectedLanguage])
 
   useEffect(() => {
     const generatePreview = async () => {
@@ -169,7 +169,7 @@ export default function LabelPreview() {
     };
 
     generatePreview();
-  }, [drugInfo, fontSize, selectedLanguage, labelWidth, labelHeight]);
+  }, [drugInfo, fontSize, selectedLanguage, labelWidth, labelHeight, getFontFamily]);
 
   return (
     <div className="h-full flex flex-col card p-6 rounded-lg shadow w-full" style={{ borderColor: theme.border }}>

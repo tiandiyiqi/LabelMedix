@@ -1,3 +1,8 @@
 {
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "marscode.chatLanguage": "cn",
+    "marscode.codeCompletionPro": {
+        "enableCodeCompletionPro": false
+    },
+    "marscode.enableInlineCommand": true
 }
