@@ -51,7 +51,8 @@ Font.register({
 Font.register({
   family: 'STHeiti',
   src: '/fonts/STHeiti.ttf',
-  charset: '[\u4E00-\u9FA5]' // 只用于中文字符范围
+  // 中文字体限制：字体范围的限制是通过processText函数中的正则表达式[\u4E00-\u9FA5]来实现
+  // 该函数会将中文字符与非中文字符分开，并仅对中文字符应用STHeiti字体
 });
 
 Font.register({
