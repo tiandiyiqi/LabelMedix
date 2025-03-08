@@ -266,9 +266,12 @@ const styles = StyleSheet.create({
   page: {
     display: 'flex',
     flexDirection: 'column',
-    position: 'relative',
     backgroundColor: 'white',
-    justifyContent: 'center',
+  },
+  content: {
+    fontSize: 10,
+    lineHeight: 1.1,
+    marginBottom: mmToPt(1),
   },
   marginBox: {
     position: 'absolute',
@@ -277,18 +280,6 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     pointerEvents: 'none',
     zIndex: 1,
-  },
-  contentWrapper: {
-    position: 'relative',
-    zIndex: 2,
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  content: {
-    fontSize: 10,
-    lineHeight: 1.1,
-    marginBottom: mmToPt(1),
   },
   firstParagraphRow: {  // 第一段的行样式
     display: 'flex',
@@ -421,6 +412,7 @@ export default function PDFPreview() {
       ...styles.firstParagraphRow,
       marginBottom: mmToPt(spacing),
       direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+      justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',
     },
     firstParagraphItem: {
       ...styles.firstParagraphItem,
@@ -434,6 +426,7 @@ export default function PDFPreview() {
       ...styles.secondParagraphRow,
       marginBottom: mmToPt(spacing),
       direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+      justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',
     },
     secondParagraphItem: {
       ...styles.secondParagraphItem,
@@ -488,6 +481,7 @@ export default function PDFPreview() {
     const blob = await pdf(
       <Document>
         <Page size={[mmToPt(currentWidth), mmToPt(labelHeight)]} style={pageStyle}>
+          {/* 恢复边距矩形框 */}
           <View style={[
             styles.marginBox,
             {
@@ -497,21 +491,20 @@ export default function PDFPreview() {
               height: mmToPt(labelHeight - margins.top - margins.bottom),
             }
           ]} />
-          <View style={[
-            styles.contentWrapper,
-            {
-              marginTop: mmToPt(margins.top),
-              marginBottom: mmToPt(margins.bottom),
-              marginLeft: mmToPt(margins.left),
-              marginRight: mmToPt(margins.right),
-              minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
-              justifyContent: 'center',
-            }
-          ]}>
+
+          <View style={{
+            marginTop: mmToPt(margins.top),
+            marginBottom: mmToPt(margins.bottom),
+            marginLeft: mmToPt(margins.left),
+            marginRight: mmToPt(margins.right),
+            width: mmToPt(currentWidth - margins.left - margins.right),
+            minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
+            justifyContent: 'center',
+          }}>
             <View style={{ width: '100%' }}>
               {processedFirstParagraph.map((groupLines, groupIndex) => {
                 const lineSpacing = calculateSpacing(
-                  mmToPt(currentWidth - margins.left - margins.right),
+                  mmToPt(currentWidth - margins.left - margins.right), // 修正宽度计算
                   groupLines,
                   fontSize,
                   fontFamily
@@ -544,7 +537,7 @@ export default function PDFPreview() {
                 <View style={{ marginTop: mmToPt(spacing * 2) }}>
                   {processedSecondParagraph.map((lines, groupIndex) => {
                     const lineSpacing = calculateSpacing(
-                      mmToPt(currentWidth - margins.left - margins.right),
+                      mmToPt(currentWidth - margins.left - margins.right), // 修正宽度计算
                       lines,
                       fontSize,
                       fontFamily
@@ -758,7 +751,7 @@ export default function PDFPreview() {
         <PDFViewer width="100%" height="400px" showToolbar={true} style={{ backgroundColor: theme.background }}>
           <Document>
             <Page size={[mmToPt(currentWidth), mmToPt(labelHeight)]} style={pageStyle}>
-              {/* 添加页边距矩形框 */}
+              {/* 恢复边距矩形框 */}
               <View style={[
                 styles.marginBox,
                 {
@@ -768,25 +761,20 @@ export default function PDFPreview() {
                   height: mmToPt(labelHeight - margins.top - margins.bottom),
                 }
               ]} />
-              
-              {/* 内容包装器 */}
-              <View style={[
-                styles.contentWrapper,
-                {
-                  marginTop: mmToPt(margins.top),
-                  marginBottom: mmToPt(margins.bottom),
-                  marginLeft: mmToPt(margins.left),
-                  marginRight: mmToPt(margins.right),
-                  minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
-                  justifyContent: 'center',
-                }
-              ]}>
-                {/* 内容容器 */}
+
+              <View style={{
+                marginTop: mmToPt(margins.top),
+                marginBottom: mmToPt(margins.bottom),
+                marginLeft: mmToPt(margins.left),
+                marginRight: mmToPt(margins.right),
+                width: mmToPt(currentWidth - margins.left - margins.right),
+                minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
+                justifyContent: 'center',
+              }}>
                 <View style={{ width: '100%' }}>
-                  {/* 渲染第一段（带罗马序号） */}
                   {processedFirstParagraph.map((groupLines, groupIndex) => {
                     const lineSpacing = calculateSpacing(
-                      mmToPt(currentWidth - margins.left - margins.right),
+                      mmToPt(currentWidth - margins.left - margins.right), // 修正宽度计算
                       groupLines,
                       fontSize,
                       fontFamily
@@ -815,12 +803,11 @@ export default function PDFPreview() {
                     );
                   })}
                   
-                  {/* 渲染第二段（分组但不带序号，带下划线） */}
                   {processedSecondParagraph.length > 0 && (
                     <View style={{ marginTop: mmToPt(spacing * 2) }}>
                       {processedSecondParagraph.map((lines, groupIndex) => {
                         const lineSpacing = calculateSpacing(
-                          mmToPt(currentWidth - margins.left - margins.right),
+                          mmToPt(currentWidth - margins.left - margins.right), // 修正宽度计算
                           lines,
                           fontSize,
                           fontFamily
@@ -854,7 +841,6 @@ export default function PDFPreview() {
                     </View>
                   )}
                   
-                  {/* 渲染第三段及之后的段落 */}
                   {processedRemainingParagraphs.map((paragraph, paraIndex) => (
                     <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
                       {paragraph.map((group, groupIndex) => (
