@@ -1,7 +1,21 @@
 "use client"
 
-import { useContext } from 'react'
-import { Document, Page, Text, View, StyleSheet, PDFViewer, Font, pdf } from '@react-pdf/renderer'
+import { useContext, useState, useEffect } from 'react'
+import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer'
+import dynamic from 'next/dynamic'
+
+// 动态导入 PDFViewer，禁用 SSR
+const PDFViewer = dynamic(
+  () => import('@react-pdf/renderer').then(mod => mod.PDFViewer),
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="h-[400px] flex items-center justify-center text-gray-500 bg-gray-100 rounded-lg">
+        正在加载PDF预览...
+      </div>
+    )
+  }
+);
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { Eye, Save, FileDown } from "lucide-react"
@@ -333,12 +347,34 @@ const styles = StyleSheet.create({
 });
 
 export default function PDFPreview() {
+  // 添加客户端渲染标记
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const { labelData, updateLabelData } = useLabelContext()
   const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
+
+  // 如果不是客户端环境，返回加载占位符
+  if (!isClient) {
+    return (
+      <div className="h-full flex flex-col card rounded-lg shadow w-full" style={{ borderColor: theme.border }}>
+        <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
+          <Eye className="mr-2" size={24} />
+          标签预览
+        </h2>
+        <div className="h-[400px] flex items-center justify-center text-gray-500 bg-gray-100 rounded-lg">
+          正在加载PDF预览...
+        </div>
+      </div>
+    );
+  }
 
   // 计算当前页面宽度和边距
   const currentWidth = calculatePageWidth(labelWidth, Number(selectedNumber));
@@ -749,7 +785,8 @@ export default function PDFPreview() {
       </div>
 
       <div className="flex-grow">
-        <PDFViewer width="100%" height="400px" showToolbar={true} style={{ backgroundColor: theme.background }}>
+        {typeof window !== 'undefined' && (
+          <PDFViewer width="100%" height="400px" showToolbar={true} style={{ backgroundColor: theme.background }}>
           <Document>
             <Page size={[mmToPt(currentWidth), mmToPt(labelHeight)]} style={pageStyle}>
               {/* 恢复边距矩形框 */}
@@ -860,6 +897,7 @@ export default function PDFPreview() {
             </Page>
           </Document>
         </PDFViewer>
+        )}
       </div>
 
       {/* 显示当前页面尺寸和页边距信息 */}

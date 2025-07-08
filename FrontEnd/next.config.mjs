@@ -17,6 +17,7 @@ const nextConfig = {
     unoptimized: true,
   },
   productionBrowserSourceMaps: false,
+  transpilePackages: ["@react-pdf/renderer"],
   webpack: (config, { dev, isServer }) => {
     if (dev && !isServer) {
       config.devtool = "eval";
@@ -27,6 +28,7 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    esmExternals: "loose",
   },
 };
 

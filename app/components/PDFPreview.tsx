@@ -219,38 +219,35 @@ const measureTextWidth = (text: string, fontSize: number, fontFamily: string): n
   return 0;
 };
 
-// 处理文本，分离中文和非中文字符
-const processText = (text: string) => {
-  // 如果是阿拉伯语，使用Arial Unicode字体并设置右对齐和从右到左方向
-  if (selectedLanguage === 'AE') {
-    return <Text style={{ 
-      fontFamily: 'Arial Unicode',
-      textAlign: 'right',
-      direction: 'rtl',
-      width: '100%' // 确保文本占据整个宽度以便右对齐生效
-    }}>{text}</Text>;
+// 创建样式
+const styles = StyleSheet.create({
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: 'white',
+  },
+  content: {
+    fontSize: 10,
+    lineHeight: 1.1,
+    marginBottom: mmToPt(1),
+  },
+  marginBox: {
+    position: 'absolute',
+    borderStyle: 'dashed',
+    borderColor: 'rgb(48, 184, 214)',
+    borderWidth: 0.5,
+    pointerEvents: 'none',
+    zIndex: 1,
+  },
+  contentWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+  },
+  chineseText: {
+    fontFamily: 'STHeiti'
   }
-  
-  // 如果是泰语，使用Arial Unicode字体
-  if (selectedLanguage === 'TH') {
-    return <Text style={{ 
-      fontFamily: 'Arial Unicode',
-      textAlign: 'left',
-      direction: 'ltr'
-    }}>{text}</Text>;
-  }
-  
-  // 处理其他语言，分离中文和非中文字符
-  const parts = text.split(/([^\u4E00-\u9FA5]+)/);
-  return parts.filter(Boolean).map((part, index) => {
-    if (part.match(/[\u4E00-\u9FA5]/)) {
-      // 中文文本
-      return <Text key={index} style={{ ...styles.chineseText, fontFamily: getFontFamily(part, selectedLanguage) }}>{part}</Text>;
-    }
-    // 非中文文本
-    return <Text key={index} style={{ fontFamily: getFontFamily(part, selectedLanguage) }}>{part}</Text>;
-  });
-};
+});
 
 export default function PDFPreview() {
   // 添加客户端渲染标记
@@ -263,6 +260,94 @@ export default function PDFPreview() {
   const theme = useContext(ThemeContext)?.theme || { primary: '#2563eb', border: '#e5e7eb', background: '#f3f4f6', text: '#1f2937' };
   const { labelData, updateLabelData } = useLabelContext();
   const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber } = labelData;
+
+  // 处理文本，分离中文和非中文字符
+  const processText = (text: string) => {
+    // 如果是阿拉伯语，使用Arial Unicode字体并设置右对齐和从右到左方向
+    if (selectedLanguage === 'AE') {
+      return <Text style={{ 
+        fontFamily: 'Arial Unicode',
+        textAlign: 'right',
+        direction: 'rtl',
+        width: '100%' // 确保文本占据整个宽度以便右对齐生效
+      }}>{text}</Text>;
+    }
+    
+    // 如果是泰语，使用Arial Unicode字体
+    if (selectedLanguage === 'TH') {
+      return <Text style={{ 
+        fontFamily: 'Arial Unicode',
+        textAlign: 'left',
+        direction: 'ltr'
+      }}>{text}</Text>;
+    }
+    
+    // 处理其他语言，分离中文和非中文字符
+    const parts = text.split(/([^\u4E00-\u9FA5]+)/);
+    return parts.filter(Boolean).map((part, index) => {
+      if (part.match(/[\u4E00-\u9FA5]/)) {
+        // 中文文本
+        return <Text key={index} style={{ ...styles.chineseText, fontFamily: getFontFamily(part, selectedLanguage) }}>{part}</Text>;
+      }
+      // 非中文文本
+      return <Text key={index} style={{ fontFamily: getFontFamily(part, selectedLanguage) }}>{part}</Text>;
+    });
+  };
+
+  // 导出PDF功能
+  const handleExportPDF = async () => {
+    const blob = await pdf(
+      <Document>
+        <Page size={[mmToPt(currentWidth), mmToPt(labelHeight)]} style={pageStyle}>
+          <View style={[
+            styles.marginBox,
+            {
+              top: mmToPt(margins.top),
+              left: mmToPt(margins.left),
+              width: mmToPt(currentWidth - margins.left - margins.right),
+              height: mmToPt(labelHeight - margins.top - margins.bottom),
+            }
+          ]} />
+          
+          <View style={[
+            styles.contentWrapper,
+            {
+              marginTop: mmToPt(margins.top),
+              marginBottom: mmToPt(margins.bottom),
+              marginLeft: mmToPt(margins.left),
+              marginRight: mmToPt(margins.right),
+              minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
+              justifyContent: 'center',
+              direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr'
+            }
+          ]}>
+            <View style={{ 
+              width: '100%',
+              direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr'
+            }}>
+              {drugInfo && drugInfo.map((item, index) => (
+                <View key={index} style={{
+                  marginBottom: mmToPt(spacing || 2),
+                  textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
+                  width: '100%',
+                  direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr'
+                }}>
+                  {processText(item.text)}
+                </View>
+              ))}
+            </View>
+          </View>
+        </Page>
+      </Document>
+    ).toBlob();
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `label-${selectedLanguage}-${selectedNumber}.pdf`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
   
   // 计算当前页面宽度和边距
   const currentWidth = calculatePageWidth(labelWidth, Number(selectedNumber));
