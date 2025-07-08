@@ -53,30 +53,29 @@ export default function ProjectList() {
   }
 
   const handleAIParse = async () => {
-    if (uploadedFiles.length === 0) {
-      setStatusMessage('请先上传文件')
-      return
-    }
-
     if (!projectName.trim()) {
-      setStatusMessage('请先输入工单名称')
+      setStatusMessage('请输入工单名称')
       return
     }
-
-    setWorkStatus('parsing')
-    setStatusMessage(`正在上传 ${uploadedFiles.length} 个文件...`)
+    
+    if (uploadedFiles.length === 0) {
+      setStatusMessage('请上传至少一个文件')
+      return
+    }
 
     try {
+      setWorkStatus('parsing')
+      
       // 调用Coze API进行批量文件处理
       setStatusMessage('文件上传中...')
-      const results = await batchProcessFiles(uploadedFiles, projectName)
+      const result = await batchProcessFiles(uploadedFiles, projectName)
       
       setWorkStatus('success')
-      setStatusMessage(`解析完成！处理了 ${results.length} 个文件`)
+      setStatusMessage(`解析完成！处理了 ${uploadedFiles.length} 个文件`)
       
       // 保存解析结果并输出到控制台
-      setParseResults(results)
-      console.log('AI解析结果:', results)
+      setParseResults([result] as any[]) // 将单个结果包装成数组以保持兼容性
+      console.log('AI解析结果:', result)
       
       // 解析成功后的处理逻辑
       setTimeout(() => {

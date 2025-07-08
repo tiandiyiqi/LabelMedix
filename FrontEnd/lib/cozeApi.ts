@@ -13,6 +13,7 @@ interface CozeFileUploadResponse {
   file_name: string;
   id: string;
   file_id: string;
+  url?: string; // 添加可能的URL字段
 }
 
 // 工作流执行结果类型
@@ -45,7 +46,7 @@ export const uploadFileToCoze = async (file: File): Promise<CozeFileUploadRespon
   }
   
   const result = await response.json();
-  console.log('文件上传成功:', result);
+  console.log('文件上传完整响应:', result);
   
   // 处理Coze API的返回格式：{code: 0, data: {...}, msg: ""}
   if (result.code === 0 && result.data) {
@@ -61,16 +62,36 @@ export const uploadFileToCoze = async (file: File): Promise<CozeFileUploadRespon
 };
 
 /**
- * 调用Coze工作流进行AI解析
- * @param fileData 文件数据（从上传接口返回）
+ * 获取文件信息JSON字符串
+ * @param fileData 文件数据
+ * @returns 文件信息的JSON字符串
+ */
+export const getFileInfoString = (fileData: CozeFileUploadResponse): string => {
+  // 根据Coze官方文档，需要返回完整的文件信息JSON字符串
+  const fileInfo = {
+    bytes: fileData.bytes,
+    created_at: fileData.created_at,
+    file_name: fileData.file_name,
+    id: fileData.id,
+    file_id: fileData.file_id
+  };
+  
+  const jsonString = JSON.stringify(fileInfo);
+  console.log('文件信息JSON字符串:', jsonString);
+  return jsonString;
+};
+
+/**
+ * 调用Coze工作流进行批量AI解析
+ * @param fileInfoStrings 文件信息JSON字符串数组
  * @param jobName 工单名称
  * @returns 工作流执行结果
  */
 export const callCozeWorkflow = async (
-  fileData: CozeFileUploadResponse, 
+  fileInfoStrings: string[], 
   jobName: string
 ): Promise<CozeWorkflowResponse> => {
-  console.log('准备调用工作流，文件数据:', fileData);
+  console.log('准备调用工作流，文件信息字符串数组:', fileInfoStrings);
   console.log('工单名称:', jobName);
   console.log('工作流ID:', process.env.NEXT_PUBLIC_COZE_WORKFLOW_ID);
   
@@ -81,17 +102,17 @@ export const callCozeWorkflow = async (
   if (!jobName || jobName.trim() === '') {
     throw new Error('工单名称不能为空');
   }
-  if (!fileData || !fileData.file_id) {
-    throw new Error('文件数据无效');
+  if (!fileInfoStrings || fileInfoStrings.length === 0) {
+    throw new Error('文件信息数组不能为空');
   }
   
   try {
-    console.log('调用工作流进行AI解析...');
+    console.log('调用工作流进行批量AI解析...');
     
     const params = {
       workflow_id: process.env.NEXT_PUBLIC_COZE_WORKFLOW_ID!,
       parameters: {
-        "input": JSON.stringify(fileData),
+        "input": fileInfoStrings, // 传递文件信息JSON字符串数组
         "job_name": jobName
       }
     };
@@ -109,30 +130,33 @@ export const callCozeWorkflow = async (
 };
 
 /**
- * 批量处理多个文件的AI解析
+ * 批量处理多个文件的AI解析（新的批量模式）
  * @param files 文件列表
  * @param jobName 工单名称
- * @returns 所有文件的解析结果
+ * @returns 工作流执行结果
  */
 export const batchProcessFiles = async (
   files: File[], 
   jobName: string
-): Promise<CozeWorkflowResponse[]> => {
+): Promise<CozeWorkflowResponse> => {
   try {
     // 1. 并行上传所有文件
     console.log(`开始上传 ${files.length} 个文件...`);
     const uploadPromises = files.map(file => uploadFileToCoze(file));
     const uploadResults = await Promise.all(uploadPromises);
     
-    // 2. 对每个文件调用工作流
-    console.log('开始AI解析...');
-    const parsePromises = uploadResults.map(fileData => 
-      callCozeWorkflow(fileData, jobName)
-    );
-    const parseResults = await Promise.all(parsePromises);
+    // 2. 将所有文件数据转换为JSON字符串
+    console.log('转换文件信息为JSON字符串...');
+    const fileInfoStrings = uploadResults.map(fileData => getFileInfoString(fileData));
     
-    console.log('批量处理完成:', parseResults);
-    return parseResults;
+    console.log('所有文件信息字符串:', fileInfoStrings);
+    
+    // 3. 一次性调用工作流处理所有文件
+    console.log('开始批量AI解析...');
+    const result = await callCozeWorkflow(fileInfoStrings, jobName);
+    
+    console.log('批量处理完成:', result);
+    return result;
   } catch (error) {
     console.error('批量处理失败:', error);
     throw error;
