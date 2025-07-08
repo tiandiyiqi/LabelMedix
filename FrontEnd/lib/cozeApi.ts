@@ -31,7 +31,6 @@ export const uploadFileToCoze = async (file: File): Promise<CozeFileUploadRespon
   formData.append('file', file);
   
   const uploadUrl = `${process.env.NEXT_PUBLIC_COZE_BASE_URL}/v1/files/upload`;
-  console.log('上传文件到:', uploadUrl);
   
   const response = await fetch(uploadUrl, {
     method: 'POST',
@@ -46,7 +45,6 @@ export const uploadFileToCoze = async (file: File): Promise<CozeFileUploadRespon
   }
   
   const result = await response.json();
-  console.log('文件上传完整响应:', result);
   
   // 处理Coze API的返回格式：{code: 0, data: {...}, msg: ""}
   if (result.code === 0 && result.data) {
@@ -54,7 +52,7 @@ export const uploadFileToCoze = async (file: File): Promise<CozeFileUploadRespon
       ...result.data,
       file_id: result.data.id // 添加file_id字段，值等于id
     };
-    console.log('处理后的文件数据:', fileData);
+    console.log(`✅ 文件上传成功: ${fileData.file_name}`);
     return fileData;
   } else {
     throw new Error(`文件上传失败: ${result.msg || '未知错误'}`);
@@ -76,9 +74,49 @@ export const getFileInfoString = (fileData: CozeFileUploadResponse): string => {
     file_id: fileData.file_id
   };
   
-  const jsonString = JSON.stringify(fileInfo);
-  console.log('文件信息JSON字符串:', jsonString);
-  return jsonString;
+  return JSON.stringify(fileInfo);
+};
+
+/**
+ * 格式化并显示AI解析结果
+ * @param result 工作流执行结果
+ */
+export const displayParseResult = (result: CozeWorkflowResponse): void => {
+  try {
+    console.log('🎉 AI解析完成');
+    console.log('📊 解析结果详情:');
+    
+    // 解析data字段中的JSON字符串
+    if (result.data && typeof result.data === 'string') {
+      const parsedData = JSON.parse(result.data);
+      
+      if (parsedData.output && Array.isArray(parsedData.output)) {
+        parsedData.output.forEach((item: any, index: number) => {
+          console.log(`\n📄 文件 ${index + 1} (${item.language}):`);
+          
+          if (item.translation && typeof item.translation === 'string') {
+            try {
+              const translations = JSON.parse(item.translation);
+              if (Array.isArray(translations)) {
+                translations.forEach((text: string, i: number) => {
+                  console.log(`  ${i + 1}. ${text}`);
+                });
+              }
+            } catch (e) {
+              console.log(`  翻译内容: ${item.translation}`);
+            }
+          }
+        });
+      }
+    }
+    
+    console.log(`\n💰 处理费用: ${result.cost || '0'}`);
+    console.log(`🔗 调试链接: ${result.debug_url || '无'}`);
+    
+  } catch (error) {
+    console.error('❌ 解析结果显示失败:', error);
+    console.log('📋 原始结果:', result);
+  }
 };
 
 /**
@@ -91,10 +129,6 @@ export const callCozeWorkflow = async (
   fileInfoStrings: string[], 
   jobName: string
 ): Promise<CozeWorkflowResponse> => {
-  console.log('准备调用工作流，文件信息字符串数组:', fileInfoStrings);
-  console.log('工单名称:', jobName);
-  console.log('工作流ID:', process.env.NEXT_PUBLIC_COZE_WORKFLOW_ID);
-  
   // 验证必需参数
   if (!process.env.NEXT_PUBLIC_COZE_WORKFLOW_ID) {
     throw new Error('工作流ID未设置');
@@ -107,7 +141,7 @@ export const callCozeWorkflow = async (
   }
   
   try {
-    console.log('调用工作流进行批量AI解析...');
+    console.log(`🚀 开始AI解析 ${fileInfoStrings.length} 个文件...`);
     
     const params = {
       workflow_id: process.env.NEXT_PUBLIC_COZE_WORKFLOW_ID!,
@@ -117,14 +151,14 @@ export const callCozeWorkflow = async (
       }
     };
     
-    console.log('请求参数:', JSON.stringify(params, null, 2));
-    
     const res = await apiClient.workflows.runs.create(params);
     
-    console.log('工作流调用成功:', res);
+    // 使用新的格式化显示函数
+    displayParseResult(res as CozeWorkflowResponse);
+    
     return res as CozeWorkflowResponse;
   } catch (error) {
-    console.error('工作流调用失败:', error);
+    console.error('❌ AI解析失败:', error);
     throw new Error(`AI解析失败: ${(error as Error).message}`);
   }
 };
@@ -141,24 +175,20 @@ export const batchProcessFiles = async (
 ): Promise<CozeWorkflowResponse> => {
   try {
     // 1. 并行上传所有文件
-    console.log(`开始上传 ${files.length} 个文件...`);
+    console.log(`📤 开始上传 ${files.length} 个文件...`);
     const uploadPromises = files.map(file => uploadFileToCoze(file));
     const uploadResults = await Promise.all(uploadPromises);
     
     // 2. 将所有文件数据转换为JSON字符串
-    console.log('转换文件信息为JSON字符串...');
     const fileInfoStrings = uploadResults.map(fileData => getFileInfoString(fileData));
     
-    console.log('所有文件信息字符串:', fileInfoStrings);
-    
     // 3. 一次性调用工作流处理所有文件
-    console.log('开始批量AI解析...');
     const result = await callCozeWorkflow(fileInfoStrings, jobName);
     
-    console.log('批量处理完成:', result);
+    console.log('🎉 批量处理完成');
     return result;
   } catch (error) {
-    console.error('批量处理失败:', error);
+    console.error('❌ 批量处理失败:', error);
     throw error;
   }
 }; 

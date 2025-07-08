@@ -73,9 +73,8 @@ export default function ProjectList() {
       setWorkStatus('success')
       setStatusMessage(`解析完成！处理了 ${uploadedFiles.length} 个文件`)
       
-      // 保存解析结果并输出到控制台
+      // 保存解析结果
       setParseResults([result] as any[]) // 将单个结果包装成数组以保持兼容性
-      console.log('AI解析结果:', result)
       
       // 解析成功后的处理逻辑
       setTimeout(() => {
