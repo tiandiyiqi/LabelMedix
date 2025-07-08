@@ -84,38 +84,10 @@ export const getFileInfoString = (fileData: CozeFileUploadResponse): string => {
 export const displayParseResult = (result: CozeWorkflowResponse): void => {
   try {
     console.log('🎉 AI解析完成');
-    console.log('📊 解析结果详情:');
-    
-    // 解析data字段中的JSON字符串
-    if (result.data && typeof result.data === 'string') {
-      const parsedData = JSON.parse(result.data);
-      
-      if (parsedData.output && Array.isArray(parsedData.output)) {
-        parsedData.output.forEach((item: any, index: number) => {
-          console.log(`\n📄 文件 ${index + 1} (${item.language}):`);
-          
-          if (item.translation && typeof item.translation === 'string') {
-            try {
-              const translations = JSON.parse(item.translation);
-              if (Array.isArray(translations)) {
-                translations.forEach((text: string, i: number) => {
-                  console.log(`  ${i + 1}. ${text}`);
-                });
-              }
-            } catch (e) {
-              console.log(`  翻译内容: ${item.translation}`);
-            }
-          }
-        });
-      }
-    }
-    
-    console.log(`\n💰 处理费用: ${result.cost || '0'}`);
+    console.log(`💰 处理费用: ${result.cost || '0'}`);
     console.log(`🔗 调试链接: ${result.debug_url || '无'}`);
-    
   } catch (error) {
     console.error('❌ 解析结果显示失败:', error);
-    console.log('📋 原始结果:', result);
   }
 };
 
@@ -167,15 +139,19 @@ export const callCozeWorkflow = async (
  * 批量处理多个文件的AI解析（新的批量模式）
  * @param files 文件列表
  * @param jobName 工单名称
+ * @param onStatusUpdate 状态更新回调函数
  * @returns 工作流执行结果
  */
 export const batchProcessFiles = async (
   files: File[], 
-  jobName: string
+  jobName: string,
+  onStatusUpdate?: (status: string, message: string) => void
 ): Promise<CozeWorkflowResponse> => {
   try {
     // 1. 并行上传所有文件
     console.log(`📤 开始上传 ${files.length} 个文件...`);
+    onStatusUpdate?.('uploading', `📤 开始上传 ${files.length} 个文件...`);
+    
     const uploadPromises = files.map(file => uploadFileToCoze(file));
     const uploadResults = await Promise.all(uploadPromises);
     
@@ -183,6 +159,9 @@ export const batchProcessFiles = async (
     const fileInfoStrings = uploadResults.map(fileData => getFileInfoString(fileData));
     
     // 3. 一次性调用工作流处理所有文件
+    console.log(`🚀 开始AI解析 ${files.length} 个文件...`);
+    onStatusUpdate?.('parsing', `🚀 开始AI解析 ${files.length} 个文件...`);
+    
     const result = await callCozeWorkflow(fileInfoStrings, jobName);
     
     console.log('🎉 批量处理完成');

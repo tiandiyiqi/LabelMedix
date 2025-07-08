@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { batchProcessFiles } from '@/lib/cozeApi'
+import ParseResultsDisplay from './ParseResultsDisplay'
 
 export default function ProjectList() {
   const themeContext = useContext(ThemeContext)
@@ -25,9 +26,11 @@ export default function ProjectList() {
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
-  const [workStatus, setWorkStatus] = useState<'idle' | 'uploading' | 'parsing' | 'success' | 'error'>('idle')
+  const [workStatus, setWorkStatus] = useState<'idle' | 'preparing' | 'uploading' | 'uploaded' | 'parsing' | 'parsed' | 'success' | 'error'>('idle')
   const [parseResults, setParseResults] = useState<any[]>([])
   const [statusMessage, setStatusMessage] = useState('')
+  const [showParseResults, setShowParseResults] = useState(false)
+  const [hasError, setHasError] = useState(false)
 
   const handleEdit = (project: { id: number; name: string }) => {
     setEditingId(project.id)
@@ -45,7 +48,16 @@ export default function ProjectList() {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || [])
-    setUploadedFiles(prev => [...prev, ...files])
+    setUploadedFiles(prev => {
+      const newFiles = [...prev, ...files]
+      // 清除错误状态
+      if (hasError && newFiles.length > 0) {
+        setHasError(false)
+        setWorkStatus('idle')
+        setStatusMessage('')
+      }
+      return newFiles
+    })
   }
 
   const removeFile = (index: number) => {
@@ -53,41 +65,44 @@ export default function ProjectList() {
   }
 
   const handleAIParse = async () => {
+    // 清除之前的错误状态
+    setHasError(false)
+    
     if (!projectName.trim()) {
-      setStatusMessage('请输入工单名称')
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 请输入工单名称')
       return
     }
     
     if (uploadedFiles.length === 0) {
-      setStatusMessage('请上传至少一个文件')
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 请上传至少一个文件')
       return
     }
 
     try {
-      setWorkStatus('parsing')
+      // 1. 准备阶段
+      setWorkStatus('preparing')
+      setStatusMessage('📋 正在准备文件处理...')
       
-      // 调用Coze API进行批量文件处理
-      setStatusMessage('文件上传中...')
-      const result = await batchProcessFiles(uploadedFiles, projectName)
+      // 2. 调用Coze API进行批量文件处理，使用状态回调
+      const result = await batchProcessFiles(uploadedFiles, projectName, (status, message) => {
+        setWorkStatus(status as any)
+        setStatusMessage(message)
+      })
       
+      // 3. 解析完成
       setWorkStatus('success')
-      setStatusMessage(`解析完成！处理了 ${uploadedFiles.length} 个文件`)
+      setStatusMessage(`🎉 解析成功！已处理 ${uploadedFiles.length} 个文件，点击查看解析结果`)
       
       // 保存解析结果
-      setParseResults([result] as any[]) // 将单个结果包装成数组以保持兼容性
-      
-      // 解析成功后的处理逻辑
-      setTimeout(() => {
-        setStatusMessage('项目创建成功！')
-        setTimeout(() => {
-          setIsNewProjectOpen(false)
-          resetForm()
-        }, 1500)
-      }, 2000)
+      setParseResults([result] as any[])
     } catch (error) {
       console.error('AI解析错误:', error)
       setWorkStatus('error')
-      setStatusMessage(`解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      setStatusMessage(`❌ 解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
     }
   }
 
@@ -97,16 +112,25 @@ export default function ProjectList() {
     setWorkStatus('idle')
     setStatusMessage('')
     setParseResults([])
+    setShowParseResults(false)
+    setHasError(false)
   }
 
   const handleSubmit = () => {
+    // 清除之前的错误状态
+    setHasError(false)
+    
     if (!projectName.trim()) {
-      setStatusMessage('请输入工单名称')
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 请输入工单名称')
       return
     }
     
     if (uploadedFiles.length === 0) {
-      setStatusMessage('请上传至少一个文件')
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 请上传至少一个文件')
       return
     }
 
@@ -122,8 +146,11 @@ export default function ProjectList() {
 
   const getStatusIcon = () => {
     switch (workStatus) {
+      case 'preparing':
       case 'uploading':
+      case 'uploaded':
       case 'parsing':
+      case 'parsed':
         return <Loader2 className="h-4 w-4 animate-spin" />
       case 'success':
         return <CheckCircle className="h-4 w-4 text-green-500" />
@@ -229,7 +256,7 @@ export default function ProjectList() {
           <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
             <DialogTrigger asChild>
               <button
-                className="w-full py-3 px-4 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
+                className="w-full py-3 px-4 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors"
                 style={{ backgroundColor: theme.secondary }}
               >
                 + 新建项目
@@ -242,17 +269,6 @@ export default function ProjectList() {
               </DialogHeader>
               
               <div className="space-y-6 py-4">
-                {/* 工单名输入 */}
-                <div className="space-y-2">
-                  <Label htmlFor="project-name">工单名称</Label>
-                  <Input
-                    id="project-name"
-                    placeholder="请输入工单名称"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                  />
-                </div>
-
                 {/* 文件上传区域 */}
                 <div className="space-y-2">
                   <Label>上传文件</Label>
@@ -280,28 +296,49 @@ export default function ProjectList() {
                   </label>
                 </div>
 
+                {/* 工单名输入 */}
+                <div className="space-y-2">
+                  <Label htmlFor="project-name" className="text-base font-semibold text-gray-800">工单名称 *</Label>
+                  <Input
+                    id="project-name"
+                    placeholder="请输入工单名称"
+                    value={projectName}
+                    onChange={(e) => {
+                      setProjectName(e.target.value)
+                      // 清除错误状态
+                      if (hasError && e.target.value.trim()) {
+                        setHasError(false)
+                        setWorkStatus('idle')
+                        setStatusMessage('')
+                      }
+                    }}
+                    className={`placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
+                      hasError && !projectName.trim() ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
+
                 {/* 上传文件列表 */}
                 {uploadedFiles.length > 0 && (
                   <div className="space-y-2">
                     <Label>已上传文件</Label>
-                    <div className="max-h-32 overflow-y-auto space-y-2">
+                    <div className="max-h-32 overflow-y-auto space-y-1">
                       {uploadedFiles.map((file, index) => (
                         <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <div className="flex items-center space-x-2">
-                            <FileText className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm text-gray-700">{file.name}</span>
-                            <span className="text-xs text-gray-500">
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
+                            <FileText className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                            <span className="text-xs text-gray-700 truncate">{file.name}</span>
+                            <span className="text-xs text-gray-500 flex-shrink-0">
                               ({(file.size / 1024 / 1024).toFixed(2)} MB)
                             </span>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                          <button
                             onClick={() => removeFile(index)}
-                            className="text-red-500 hover:text-red-700"
+                            className="ml-2 px-2 py-1 text-xs bg-red-100 text-white rounded hover:bg-red-300 transition-colors flex-shrink-0"
+                            title="删除文件"
                           >
-                            删除
-                          </Button>
+                            ×
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -309,14 +346,31 @@ export default function ProjectList() {
                 )}
 
                 {/* 工作状态显示 */}
-                <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded">
-                  <div className="flex items-center space-x-2">
-                    {getStatusIcon()}
-                    <span className="text-sm font-medium">工作状态：</span>
+                <div className={`p-3 rounded ${hasError || workStatus === 'error' ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      {getStatusIcon()}
+                      <span className="text-sm font-medium">工作状态：</span>
+                      <span className={`text-sm ${hasError || workStatus === 'error' ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                        {statusMessage || '等待操作...'}
+                      </span>
+                    </div>
+                    {workStatus === 'success' && parseResults.length > 0 && (
+                      <Button
+                        onClick={() => {
+                          // 先关闭新建项目窗口
+                          setIsNewProjectOpen(false)
+                          // 然后显示解析结果
+                          setShowParseResults(true)
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                      >
+                        查看解析结果
+                      </Button>
+                    )}
                   </div>
-                  <span className="text-sm text-gray-600">
-                    {statusMessage || '等待操作...'}
-                  </span>
                 </div>
 
                 {/* 操作按钮 */}
@@ -324,7 +378,7 @@ export default function ProjectList() {
                   <Button
                     onClick={handleAIParse}
                     disabled={uploadedFiles.length === 0 || workStatus === 'parsing'}
-                    className="flex-1 bg-green-600 hover:bg-green-700"
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                   >
                     {workStatus === 'parsing' ? (
                       <>
@@ -349,6 +403,19 @@ export default function ProjectList() {
           </Dialog>
         </div>
       </div>
+
+      {/* 解析结果显示 */}
+      {showParseResults && (
+        <ParseResultsDisplay
+          results={parseResults}
+          onClose={() => {
+            // 关闭解析结果窗口
+            setShowParseResults(false)
+            // 重新打开新建项目窗口
+            setIsNewProjectOpen(true)
+          }}
+        />
+      )}
     </div>
   )
 }
