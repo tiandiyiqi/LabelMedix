@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { batchProcessFiles } from '@/lib/cozeApi'
 
 export default function ProjectList() {
   const themeContext = useContext(ThemeContext)
@@ -25,6 +26,7 @@ export default function ProjectList() {
   const [projectName, setProjectName] = useState('')
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [workStatus, setWorkStatus] = useState<'idle' | 'uploading' | 'parsing' | 'success' | 'error'>('idle')
+  const [parseResults, setParseResults] = useState<any[]>([])
   const [statusMessage, setStatusMessage] = useState('')
 
   const handleEdit = (project: { id: number; name: string }) => {
@@ -56,24 +58,38 @@ export default function ProjectList() {
       return
     }
 
+    if (!projectName.trim()) {
+      setStatusMessage('请先输入工单名称')
+      return
+    }
+
     setWorkStatus('parsing')
-    setStatusMessage('AI正在解析文件...')
+    setStatusMessage(`正在上传 ${uploadedFiles.length} 个文件...`)
 
     try {
-      // 这里将来连接后端API
-      await new Promise(resolve => setTimeout(resolve, 3000)) // 模拟API调用
+      // 调用Coze API进行批量文件处理
+      setStatusMessage('文件上传中...')
+      const results = await batchProcessFiles(uploadedFiles, projectName)
       
       setWorkStatus('success')
-      setStatusMessage('解析完成！')
+      setStatusMessage(`解析完成！处理了 ${results.length} 个文件`)
+      
+      // 保存解析结果并输出到控制台
+      setParseResults(results)
+      console.log('AI解析结果:', results)
       
       // 解析成功后的处理逻辑
       setTimeout(() => {
-        setIsNewProjectOpen(false)
-        resetForm()
+        setStatusMessage('项目创建成功！')
+        setTimeout(() => {
+          setIsNewProjectOpen(false)
+          resetForm()
+        }, 1500)
       }, 2000)
     } catch (error) {
+      console.error('AI解析错误:', error)
       setWorkStatus('error')
-      setStatusMessage('解析失败，请重试')
+      setStatusMessage(`解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
     }
   }
 
@@ -82,6 +98,7 @@ export default function ProjectList() {
     setUploadedFiles([])
     setWorkStatus('idle')
     setStatusMessage('')
+    setParseResults([])
   }
 
   const handleSubmit = () => {

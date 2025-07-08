@@ -2,10 +2,10 @@
   "name": "labelmedix-backend",
   "version": "1.0.0",
   "description": "LabelMedix Backend Service",
-  "main": "src/index.js",
+  "main": "src/app.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
     "test": "jest",
     "db:create": "sequelize-cli db:create",
     "db:migrate": "sequelize-cli db:migrate",
