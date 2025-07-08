@@ -3,7 +3,8 @@ import { CozeAPI } from '@coze/api';
 // 初始化Coze API客户端
 const apiClient = new CozeAPI({
   token: process.env.NEXT_PUBLIC_COZE_API_TOKEN!,
-  baseURL: process.env.NEXT_PUBLIC_COZE_BASE_URL!
+  baseURL: process.env.NEXT_PUBLIC_COZE_BASE_URL!,
+  allowPersonalAccessTokenInBrowser: true // 允许在浏览器环境中使用Personal Access Token
 });
 
 // 文件上传接口返回类型
