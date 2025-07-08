@@ -3,6 +3,11 @@
 import { useState, useContext } from "react"
 import { Search, Plus, Edit, Trash2, Save } from "lucide-react"
 import { ThemeContext } from "./Layout"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
 
 export default function ProjectList() {
   const themeContext = useContext(ThemeContext)
@@ -16,6 +21,11 @@ export default function ProjectList() {
   ])
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState("")
+  const [isNewProjectOpen, setIsNewProjectOpen] = useState(false)
+  const [projectName, setProjectName] = useState('')
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+  const [workStatus, setWorkStatus] = useState<'idle' | 'uploading' | 'parsing' | 'success' | 'error'>('idle')
+  const [statusMessage, setStatusMessage] = useState('')
 
   const handleEdit = (project: { id: number; name: string }) => {
     setEditingId(project.id)
@@ -29,6 +39,84 @@ export default function ProjectList() {
 
   const handleDelete = (id: number) => {
     setProjects(projects.filter((p) => p.id !== id))
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    setUploadedFiles(prev => [...prev, ...files])
+  }
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleAIParse = async () => {
+    if (uploadedFiles.length === 0) {
+      setStatusMessage('请先上传文件')
+      return
+    }
+
+    setWorkStatus('parsing')
+    setStatusMessage('AI正在解析文件...')
+
+    try {
+      // 这里将来连接后端API
+      await new Promise(resolve => setTimeout(resolve, 3000)) // 模拟API调用
+      
+      setWorkStatus('success')
+      setStatusMessage('解析完成！')
+      
+      // 解析成功后的处理逻辑
+      setTimeout(() => {
+        setIsNewProjectOpen(false)
+        resetForm()
+      }, 2000)
+    } catch (error) {
+      setWorkStatus('error')
+      setStatusMessage('解析失败，请重试')
+    }
+  }
+
+  const resetForm = () => {
+    setProjectName('')
+    setUploadedFiles([])
+    setWorkStatus('idle')
+    setStatusMessage('')
+  }
+
+  const handleSubmit = () => {
+    if (!projectName.trim()) {
+      setStatusMessage('请输入工单名称')
+      return
+    }
+    
+    if (uploadedFiles.length === 0) {
+      setStatusMessage('请上传至少一个文件')
+      return
+    }
+
+    // 创建项目逻辑
+    setWorkStatus('success')
+    setStatusMessage('项目创建成功！')
+    
+    setTimeout(() => {
+      setIsNewProjectOpen(false)
+      resetForm()
+    }, 2000)
+  }
+
+  const getStatusIcon = () => {
+    switch (workStatus) {
+      case 'uploading':
+      case 'parsing':
+        return <Loader2 className="h-4 w-4 animate-spin" />
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'error':
+        return <XCircle className="h-4 w-4 text-red-500" />
+      default:
+        return null
+    }
   }
 
   return (
@@ -120,13 +208,131 @@ export default function ProjectList() {
             </li>
           ))}
         </ul>
-        <button
-          className="w-full mt-4 py-2 rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity shadow-sm"
-          style={{ backgroundColor: theme.primary, color: "white" }}
-        >
-          <Plus size={20} className="mr-2" />
-          新建项目
-        </button>
+        
+        {/* 新建项目按钮 - 与项目列表保持距离 */}
+        <div className="mt-6">
+          <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
+            <DialogTrigger asChild>
+              <button
+                className="w-full py-3 px-4 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: theme.secondary }}
+              >
+                + 新建项目
+              </button>
+            </DialogTrigger>
+            
+            <DialogContent className="sm:max-w-[600px] bg-white">
+              <DialogHeader>
+                <DialogTitle>新建项目</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                {/* 工单名输入 */}
+                <div className="space-y-2">
+                  <Label htmlFor="project-name">工单名称</Label>
+                  <Input
+                    id="project-name"
+                    placeholder="请输入工单名称"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                  />
+                </div>
+
+                {/* 文件上传区域 */}
+                <div className="space-y-2">
+                  <Label>上传文件</Label>
+                  <label htmlFor="file-upload" className="cursor-pointer block">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 hover:bg-gray-50 transition-colors">
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="mt-4">
+                        <span className="mt-2 block text-sm font-medium text-gray-900">
+                          点击上传文件或拖拽文件到此处
+                        </span>
+                        <p className="mt-1 text-xs text-gray-500">
+                          支持 PDF、JPG、PNG 格式，可选择多个文件
+                        </p>
+                      </div>
+                    </div>
+                    <input
+                      id="file-upload"
+                      name="file-upload"
+                      type="file"
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="sr-only"
+                      onChange={handleFileUpload}
+                    />
+                  </label>
+                </div>
+
+                {/* 上传文件列表 */}
+                {uploadedFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>已上传文件</Label>
+                    <div className="max-h-32 overflow-y-auto space-y-2">
+                      {uploadedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm text-gray-700">{file.name}</span>
+                            <span className="text-xs text-gray-500">
+                              ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            删除
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 工作状态显示 */}
+                <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded">
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon()}
+                    <span className="text-sm font-medium">工作状态：</span>
+                  </div>
+                  <span className="text-sm text-gray-600">
+                    {statusMessage || '等待操作...'}
+                  </span>
+                </div>
+
+                {/* 操作按钮 */}
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={handleAIParse}
+                    disabled={uploadedFiles.length === 0 || workStatus === 'parsing'}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    {workStatus === 'parsing' ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        AI解析中...
+                      </>
+                    ) : (
+                      'AI解析'
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!projectName.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  >
+                    创建项目
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
     </div>
   )

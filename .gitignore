@@ -83,3 +83,4 @@ logs/
 # 其他
 .vercel
 .turbo
+ref/
