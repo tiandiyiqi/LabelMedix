@@ -24,11 +24,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # 本地环境文件
-.env*.local
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# .env*.local
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
 
 # IDE配置文件
 .idea/
