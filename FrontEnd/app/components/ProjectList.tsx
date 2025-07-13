@@ -31,6 +31,7 @@ export default function ProjectList() {
   const [statusMessage, setStatusMessage] = useState('')
   const [showParseResults, setShowParseResults] = useState(false)
   const [hasError, setHasError] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   const handleEdit = (project: { id: number; name: string }) => {
     setEditingId(project.id)
@@ -46,10 +47,22 @@ export default function ProjectList() {
     setProjects(projects.filter((p) => p.id !== id))
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || [])
+  const processFiles = (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+    const validFiles = fileArray.filter(file => {
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+      return validTypes.includes(file.type)
+    })
+    
+    if (validFiles.length !== fileArray.length) {
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 部分文件格式不支持，仅支持 PDF、JPG、PNG 格式')
+      return
+    }
+    
     setUploadedFiles(prev => {
-      const newFiles = [...prev, ...files]
+      const newFiles = [...prev, ...validFiles]
       // 清除错误状态
       if (hasError && newFiles.length > 0) {
         setHasError(false)
@@ -58,6 +71,36 @@ export default function ProjectList() {
       }
       return newFiles
     })
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (files) {
+      processFiles(files)
+    }
+  }
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDragOver(true)
+  }
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDragOver(false)
+  }
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDragOver(false)
+    
+    const files = event.dataTransfer.files
+    if (files) {
+      processFiles(files)
+    }
   }
 
   const removeFile = (index: number) => {
@@ -103,6 +146,54 @@ export default function ProjectList() {
       console.error('AI解析错误:', error)
       setWorkStatus('error')
       setStatusMessage(`❌ 解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
+  }
+
+  const handleParseAndCreate = async () => {
+    // 清除之前的错误状态
+    setHasError(false)
+    
+    if (!projectName.trim()) {
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 请输入工单名称')
+      return
+    }
+    
+    if (uploadedFiles.length === 0) {
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 请上传至少一个文件')
+      return
+    }
+
+    try {
+      // 1. 准备阶段
+      setWorkStatus('preparing')
+      setStatusMessage('📋 正在准备文件处理...')
+      
+      // 2. 调用Coze API进行批量文件处理，使用状态回调
+      const result = await batchProcessFiles(uploadedFiles, projectName, (status, message) => {
+        setWorkStatus(status as any)
+        setStatusMessage(message)
+      })
+      
+      // 3. 解析完成后直接创建项目
+      setWorkStatus('success')
+      setStatusMessage(`🎉 解析并创建项目成功！已处理 ${uploadedFiles.length} 个文件`)
+      
+      // 保存解析结果
+      setParseResults([result] as any[])
+      
+      // 延迟关闭窗口
+      setTimeout(() => {
+        setIsNewProjectOpen(false)
+        resetForm()
+      }, 2000)
+    } catch (error) {
+      console.error('解析并创建项目错误:', error)
+      setWorkStatus('error')
+      setStatusMessage(`❌ 解析并创建项目失败: ${error instanceof Error ? error.message : '未知错误'}`)
     }
   }
 
@@ -273,11 +364,24 @@ export default function ProjectList() {
                 <div className="space-y-2">
                   <Label>上传文件</Label>
                   <label htmlFor="file-upload" className="cursor-pointer block">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 hover:bg-gray-50 transition-colors">
-                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <div 
+                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
+                        isDragOver 
+                          ? 'border-blue-400 bg-blue-50 scale-105' 
+                          : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                      }`}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      <Upload className={`mx-auto h-12 w-12 transition-colors ${
+                        isDragOver ? 'text-blue-500' : 'text-gray-400'
+                      }`} />
                       <div className="mt-4">
-                        <span className="mt-2 block text-sm font-medium text-gray-900">
-                          点击上传文件或拖拽文件到此处
+                        <span className={`mt-2 block text-sm font-medium transition-colors ${
+                          isDragOver ? 'text-blue-700' : 'text-gray-900'
+                        }`}>
+                          {isDragOver ? '释放文件以上传' : '点击上传文件或拖拽文件到此处'}
                         </span>
                         <p className="mt-1 text-xs text-gray-500">
                           支持 PDF、JPG、PNG 格式，可选择多个文件
@@ -374,29 +478,50 @@ export default function ProjectList() {
                 </div>
 
                 {/* 操作按钮 */}
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={handleAIParse}
-                    disabled={uploadedFiles.length === 0 || workStatus === 'parsing'}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    {workStatus === 'parsing' ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        AI解析中...
-                      </>
-                    ) : (
-                      'AI解析'
-                    )}
-                  </Button>
+                <div className="space-y-3">
+                  {/* 第一行：AI解析和创建项目按钮 */}
+                  <div className="flex space-x-3">
+                    <Button
+                      onClick={handleAIParse}
+                      disabled={uploadedFiles.length === 0 || workStatus === 'parsing'}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      {workStatus === 'parsing' ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          AI解析中...
+                        </>
+                      ) : (
+                        'AI解析'
+                      )}
+                    </Button>
+                    
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!projectName.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                    >
+                      创建项目
+                    </Button>
+                  </div>
                   
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!projectName.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                  >
-                    创建项目
-                  </Button>
+                  {/* 第二行：解析并创建项目按钮 */}
+                  <div className="flex">
+                    <Button
+                      onClick={handleParseAndCreate}
+                      disabled={!projectName.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                    >
+                      {workStatus === 'parsing' ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          处理中...
+                        </>
+                      ) : (
+                        '解析并创建项目'
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </DialogContent>
