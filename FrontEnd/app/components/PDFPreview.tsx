@@ -355,7 +355,7 @@ export default function PDFPreview() {
   }, []);
 
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -640,19 +640,19 @@ export default function PDFPreview() {
         <Eye className="mr-2" size={24} />
         标签预览
       </h2>
-      <div className="mb-6 space-y-4">
+      <div className="mb-4 space-y-0.5">
         {/* 标签分类 */}
-        <div className="flex">
+        <div className="flex ">
           <div className="flex-1">
-            <div className="flex items-center border border-[#30B8D6] rounded-md">
-              <label className="text-base font-medium px-3 py-2 min-w-[120px]">
+            <div className="flex items-center rounded-md">
+              <label className="text-base font-medium px-3 py-1 min-w-[120px]">
                 标签分类：
               </label>
               <div className="flex-1">
                 <select
                   value={labelCategory}
                   onChange={(e) => updateLabelData({ labelCategory: e.target.value })}
-                  className="w-full px-3 py-2 focus:outline-none appearance-none bg-white"
+                  className="w-full px-3 py-1 focus:outline-none appearance-none bg-white border-b border-gray-300"
                 >
                   <option value="缠绕标">缠绕标</option>
                   <option value="非缠绕标">非缠绕标</option>
@@ -662,11 +662,11 @@ export default function PDFPreview() {
             </div>
           </div>
         </div>
-        {/* 宽度和高度 */}
-        <div className="flex space-x-4">
+        {/* 宽度和高度（外观与其它区域一致：无蓝色外框） */}
+        <div className="flex space-x-3 ">
           <div className="flex-1">
-            <div className="flex items-center border border-[#30B8D6] rounded-md">
-              <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+            <div className="flex items-center rounded-md">
+              <label className="text-base font-medium px-3 py-1 min-w-[120px]" style={{ color: theme.text }}>
                 标签宽度：
               </label>
               <div className="flex-1">
@@ -675,7 +675,7 @@ export default function PDFPreview() {
                   defaultValue={labelWidth}
                   placeholder="最小值: 40mm"
                   onKeyDown={(e) => handleDimensionInput(e, 'width')}
-                  className="w-full px-3 py-2 focus:outline-none"
+                  className="w-full px-3 py-1 focus:outline-none border-b border-gray-300"
                   style={{
                     color: theme.text,
                     backgroundColor: "white",
@@ -685,8 +685,8 @@ export default function PDFPreview() {
             </div>
           </div>
           <div className="flex-1">
-            <div className="flex items-center border border-[#30B8D6] rounded-md">
-              <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
+            <div className="flex items-center rounded-md">
+              <label className="text-base font-medium px-3 py-1 min-w-[120px]" style={{ color: theme.text }}>
                 标签高度：
               </label>
               <div className="flex-1">
@@ -695,7 +695,7 @@ export default function PDFPreview() {
                   defaultValue={labelHeight}
                   placeholder="最小值: 40mm"
                   onKeyDown={(e) => handleDimensionInput(e, 'height')}
-                  className="w-full px-3 py-2 focus:outline-none"
+                  className="w-full px-3 py-1 focus:outline-none border-b border-gray-300"
                   style={{
                     color: theme.text,
                     backgroundColor: "white",
@@ -705,97 +705,115 @@ export default function PDFPreview() {
             </div>
           </div>
         </div>
-
-        {/* 页面尺寸和边距（外观与标签宽高一致） */}
-        <div className="space-y-2">
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <div className="flex items-center border border-[#30B8D6] rounded-md">
-                <label className="text-base font-medium px-3 py-2 min-w-[120px]">
-                  页面尺寸：
-                </label>
-                <div className="flex items-center gap-2 px-3 py-2">
+        {/* 页面尺寸 */}
+        <div className="flex space-x-3">
+          <div className="flex-1">
+            <div className="flex items-center rounded-md">
+              <label className="text-base font-medium px-3 py-1 min-w-[120px]">
+                页面尺寸：
+              </label>
+              <div className="flex items-center gap-2 px-2 py-1">
+                <input
+                  type="text"
+                  value={currentWidth.toFixed(1)}
+                  readOnly
+                  className="w-24 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                />
+                <span className="text-base">×</span>
+                <input
+                  type="text"
+                  value={labelHeight}
+                  readOnly
+                  className="w-24 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* 底页/粘胶区/排废区/打码区（四等分，紧凑单行） */}
+        <div className="flex space-x-3">
+          <div className="flex-1">
+            <div className="flex items-center rounded-md">
+              <div className="flex items-center px-3 py-1 whitespace-nowrap w-full justify-between">
+                <div className="flex items-center whitespace-nowrap">
+                  <span className="text-base font-medium" style={{ color: theme.text }}>底页：</span>
                   <input
-                    type="text"
-                    value={currentWidth.toFixed(1)}
-                    readOnly
-                    className="w-24 px-2 py-1 focus:outline-none text-sm text-center"
+                    type="number"
+                    value={baseSheet}
+                    onChange={(e) => updateLabelData({ baseSheet: Number(e.target.value) })}
+                    className="w-12 px-1 py-1 focus:outline-none text-base text-center border-b border-gray-300 ml-1"
+                    style={{
+                      color: theme.text,
+                      backgroundColor: "white",
+                    }}
                   />
-                  <span className="text-sm">×</span>
+                </div>
+                <div className="flex items-center whitespace-nowrap">
+                  <span className="text-base font-medium" style={{ color: theme.text }}>粘胶区：</span>
                   <input
-                    type="text"
-                    value={labelHeight}
-                    readOnly
-                    className="w-24 px-2 py-1 focus:outline-none text-sm text-center"
+                    type="number"
+                    value={adhesiveArea}
+                    onChange={(e) => updateLabelData({ adhesiveArea: Number(e.target.value) })}
+                    className="w-12 px-1 py-1 focus:outline-none text-base text-center border-b border-gray-300 ml-1"
+                    style={{
+                      color: theme.text,
+                      backgroundColor: "white",
+                    }}
                   />
-                  <span className="text-sm">mm</span>
+                </div>
+                <div className="flex items-center whitespace-nowrap">
+                  <span className="text-base font-medium" style={{ color: theme.text }}>排废区：</span>
+                  <input
+                    type="number"
+                    value={wasteArea}
+                    onChange={(e) => updateLabelData({ wasteArea: Number(e.target.value) })}
+                    className="w-12 px-1 py-1 focus:outline-none text-base text-center border-b border-gray-300 ml-1"
+                    style={{
+                      color: theme.text,
+                      backgroundColor: "white",
+                    }}
+                  />
+                </div>
+                <div className="flex items-center whitespace-nowrap">
+                  <span className="text-base font-medium" style={{ color: theme.text }}>打码区：</span>
+                  <input
+                    type="number"
+                    value={codingArea}
+                    onChange={(e) => updateLabelData({ codingArea: Number(e.target.value) })}
+                    className="w-12 px-1 py-1 focus:outline-none text-base text-center border-b border-gray-300 ml-1"
+                    style={{
+                      color: theme.text,
+                      backgroundColor: "white",
+                    }}
+                  />
                 </div>
               </div>
             </div>
           </div>
-          {/* 底页/粘胶区/排废区 - 紧凑排列 */}
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <div className="flex items-center border border-[#30B8D6] rounded-md">
-                <label className="text-base font-medium px-3 py-2 min-w-[120px]">
-                  区域参数：
-                </label>
-                <div className="flex items-center gap-2 px-3 py-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">底页</span>
-                    <input
-                      type="number"
-                      value={baseSheet}
-                      onChange={(e) => updateLabelData({ baseSheet: Number(e.target.value) })}
-                      className="w-20 px-2 py-1 focus:outline-none text-sm text-center"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">粘胶区</span>
-                    <input
-                      type="number"
-                      value={adhesiveArea}
-                      onChange={(e) => updateLabelData({ adhesiveArea: Number(e.target.value) })}
-                      className="w-20 px-2 py-1 focus:outline-none text-sm text-center"
-                    />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">排废区</span>
-                    <input
-                      type="number"
-                      value={wasteArea}
-                      onChange={(e) => updateLabelData({ wasteArea: Number(e.target.value) })}
-                      className="w-20 px-2 py-1 focus:outline-none text-sm text-center"
-                    />
-                  </div>
+        </div>
+        {/* 页面边距 */}
+        <div className="flex space-x-3">
+          <div className="flex-1">
+            <div className="flex items-center rounded-md">
+              <label className="text-base font-medium px-3 py-1 min-w-[120px]">
+                页面边距：
+              </label>
+              <div className="flex items-center gap-2 px-2 py-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-base">上</span>
+                  <input type="text" value={margins.top} readOnly className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300" />
                 </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex space-x-4">
-            <div className="flex-1">
-              <div className="flex items-center border border-[#30B8D6] rounded-md">
-                <label className="text-base font-medium px-3 py-2 min-w-[120px]">
-                  页面边距：
-                </label>
-                <div className="flex items-center gap-3 px-3 py-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">上</span>
-                    <input type="text" value={margins.top} readOnly className="w-14 px-2 py-1 focus:outline-none text-sm text-center" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">下</span>
-                    <input type="text" value={margins.bottom} readOnly className="w-14 px-2 py-1 focus:outline-none text-sm text-center" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">左</span>
-                    <input type="text" value={margins.left} readOnly className="w-14 px-2 py-1 focus:outline-none text-sm text-center" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">右</span>
-                    <input type="text" value={margins.right} readOnly className="w-14 px-2 py-1 focus:outline-none text-sm text-center" />
-                  </div>
-                  <span className="text-sm">mm</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-base">下</span>
+                  <input type="text" value={margins.bottom} readOnly className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300" />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-base">左</span>
+                  <input type="text" value={margins.left} readOnly className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300" />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-base">右</span>
+                  <input type="text" value={margins.right} readOnly className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300" />
                 </div>
               </div>
             </div>

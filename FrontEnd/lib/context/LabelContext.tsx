@@ -17,6 +17,7 @@ interface LabelData {
   baseSheet: number // 底页
   adhesiveArea: number // 粘胶区
   wasteArea: number // 排废区
+  codingArea: number // 打码区
 }
 
 interface LabelContextType {
@@ -70,7 +71,8 @@ const defaultLabelData: LabelData = {
   ,
   baseSheet: 0,
   adhesiveArea: 0,
-  wasteArea: 0
+  wasteArea: 0,
+  codingArea: 0
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)
