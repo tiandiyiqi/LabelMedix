@@ -13,6 +13,10 @@ interface LabelData {
   spacing: number
   lineHeight: number
   currentWidth: number // 当前页面宽度
+  labelCategory: string // 标签分类：缠绕标/非缠绕标/单页标
+  baseSheet: number // 底页
+  adhesiveArea: number // 粘胶区
+  wasteArea: number // 排废区
 }
 
 interface LabelContextType {
@@ -61,7 +65,12 @@ const defaultLabelData: LabelData = {
   fontFamily: 'STHeiti',
   spacing: 1,
   lineHeight: 1.2,
-  currentWidth: 120  // 初始值与labelWidth相同
+  currentWidth: 120,  // 初始值与labelWidth相同
+  labelCategory: '非缠绕标'
+  ,
+  baseSheet: 0,
+  adhesiveArea: 0,
+  wasteArea: 0
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)

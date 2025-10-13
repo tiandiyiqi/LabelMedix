@@ -355,7 +355,7 @@ export default function PDFPreview() {
   }, []);
 
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -641,6 +641,27 @@ export default function PDFPreview() {
         标签预览
       </h2>
       <div className="mb-6 space-y-4">
+        {/* 标签分类 */}
+        <div className="flex">
+          <div className="flex-1">
+            <div className="flex items-center border border-[#30B8D6] rounded-md">
+              <label className="text-base font-medium px-3 py-2 min-w-[120px]">
+                标签分类：
+              </label>
+              <div className="flex-1">
+                <select
+                  value={labelCategory}
+                  onChange={(e) => updateLabelData({ labelCategory: e.target.value })}
+                  className="w-full px-3 py-2 focus:outline-none appearance-none bg-white"
+                >
+                  <option value="缠绕标">缠绕标</option>
+                  <option value="非缠绕标">非缠绕标</option>
+                  <option value="单页标">单页标</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* 宽度和高度 */}
         <div className="flex space-x-4">
           <div className="flex-1">
@@ -685,99 +706,97 @@ export default function PDFPreview() {
           </div>
         </div>
 
-        {/* 页面尺寸和边距 */}
-        <div className="rounded-lg p-2.5 space-y-1.5" style={{ backgroundColor: '#f3f4f6' }}>
-          <div className="flex items-center">
-            <label className="text-sm font-medium min-w-[80px]" style={{ color: '#666666' }}>
-              页面尺寸：
-            </label>
-            <div className="flex items-center">
-              <div className="flex-1 flex items-center" style={{ width: '280px' }}>
-                <input
-                  type="text"
-                  value={currentWidth.toFixed(1)}
-                  className="w-24 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
-                  style={{
-                    color: '#666666',
-                    borderColor: '#9ca3af'
-                  }}
-                  onChange={(e) => e.target.value}
-                />
-                <span className="text-sm mx-2" style={{ color: '#666666' }}>×</span>
-                <input
-                  type="text"
-                  value={labelHeight}
-                  className="w-24 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
-                  style={{
-                    color: '#666666',
-                    borderColor: '#9ca3af'
-                  }}
-                  onChange={(e) => e.target.value}
-                />
-                <span className="text-sm ml-2" style={{ width: '30px', color: '#666666' }}>mm</span>
+        {/* 页面尺寸和边距（外观与标签宽高一致） */}
+        <div className="space-y-2">
+          <div className="flex space-x-4">
+            <div className="flex-1">
+              <div className="flex items-center border border-[#30B8D6] rounded-md">
+                <label className="text-base font-medium px-3 py-2 min-w-[120px]">
+                  页面尺寸：
+                </label>
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <input
+                    type="text"
+                    value={currentWidth.toFixed(1)}
+                    readOnly
+                    className="w-24 px-2 py-1 focus:outline-none text-sm text-center"
+                  />
+                  <span className="text-sm">×</span>
+                  <input
+                    type="text"
+                    value={labelHeight}
+                    readOnly
+                    className="w-24 px-2 py-1 focus:outline-none text-sm text-center"
+                  />
+                  <span className="text-sm">mm</span>
+                </div>
               </div>
             </div>
           </div>
-          
-          <div className="flex items-center">
-            <label className="text-sm font-medium min-w-[80px]" style={{ color: '#666666' }}>
-              页面边距：
-            </label>
-            <div className="flex items-center" style={{ width: '280px' }}>
-              <div className="flex items-center flex-1 justify-between">
-                <div className="flex items-center">
-                  <span className="text-sm mr-1" style={{ color: '#666666' }}>上</span>
-                  <input
-                    type="text"
-                    value={margins.top}
-                    className="w-12 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
-                    style={{
-                      color: '#666666',
-                      borderColor: '#9ca3af'
-                    }}
-                    onChange={(e) => e.target.value}
-                  />
+          {/* 底页/粘胶区/排废区 - 紧凑排列 */}
+          <div className="flex space-x-4">
+            <div className="flex-1">
+              <div className="flex items-center border border-[#30B8D6] rounded-md">
+                <label className="text-base font-medium px-3 py-2 min-w-[120px]">
+                  区域参数：
+                </label>
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">底页</span>
+                    <input
+                      type="number"
+                      value={baseSheet}
+                      onChange={(e) => updateLabelData({ baseSheet: Number(e.target.value) })}
+                      className="w-20 px-2 py-1 focus:outline-none text-sm text-center"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">粘胶区</span>
+                    <input
+                      type="number"
+                      value={adhesiveArea}
+                      onChange={(e) => updateLabelData({ adhesiveArea: Number(e.target.value) })}
+                      className="w-20 px-2 py-1 focus:outline-none text-sm text-center"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">排废区</span>
+                    <input
+                      type="number"
+                      value={wasteArea}
+                      onChange={(e) => updateLabelData({ wasteArea: Number(e.target.value) })}
+                      className="w-20 px-2 py-1 focus:outline-none text-sm text-center"
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center">
-                  <span className="text-sm mr-1" style={{ color: '#666666' }}>下</span>
-                  <input
-                    type="text"
-                    value={margins.bottom}
-                    className="w-12 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
-                    style={{
-                      color: '#666666',
-                      borderColor: '#9ca3af'
-                    }}
-                    onChange={(e) => e.target.value}
-                  />
+              </div>
+            </div>
+          </div>
+          <div className="flex space-x-4">
+            <div className="flex-1">
+              <div className="flex items-center border border-[#30B8D6] rounded-md">
+                <label className="text-base font-medium px-3 py-2 min-w-[120px]">
+                  页面边距：
+                </label>
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">上</span>
+                    <input type="text" value={margins.top} readOnly className="w-14 px-2 py-1 focus:outline-none text-sm text-center" />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">下</span>
+                    <input type="text" value={margins.bottom} readOnly className="w-14 px-2 py-1 focus:outline-none text-sm text-center" />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">左</span>
+                    <input type="text" value={margins.left} readOnly className="w-14 px-2 py-1 focus:outline-none text-sm text-center" />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm">右</span>
+                    <input type="text" value={margins.right} readOnly className="w-14 px-2 py-1 focus:outline-none text-sm text-center" />
+                  </div>
+                  <span className="text-sm">mm</span>
                 </div>
-                <div className="flex items-center">
-                  <span className="text-sm mr-1" style={{ color: '#666666' }}>左</span>
-                  <input
-                    type="text"
-                    value={margins.left}
-                    className="w-12 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
-                    style={{
-                      color: '#666666',
-                      borderColor: '#9ca3af'
-                    }}
-                    onChange={(e) => e.target.value}
-                  />
-                </div>
-                <div className="flex items-center">
-                  <span className="text-sm mr-1" style={{ color: '#666666' }}>右</span>
-                  <input
-                    type="text"
-                    value={margins.right}
-                    className="w-12 px-1 py-0.5 border-b border-t-0 border-l-0 border-r-0 focus:outline-none text-sm text-center bg-transparent"
-                    style={{
-                      color: '#666666',
-                      borderColor: '#9ca3af'
-                    }}
-                    onChange={(e) => e.target.value}
-                  />
-                </div>
-                <span className="text-sm" style={{ width: '30px', color: '#666666' }}>mm</span>
               </div>
             </div>
           </div>
