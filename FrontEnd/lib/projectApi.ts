@@ -271,7 +271,7 @@ export const getTranslationsByCountry = async (
 ): Promise<CountryTranslationGroup> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/translations`,
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${encodeURIComponent(countryCode)}/translations`,
       {
         method: 'GET',
         headers: {
@@ -346,7 +346,7 @@ export const generateCountrySummary = async (
 ): Promise<{ country_code: string; formatted_summary: string }> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/summary`,
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${encodeURIComponent(countryCode)}/summary`,
       {
         method: 'POST',
         headers: {
@@ -385,7 +385,7 @@ export const updateFormattedSummary = async (
 ): Promise<{ country_code: string; formatted_summary: string }> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/formatted-summary`,
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${encodeURIComponent(countryCode)}/formatted-summary`,
       {
         method: 'PUT',
         headers: {
@@ -425,7 +425,7 @@ export const updatePdfFilePath = async (
 ): Promise<{ country_code: string; pdf_file_path: string }> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/pdf`,
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${encodeURIComponent(countryCode)}/pdf`,
       {
         method: 'PUT',
         headers: {
@@ -463,7 +463,7 @@ export const getCountryDetails = async (
 ): Promise<CountryTranslationGroup> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/details`,
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${encodeURIComponent(countryCode)}/details`,
       {
         method: 'GET',
         headers: {

@@ -119,11 +119,11 @@ module.exports = (sequelize) => {
         allowNull: false,
       },
       country_code: {
-        type: DataTypes.STRING(10),
+        type: DataTypes.STRING(100),
         allowNull: false,
         validate: {
           notEmpty: true,
-          len: [2, 10],
+          len: [1, 100],
         },
       },
       sequence_number: {

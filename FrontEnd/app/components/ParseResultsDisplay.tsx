@@ -58,8 +58,8 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
       const output = parsedData.output || result.output || {}
       
       // 将 output 对象转换为数组格式
-      const outputArray = Object.entries(output).map(([code, translations]) => ({
-        countryCode: code,
+      const outputArray = Object.entries(output).map(([countryCode, translations]) => ({
+        countryCode: countryCode, // 保持原始键作为显示内容
         translations: Array.isArray(translations) ? translations : []
       }))
       

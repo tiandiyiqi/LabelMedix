@@ -221,9 +221,22 @@ exports.createProject = async (req, res) => {
 
       // 处理每个国别的翻译数据
       for (let i = 0; i < countryEntries.length; i++) {
-        const [countryCode, translations] = countryEntries[i];
+        const [rawCountryKey, translations] = countryEntries[i];
 
         if (!Array.isArray(translations) || translations.length === 0) {
+          continue;
+        }
+
+        // 直接使用原始键作为国别码
+        const countryCode = rawCountryKey;
+
+        console.log(
+          `🔍 处理国别: "${countryCode}"，翻译条目数: ${translations.length}`
+        );
+
+        // 验证国别码不为空
+        if (!countryCode || countryCode.trim() === "") {
+          console.warn(`⚠️ 国别码为空，跳过处理`);
           continue;
         }
 
@@ -458,7 +471,8 @@ exports.updateTranslation = async (req, res) => {
 // 获取特定国别的翻译
 exports.getTranslationsByCountry = async (req, res) => {
   try {
-    const { projectId, countryCode } = req.params;
+    const { projectId } = req.params;
+    const countryCode = decodeURIComponent(req.params.countryCode);
 
     const group = await CountryTranslationGroup.findOne({
       where: {
@@ -568,7 +582,8 @@ exports.updateCountrySequence = async (req, res) => {
 // 生成国别翻译汇总
 exports.generateCountrySummary = async (req, res) => {
   try {
-    const { projectId, countryCode } = req.params;
+    const { projectId } = req.params;
+    const countryCode = decodeURIComponent(req.params.countryCode);
 
     const group = await CountryTranslationGroup.findOne({
       where: {
@@ -607,7 +622,8 @@ exports.generateCountrySummary = async (req, res) => {
 // 更新PDF文件路径
 exports.updatePdfFilePath = async (req, res) => {
   try {
-    const { projectId, countryCode } = req.params;
+    const { projectId } = req.params;
+    const countryCode = decodeURIComponent(req.params.countryCode);
     const { pdf_file_path } = req.body;
 
     const group = await CountryTranslationGroup.findOne({
@@ -647,7 +663,8 @@ exports.updatePdfFilePath = async (req, res) => {
 // 更新格式化翻译汇总
 exports.updateFormattedSummary = async (req, res) => {
   try {
-    const { projectId, countryCode } = req.params;
+    const { projectId } = req.params;
+    const countryCode = decodeURIComponent(req.params.countryCode);
     const { formatted_summary } = req.body;
 
     if (!formatted_summary) {
@@ -693,7 +710,8 @@ exports.updateFormattedSummary = async (req, res) => {
 // 获取国别翻译汇总和PDF信息
 exports.getCountryDetails = async (req, res) => {
   try {
-    const { projectId, countryCode } = req.params;
+    const { projectId } = req.params;
+    const countryCode = decodeURIComponent(req.params.countryCode);
 
     const group = await CountryTranslationGroup.findOne({
       where: {

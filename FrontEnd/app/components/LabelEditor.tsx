@@ -1,11 +1,11 @@
 "use client"
 
 import { useContext, useState, useEffect } from "react"
-import { ChevronDown, Edit3, Download, Sparkles, RotateCcw } from "lucide-react"
+import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
-import { getProjectById, getCountryDetails, getTranslationsByCountry } from '@/lib/projectApi'
+import { getProjectById, getCountryDetails, getTranslationsByCountry, updateFormattedSummary } from '@/lib/projectApi'
 
 export default function LabelEditor() {
   const themeContext = useContext(ThemeContext)
@@ -19,11 +19,51 @@ export default function LabelEditor() {
   const [isImporting, setIsImporting] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [isFormatting, setIsFormatting] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [availableSequences, setAvailableSequences] = useState<number[]>([])
+  const [availableCountries, setAvailableCountries] = useState<string[]>([])
 
   // 同步 selectedNumber 的变化
   useEffect(() => {
     setSelectedNumberState(Number(selectedNumber))
   }, [selectedNumber])
+
+  // 加载当前项目的可用序号和国别码
+  useEffect(() => {
+    const loadAvailableOptions = async () => {
+      if (selectedProject) {
+        try {
+          const projectDetail = await getProjectById(selectedProject.id)
+          if (projectDetail.translationGroups) {
+            // 提取所有序号并排序
+            const sequences = projectDetail.translationGroups
+              .map(group => group.sequence_number)
+              .sort((a, b) => a - b)
+            setAvailableSequences(sequences)
+
+            // 提取所有国别码并按序号排序
+            const countries = projectDetail.translationGroups
+              .sort((a, b) => a.sequence_number - b.sequence_number)
+              .map(group => group.country_code)
+            setAvailableCountries(countries)
+          } else {
+            setAvailableSequences([])
+            setAvailableCountries([])
+          }
+        } catch (error) {
+          console.error('加载项目选项失败:', error)
+          setAvailableSequences([])
+          setAvailableCountries([])
+        }
+      } else {
+        // 没有选中项目时，使用默认选项
+        setAvailableSequences(Array.from({ length: 30 }, (_, i) => i + 1))
+        setAvailableCountries(languages.map(lang => lang.code))
+      }
+    }
+
+    loadAvailableOptions()
+  }, [selectedProject])
 
   const languages = [
     { name: "AE-阿联酋-阿拉伯语", code: "AE" },
@@ -54,7 +94,6 @@ export default function LabelEditor() {
     { name: "VN-越南-越南语", code: "VN" }
   ]
 
-  const numbers = Array.from({ length: 30 }, (_, i) => (i + 1).toString())
 
   const fonts = [
     { name: "STHeiti", value: "STHeiti" },
@@ -201,6 +240,34 @@ export default function LabelEditor() {
       alert('格式化失败，请重试')
     } finally {
       setIsFormatting(false)
+    }
+  }
+
+  // 保存标签
+  const handleSave = async () => {
+    if (!selectedProject) {
+      alert('请先选择一个项目')
+      return
+    }
+
+    if (!drugInfo || drugInfo.trim() === '') {
+      alert('药品信息为空，无法保存')
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      
+      // 调用API保存格式化翻译汇总
+      await updateFormattedSummary(selectedProject.id, selectedLanguage, drugInfo)
+      
+      alert('标签保存成功！')
+      
+    } catch (error) {
+      console.error('保存标签失败:', error)
+      alert('保存标签失败，请重试')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -370,12 +437,17 @@ export default function LabelEditor() {
                   color: theme.text,
                   backgroundColor: "white",
                 }}
+                disabled={availableSequences.length === 0}
               >
-                {numbers.map((num) => (
-                  <option key={num} value={num}>
-                    {num}
-                  </option>
-                ))}
+                {availableSequences.length === 0 ? (
+                  <option value="">无可用序号</option>
+                ) : (
+                  availableSequences.map((sequence) => (
+                    <option key={sequence} value={sequence}>
+                      {sequence}
+                    </option>
+                  ))
+                )}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
                 <ChevronDown className="h-4 w-4" style={{ color: theme.text }} />
@@ -392,12 +464,20 @@ export default function LabelEditor() {
                 color: theme.text,
                 backgroundColor: "white",
               }}
+              disabled={availableCountries.length === 0}
             >
-              {languages.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.name}
-                </option>
-              ))}
+              {availableCountries.length === 0 ? (
+                <option value="">无可用国别</option>
+              ) : (
+                availableCountries.map((countryCode) => {
+                  const lang = languages.find(l => l.code === countryCode)
+                  return (
+                    <option key={countryCode} value={countryCode}>
+                      {lang ? lang.name : countryCode}
+                    </option>
+                  )
+                })
+              )}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
               <ChevronDown className="h-4 w-4" style={{ color: theme.text }} />
@@ -447,6 +527,18 @@ export default function LabelEditor() {
               >
                 <Sparkles size={14} />
                 {isFormatting ? '格式化中...' : '格式化'}
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!selectedProject || !drugInfo || drugInfo.trim() === '' || isSaving}
+                className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: '#10B981', // 绿色表示保存
+                  color: 'white',
+                }}
+              >
+                <Save size={14} />
+                {isSaving ? '保存中...' : '保存标签'}
               </button>
             </div>
           </div>

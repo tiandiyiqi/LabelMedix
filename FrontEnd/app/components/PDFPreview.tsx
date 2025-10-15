@@ -355,7 +355,7 @@ export default function PDFPreview() {
   }, []);
 
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -629,17 +629,32 @@ export default function PDFPreview() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `label-${selectedLanguage}-${selectedNumber}.pdf`;
+    // 使用当前项目名称作为文件前缀；若无项目则回退为 label
+    const jobName = selectedProject?.job_name || 'label';
+    link.download = `${jobName}-${selectedLanguage}-${selectedNumber}.pdf`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="h-full flex flex-col card rounded-lg shadow w-full" style={{ borderColor: theme.border }}>
-      <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
-        <Eye className="mr-2" size={24} />
-        标签预览
-      </h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xl font-bold flex items-center" style={{ color: theme.primary }}>
+          <Eye className="mr-2" size={24} />
+          标签预览
+        </h2>
+        <button
+          className="px-3 py-1 rounded-md text-sm flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            backgroundColor: '#10B981',
+            color: 'white',
+          }}
+          onClick={handleExportPDF}
+        >
+          <FileDown className="mr-1" size={14} />
+          导出PDF
+        </button>
+      </div>
       <div className="mb-4 space-y-0.5">
         {/* 标签分类 */}
         <div className="flex ">
@@ -943,37 +958,7 @@ export default function PDFPreview() {
         <div>页边距：上{margins.top}mm 下{margins.bottom}mm 左{margins.left}mm 右{margins.right}mm</div>
       </div> */}
 
-      {/* 操作按钮 */}
-      <div className="grid grid-cols-2 gap-4 mt-6 mb-6 h-full items-center">
-        <button
-          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
-          style={{
-            backgroundColor: theme.accent,
-            color: theme.buttonText,
-            border: `1px solid ${theme.neutral}`,
-            boxShadow: `0 2px 4px ${theme.neutral}33`
-          }}
-          onClick={() => {
-            // TODO: 实现保存标签数据功能
-          }}
-        >
-          <Save className="mr-2" size={20} />
-          保存标签数据
-        </button>
-        <button
-          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
-          style={{
-            backgroundColor: theme.accent,
-            color: theme.buttonText,
-            border: `1px solid ${theme.neutral}`,
-            boxShadow: `0 2px 4px ${theme.neutral}33`
-          }}
-          onClick={handleExportPDF}
-        >
-          <FileDown className="mr-2" size={20} />
-          导出PDF
-        </button>
-      </div>
+      {/* 操作按钮容器已上移到预览区域右侧 */}
     </div>
   );
 } 
