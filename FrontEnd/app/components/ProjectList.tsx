@@ -578,7 +578,13 @@ export default function ProjectList() {
                       {project.statistics ? `${project.statistics.countryCount} 个国家/地区 · ${project.statistics.translationCount} 条翻译` : '加载中...'}
                     </div>
                     <div className="text-xs mt-1" style={{ color: theme.subtext }}>
-                      状态: {project.status === 'draft' ? '草稿' : project.status === 'processing' ? '处理中' : project.status === 'completed' ? '已完成' : '失败'}
+                      {project.creator?.username || '未知用户'} · 更新于 {new Date(project.updatedAt).toLocaleString('zh-CN', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
