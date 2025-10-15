@@ -9,12 +9,12 @@ interface ParseResultsDisplayProps {
 }
 
 interface ParsedOutput {
-  language: string
-  translation: string
+  countryCode: string
+  translations: string[]
 }
 
 export default function ParseResultsDisplay({ results, onClose }: ParseResultsDisplayProps) {
-  const [activeFileIndex, setActiveFileIndex] = useState<number>(0) // 当前选中的文件索引
+  const [activeCountryIndex, setActiveCountryIndex] = useState<number>(0) // 当前选中的国家/地区索引
   const [copiedIndex, setCopiedIndex] = useState<string | null>(null)
 
   // 添加键盘事件监听和防止背景滚动
@@ -45,55 +45,58 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
     }
   }
 
-  const parseResults = (result: any) => {
+  const parseResults = (result: any): ParsedOutput[] => {
     try {
+      let parsedData = result
+      
+      // 如果 result.data 是字符串，先解析它
       if (result.data && typeof result.data === 'string') {
-        const parsedData = JSON.parse(result.data)
-        return parsedData
+        parsedData = JSON.parse(result.data)
       }
-      return result
+      
+      // 提取 output 对象
+      const output = parsedData.output || result.output || {}
+      
+      // 将 output 对象转换为数组格式
+      const outputArray = Object.entries(output).map(([code, translations]) => ({
+        countryCode: code,
+        translations: Array.isArray(translations) ? translations : []
+      }))
+      
+      console.log('解析后的输出数组:', outputArray)
+      return outputArray
     } catch (error) {
       console.error('解析结果失败:', error)
-      return result
+      return []
     }
   }
 
-  const getTranslationArray = (translation: string): string[] => {
-    console.log('原始翻译数据:', translation)
+  // 由于新的数据结构已经是数组，这个函数现在简化为直接返回数组或过滤空值
+  const getTranslationArray = (translations: string[] | any): string[] => {
+    console.log('翻译数据:', translations)
     
-    try {
-      // 尝试解析JSON
-      const parsed = JSON.parse(translation)
-      console.log('解析后的数据:', parsed)
-      
-      if (Array.isArray(parsed)) {
-        console.log('数组长度:', parsed.length)
-        return parsed.filter(item => item && item.trim() !== '')
-      }
-      
-      // 如果不是数组，但是解析成功，返回单个元素
-      return [String(parsed)]
-    } catch {
-      // JSON解析失败，尝试其他方式
-      console.log('JSON解析失败，尝试其他方式')
-      
-      // 尝试按行分割
-      const lines = translation.split('\n').filter(line => line.trim() !== '')
-      if (lines.length > 1) {
-        console.log('按行分割结果:', lines.length, '行')
-        return lines
-      }
-      
-      // 尝试按数字序号分割（如 "1. xxx 2. xxx"）
-      const numberedItems = translation.split(/\d+\.\s+/).filter(item => item.trim() !== '')
-      if (numberedItems.length > 1) {
-        console.log('按序号分割结果:', numberedItems.length, '项')
-        return numberedItems
-      }
-      
-      // 默认返回原始字符串
-      return [translation]
+    if (Array.isArray(translations)) {
+      return translations.filter((item: any) => item && typeof item === 'string' && item.trim() !== '')
     }
+    
+    // 兼容旧格式：如果不是数组，尝试作为字符串处理
+    if (typeof translations === 'string') {
+      try {
+        const parsed = JSON.parse(translations)
+        if (Array.isArray(parsed)) {
+          return parsed.filter((item: any) => item && typeof item === 'string' && item.trim() !== '')
+        }
+      } catch {
+        // 解析失败，按行分割
+        const lines = translations.split('\n').filter((line: string) => line.trim() !== '')
+        if (lines.length > 0) {
+          return lines
+        }
+      }
+      return [translations]
+    }
+    
+    return []
   }
 
   // 处理背景点击关闭
@@ -139,8 +142,7 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
         {/* 内容区域 */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {results.map((result, resultIndex) => {
-            const parsedResult = parseResults(result)
-            const output = parsedResult.output || []
+            const outputArray = parseResults(result)
 
             return (
               <div key={resultIndex} className="flex-1 flex flex-col">
@@ -150,7 +152,7 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                     <div className="flex items-center space-x-2">
                       <FileText className="h-4 w-4 text-blue-600" />
                       <span className="text-sm font-medium text-blue-900">
-                        解析完成 - 共处理 {Array.isArray(output) ? output.length : 0} 个文件
+                        解析完成 - 共处理 {outputArray.length} 个国家/地区
                       </span>
                     </div>
                     <div className="flex items-center space-x-3 text-xs text-blue-700">
@@ -177,32 +179,27 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                 </div>
 
                 {/* 标签页导航 */}
-                {Array.isArray(output) && output.length > 0 && (
+                {outputArray.length > 0 && (
                   <div className="border-b border-gray-200 bg-white">
                     <div className="flex overflow-x-auto">
-                      {output.map((item: ParsedOutput, fileIndex: number) => (
+                      {outputArray.map((item: ParsedOutput, countryIndex: number) => (
                         <button
-                          key={fileIndex}
-                          onClick={() => setActiveFileIndex(fileIndex)}
+                          key={countryIndex}
+                          onClick={() => setActiveCountryIndex(countryIndex)}
                           className={`group flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
-                            activeFileIndex === fileIndex
+                            activeCountryIndex === countryIndex
                               ? 'border-blue-500 text-blue-600 bg-white'
                               : 'border-transparent text-gray-500 hover:text-gray-600 hover:border-gray-200 bg-gray-50 hover:bg-white'
                           }`}
                         >
                           <div className="flex items-center space-x-2">
-                            <FileText className={`h-4 w-4 transition-colors duration-200 ${
-                              activeFileIndex === fileIndex ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-600'
+                            <Globe className={`h-4 w-4 transition-colors duration-200 ${
+                              activeCountryIndex === countryIndex ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-600'
                             }`} />
-                            <span>文件 {fileIndex + 1}</span>
-                            <div className="flex items-center space-x-1">
-                              <Globe className={`h-3 w-3 transition-colors duration-200 ${
-                                activeFileIndex === fileIndex ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-600'
-                              }`} />
-                              <span className="text-xs">
-                                {item.language || 'Unknown'}
-                              </span>
-                            </div>
+                            <span className="font-semibold">{item.countryCode}</span>
+                            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                              {item.translations.length} 条
+                            </span>
                           </div>
                         </button>
                       ))}
@@ -210,7 +207,7 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                   </div>
                 )}
 
-                {/* 当前选中文件的内容 */}
+                {/* 当前选中国家/地区的内容 */}
                 <div 
                   className="flex-1 overflow-y-auto p-4"
                   style={{
@@ -219,21 +216,21 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                     maxHeight: 'calc(90vh - 300px)'
                   }}
                 >
-                  {Array.isArray(output) && output.length > 0 && output[activeFileIndex] ? (
+                  {outputArray.length > 0 && outputArray[activeCountryIndex] ? (
                     <div className="space-y-3">
                       <div>
                         <h4 className="text-sm font-medium text-gray-800 mb-3 flex items-center sticky top-0 bg-white py-2 -mx-4 px-4 border-b border-gray-100 z-10">
                           <Globe className="h-4 w-4 mr-2" />
                           翻译内容
                           <span className="ml-2 text-xs text-gray-500">
-                            (文件 {activeFileIndex + 1} - {output[activeFileIndex].language || '未识别'})
+                            ({outputArray[activeCountryIndex].countryCode})
                           </span>
                           <span className="ml-auto text-xs text-blue-600">
-                            共 {getTranslationArray(output[activeFileIndex].translation).length} 条
+                            共 {getTranslationArray(outputArray[activeCountryIndex].translations).length} 条
                           </span>
                         </h4>
                         <div className="space-y-2 mt-4">
-                          {getTranslationArray(output[activeFileIndex].translation).map((text: string, textIndex: number) => (
+                          {getTranslationArray(outputArray[activeCountryIndex].translations).map((text: string, textIndex: number) => (
                             <div
                               key={textIndex}
                               className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200 border border-gray-200 hover:border-gray-300"
@@ -250,16 +247,16 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    copyToClipboard(text, `${activeFileIndex}-${textIndex}`)
+                                    copyToClipboard(text, `${activeCountryIndex}-${textIndex}`)
                                   }}
                                   className={`ml-2 p-1.5 rounded-md transition-all duration-200 flex-shrink-0 ${
-                                    copiedIndex === `${activeFileIndex}-${textIndex}` 
+                                    copiedIndex === `${activeCountryIndex}-${textIndex}` 
                                       ? 'bg-green-100 text-green-600 hover:bg-green-200' 
                                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
                                   }`}
-                                  title={copiedIndex === `${activeFileIndex}-${textIndex}` ? "已复制" : "复制内容"}
+                                  title={copiedIndex === `${activeCountryIndex}-${textIndex}` ? "已复制" : "复制内容"}
                                 >
-                                  {copiedIndex === `${activeFileIndex}-${textIndex}` ? (
+                                  {copiedIndex === `${activeCountryIndex}-${textIndex}` ? (
                                     <Check className="h-3 w-3" />
                                   ) : (
                                     <Copy className="h-3 w-3" />
@@ -271,7 +268,7 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                         </div>
                         
                         {/* 滚动提示 */}
-                        {getTranslationArray(output[activeFileIndex].translation).length > 5 && (
+                        {getTranslationArray(outputArray[activeCountryIndex].translations).length > 5 && (
                           <div className="text-center py-4 text-xs text-gray-400 border-t border-gray-100 mt-4">
                             <span className="bg-gray-100 px-3 py-1 rounded-full">
                               ↑ 向上滚动查看更多内容 ↑
@@ -296,7 +293,7 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
         <div className="border-t p-4 bg-gray-50">
           <div className="flex justify-between items-center">
             <div className="text-xs text-gray-500">
-              💡 点击标签页切换文件，点击复制按钮复制内容
+              💡 点击标签页切换国家/地区，点击复制按钮复制内容
             </div>
             <button
               onClick={(e) => {
