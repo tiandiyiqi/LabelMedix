@@ -494,3 +494,73 @@ exports.getTranslationsByCountry = async (req, res) => {
     });
   }
 };
+
+// 更新国别翻译组的顺序
+exports.updateCountrySequence = async (req, res) => {
+  const transaction = await db.sequelize.transaction();
+
+  try {
+    const { id: projectId } = req.params;
+    const { sequenceUpdates } = req.body;
+
+    // 验证必需字段
+    if (!sequenceUpdates || !Array.isArray(sequenceUpdates)) {
+      return res.status(400).json({
+        success: false,
+        message: "sequenceUpdates 必须是一个数组",
+      });
+    }
+
+    // 验证项目是否存在
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "项目不存在",
+      });
+    }
+
+    // 第一步：将所有需要更新的序号先设置为一个很大的临时值，避免唯一约束冲突
+    // 使用时间戳的后6位 + 随机数作为基数，确保唯一性且不超过INT最大值
+    const tempBase = 1000000 + Math.floor(Math.random() * 1000000); // 1000000-1999999之间
+
+    for (let i = 0; i < sequenceUpdates.length; i++) {
+      const { group_id } = sequenceUpdates[i];
+      const group = await CountryTranslationGroup.findByPk(group_id);
+
+      if (group && group.project_id === parseInt(projectId)) {
+        // 设置为临时大值：随机基数 + index，保证每次更新都是唯一的
+        const tempSequence = tempBase + i;
+        await group.update(
+          { sequence_number: tempSequence },
+          { transaction, validate: false }
+        );
+      }
+    }
+
+    // 第二步：再将序号更新为目标值
+    for (const update of sequenceUpdates) {
+      const { group_id, sequence_number } = update;
+      const group = await CountryTranslationGroup.findByPk(group_id);
+
+      if (group && group.project_id === parseInt(projectId)) {
+        await group.update({ sequence_number }, { transaction });
+      }
+    }
+
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      message: "国别顺序更新成功",
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("更新国别顺序失败:", error);
+    res.status(500).json({
+      success: false,
+      message: "更新国别顺序失败",
+      error: error.message,
+    });
+  }
+};

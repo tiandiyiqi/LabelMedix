@@ -321,6 +321,39 @@ export const updateTranslation = async (
   }
 };
 
+/**
+ * 更新国别翻译组的顺序
+ * @param projectId 项目ID
+ * @param sequenceUpdates 顺序更新数据数组
+ */
+export const updateCountrySequence = async (
+  projectId: number,
+  sequenceUpdates: Array<{ group_id: number; sequence_number: number }>
+): Promise<void> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/sequence`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sequenceUpdates }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`更新顺序失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '更新顺序失败');
+    }
+  } catch (error) {
+    console.error('更新顺序失败:', error);
+    throw error;
+  }
+};
+
 // 导出类型
 export type {
   Project,
