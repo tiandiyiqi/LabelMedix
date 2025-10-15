@@ -10,6 +10,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// 导入路由
+const projectRoutes = require("./routes/projects");
+
 // 基本路由
 app.get("/", (req, res) => {
   res.json({
@@ -23,6 +26,9 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
+
+// API 路由
+app.use("/api/projects", projectRoutes);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {

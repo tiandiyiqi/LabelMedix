@@ -3,10 +3,11 @@ const { Model, DataTypes } = require("sequelize");
 module.exports = (sequelize) => {
   class Permission extends Model {
     static associate(models) {
-      Permission.belongsToMany(models.Role, {
-        through: "RolePermissions",
-        foreignKey: "permission_id",
-      });
+      // TODO: 当需要实现角色权限系统时，取消注释以下代码并创建 Role 模型
+      // Permission.belongsToMany(models.Role, {
+      //   through: "RolePermissions",
+      //   foreignKey: "permission_id",
+      // });
     }
   }
 

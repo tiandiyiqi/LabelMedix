@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useContext } from "react"
+import { useState, useContext, useEffect } from "react"
 import { Search, Plus, Edit, Trash2, Save } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { batchProcessFiles } from '@/lib/cozeApi'
+import { getProjects, createProject, deleteProject as deleteProjectApi } from '@/lib/projectApi'
+import type { Project } from '@/lib/projectApi'
 import ParseResultsDisplay from './ParseResultsDisplay'
 
 export default function ProjectList() {
@@ -16,11 +18,7 @@ export default function ProjectList() {
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
 
-  const [projects, setProjects] = useState([
-    { id: 1, name: "阿司匹林", languages: ["中文", "English", "Español"] },
-    { id: 2, name: "布洛芬", languages: ["中文", "English", "Français"] },
-    { id: 3, name: "对乙酰氨基酚", languages: ["中文", "English", "Deutsch"] },
-  ])
+  const [projects, setProjects] = useState<Project[]>([])
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState("")
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false)
@@ -32,19 +30,55 @@ export default function ProjectList() {
   const [showParseResults, setShowParseResults] = useState(false)
   const [hasError, setHasError] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [searchKeyword, setSearchKeyword] = useState('')
 
-  const handleEdit = (project: { id: number; name: string }) => {
+  // 加载项目列表
+  const loadProjects = async (search?: string) => {
+    try {
+      setIsLoading(true)
+      const { projects: projectList } = await getProjects(1, 100, undefined, search)
+      setProjects(projectList)
+    } catch (error) {
+      console.error('加载项目列表失败:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 处理搜索
+  const handleSearch = (value: string) => {
+    setSearchKeyword(value)
+    loadProjects(value)
+  }
+
+  // 组件挂载时加载项目列表
+  useEffect(() => {
+    loadProjects()
+  }, [])
+
+  const handleEdit = (project: Project) => {
     setEditingId(project.id)
-    setEditingName(project.name)
+    setEditingName(project.job_name)
   }
 
-  const handleSave = (id: number) => {
-    setProjects(projects.map((p) => (p.id === id ? { ...p, name: editingName } : p)))
-    setEditingId(null)
+  const handleSave = async (id: number) => {
+    try {
+      // TODO: 调用更新项目API
+      setProjects(projects.map((p) => (p.id === id ? { ...p, job_name: editingName } : p)))
+      setEditingId(null)
+    } catch (error) {
+      console.error('更新项目失败:', error)
+    }
   }
 
-  const handleDelete = (id: number) => {
-    setProjects(projects.filter((p) => p.id !== id))
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteProjectApi(id)
+      setProjects(projects.filter((p) => p.id !== id))
+    } catch (error) {
+      console.error('删除项目失败:', error)
+    }
   }
 
   const processFiles = (files: FileList | File[]) => {
@@ -178,12 +212,32 @@ export default function ProjectList() {
         setStatusMessage(message)
       })
       
+      // 添加调试日志
+      console.log('🔍 Coze API 返回结果:', result)
+      console.log('🔍 result.data:', result.data)
+      console.log('🔍 result.output:', result.output)
+      
       // 3. 解析完成后直接创建项目
-      setWorkStatus('success')
-      setStatusMessage(`🎉 解析并创建项目成功！已处理 ${uploadedFiles.length} 个文件`)
+      setWorkStatus('parsed')
+      setStatusMessage('💾 正在保存项目到数据库...')
+      
+      // 调用后端API创建项目
+      const createdProject = await createProject({
+        job_name: projectName,
+        job_description: `包含 ${uploadedFiles.length} 个文件`,
+        coze_result: result as any,
+      })
+      
+      console.log('✅ 项目创建响应:', createdProject)
       
       // 保存解析结果
       setParseResults([result] as any[])
+      
+      // 更新项目列表
+      await loadProjects()
+      
+      setWorkStatus('success')
+      setStatusMessage(`🎉 解析并创建项目成功！已处理 ${uploadedFiles.length} 个文件`)
       
       // 延迟关闭窗口
       setTimeout(() => {
@@ -207,7 +261,7 @@ export default function ProjectList() {
     setHasError(false)
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // 清除之前的错误状态
     setHasError(false)
     
@@ -225,14 +279,37 @@ export default function ProjectList() {
       return
     }
 
-    // 创建项目逻辑
-    setWorkStatus('success')
-    setStatusMessage('项目创建成功！')
-    
-    setTimeout(() => {
-      setIsNewProjectOpen(false)
-      resetForm()
-    }, 2000)
+    try {
+      setWorkStatus('preparing')
+      setStatusMessage('📝 正在创建项目...')
+      
+      // 检查是否有解析结果，如果有则使用解析结果创建项目
+      const cozeResult = parseResults.length > 0 ? parseResults[0] : undefined
+      
+      const createdProject = await createProject({
+        job_name: projectName,
+        job_description: `包含 ${uploadedFiles.length} 个文件`,
+        coze_result: cozeResult as any,
+      })
+      
+      // 更新项目列表
+      await loadProjects()
+      
+      setWorkStatus('success')
+      const resultMessage = cozeResult 
+        ? '✅ 项目创建成功！已保存AI解析结果' 
+        : '✅ 项目创建成功！'
+      setStatusMessage(resultMessage)
+      
+      setTimeout(() => {
+        setIsNewProjectOpen(false)
+        resetForm()
+      }, 2000)
+    } catch (error) {
+      console.error('创建项目失败:', error)
+      setWorkStatus('error')
+      setStatusMessage(`❌ 创建项目失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
   }
 
   const getStatusIcon = () => {
@@ -270,7 +347,9 @@ export default function ProjectList() {
         <div className="relative mb-4">
           <input
             type="text"
-            placeholder="搜索项目..."
+            placeholder="搜索项目（工单名称或描述）..."
+            value={searchKeyword}
+            onChange={(e) => handleSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 transition-shadow"
             style={{ 
               borderColor: theme.border,
@@ -280,9 +359,33 @@ export default function ProjectList() {
           />
           <Search className="absolute left-3 top-2.5" style={{ color: theme.subtext }} size={20} />
         </div>
-        <ul className="space-y-2">
-          {projects.map((project) => (
-            <li
+        {isLoading ? (
+          <div className="text-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto" style={{ color: theme.primary }} />
+            <p className="mt-2" style={{ color: theme.subtext }}>加载中...</p>
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-lg" style={{ color: theme.subtext }}>
+              {searchKeyword ? '未找到匹配的项目' : '暂无项目，请创建新项目'}
+            </p>
+            {searchKeyword && (
+              <button
+                onClick={() => {
+                  setSearchKeyword('')
+                  loadProjects()
+                }}
+                className="mt-4 px-4 py-2 rounded-lg text-white"
+                style={{ backgroundColor: theme.primary }}
+              >
+                清除搜索
+              </button>
+            )}
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {projects.map((project) => (
+              <li
               key={project.id}
               className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow"
               style={{ 
@@ -315,9 +418,12 @@ export default function ProjectList() {
               ) : (
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-medium" style={{ color: theme.text }}>{project.name}</div>
+                    <div className="font-medium" style={{ color: theme.text }}>{project.job_name}</div>
                     <div className="text-sm" style={{ color: theme.subtext }}>
-                      {project.languages.join(", ")}
+                      {project.statistics ? `${project.statistics.countryCount} 个国家/地区 · ${project.statistics.translationCount} 条翻译` : '加载中...'}
+                    </div>
+                    <div className="text-xs mt-1" style={{ color: theme.subtext }}>
+                      状态: {project.status === 'draft' ? '草稿' : project.status === 'processing' ? '处理中' : project.status === 'completed' ? '已完成' : '失败'}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -340,7 +446,8 @@ export default function ProjectList() {
               )}
             </li>
           ))}
-        </ul>
+          </ul>
+        )}
         
         {/* 新建项目按钮 - 与项目列表保持距离 */}
         <div className="mt-6">

@@ -166,6 +166,10 @@ export const batchProcessFiles = async (
     const result = await callCozeWorkflow(fileInfoStrings, jobName);
     
     console.log('🎉 批量处理完成');
+    console.log('🔍 返回的 result 对象:', result);
+    console.log('🔍 result.data:', result.data);
+    console.log('🔍 result.output:', result.output);
+    console.log('🔍 result 的所有键:', Object.keys(result));
     return result;
   } catch (error) {
     console.error('❌ 批量处理失败:', error);
