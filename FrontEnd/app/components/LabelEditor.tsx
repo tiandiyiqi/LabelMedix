@@ -20,8 +20,18 @@ export default function LabelEditor() {
   const [isResetting, setIsResetting] = useState(false)
   const [isFormatting, setIsFormatting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  // 轻量提示（非阻断式）
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>(
+    { visible: false, message: '', type: 'info' }
+  )
   const [availableSequences, setAvailableSequences] = useState<number[]>([])
   const [availableCountries, setAvailableCountries] = useState<string[]>([])
+
+  // 显示自动消失的提示
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info', duration = 2000) => {
+    setToast({ visible: true, message, type })
+    window.setTimeout(() => setToast({ visible: false, message: '', type }), duration)
+  }
 
   // 同步 selectedNumber 的变化
   useEffect(() => {
@@ -161,10 +171,7 @@ export default function LabelEditor() {
 
   // 重置 - 从数据库重新加载格式化后的翻译汇总
   const handleReset = async () => {
-    if (!selectedProject) {
-      alert('请先选择一个项目')
-      return
-    }
+    if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
 
     try {
       setIsResetting(true)
@@ -178,7 +185,7 @@ export default function LabelEditor() {
       
     } catch (error) {
       console.error('重置失败:', error)
-      alert('重置失败，请重试')
+      showToast('重置失败，请重试', 'error')
     } finally {
       setIsResetting(false)
     }
@@ -186,10 +193,7 @@ export default function LabelEditor() {
 
   // 导入翻译内容
   const handleImport = async () => {
-    if (!selectedProject) {
-      alert('请先选择一个项目')
-      return
-    }
+    if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
 
     try {
       setIsImporting(true)
@@ -198,7 +202,7 @@ export default function LabelEditor() {
       const translationGroup = await getTranslationsByCountry(selectedProject.id, selectedLanguage)
       
       if (!translationGroup.items || translationGroup.items.length === 0) {
-        alert('该国别暂无翻译内容')
+        showToast('该国别暂无翻译内容', 'info')
         return
       }
 
@@ -213,7 +217,7 @@ export default function LabelEditor() {
       
     } catch (error) {
       console.error('导入失败:', error)
-      alert('导入失败，请重试')
+      showToast('导入失败，请重试', 'error')
     } finally {
       setIsImporting(false)
     }
@@ -221,10 +225,7 @@ export default function LabelEditor() {
 
   // 格式化
   const handleFormat = async () => {
-    if (!drugInfo || drugInfo === '未格式化') {
-      alert('药品信息为空，无法格式化')
-      return
-    }
+    if (!drugInfo || drugInfo === '未格式化') { showToast('药品信息为空，无法格式化', 'info'); return }
 
     try {
       setIsFormatting(true)
@@ -237,7 +238,7 @@ export default function LabelEditor() {
       
     } catch (error) {
       console.error('格式化失败:', error)
-      alert('格式化失败，请重试')
+      showToast('格式化失败，请重试', 'error')
     } finally {
       setIsFormatting(false)
     }
@@ -245,27 +246,20 @@ export default function LabelEditor() {
 
   // 保存标签
   const handleSave = async () => {
-    if (!selectedProject) {
-      alert('请先选择一个项目')
-      return
-    }
+    if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
 
-    if (!drugInfo || drugInfo.trim() === '') {
-      alert('药品信息为空，无法保存')
-      return
-    }
+    if (!drugInfo || drugInfo.trim() === '') { showToast('药品信息为空，无法保存', 'info'); return }
 
     try {
       setIsSaving(true)
       
       // 调用API保存格式化翻译汇总
       await updateFormattedSummary(selectedProject.id, selectedLanguage, drugInfo)
-      
-      alert('标签保存成功！')
+      showToast('标签保存成功', 'success')
       
     } catch (error) {
       console.error('保存标签失败:', error)
-      alert('保存标签失败，请重试')
+      showToast('保存标签失败，请重试', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -418,6 +412,18 @@ export default function LabelEditor() {
 
   return (
     <div className="h-full w-full flex flex-col card rounded-lg shadow" style={{ borderColor: theme.border }}>
+      {/* 顶部轻量提示条 */}
+      {toast.visible && (
+        <div
+          className="fixed bottom-4 left-4 z-50 px-3 py-2 rounded shadow text-sm"
+          style={{
+            backgroundColor: toast.type === 'success' ? '#10B981' : toast.type === 'error' ? '#EF4444' : '#6B7280',
+            color: 'white'
+          }}
+        >
+          {toast.message}
+        </div>
+      )}
       <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
         <Edit3 className="mr-2" size={24} />
         标签编辑器
