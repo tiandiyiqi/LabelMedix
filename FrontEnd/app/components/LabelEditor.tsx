@@ -1,20 +1,29 @@
 "use client"
 
-import { useContext, useState } from "react"
-import { ChevronDown, Edit3 } from "lucide-react"
+import { useContext, useState, useEffect } from "react"
+import { ChevronDown, Edit3, Download, Sparkles, RotateCcw } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
-import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'; // 导入函数
+import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
+import { getProjectById, getCountryDetails, getTranslationsByCountry } from '@/lib/projectApi'
 
 export default function LabelEditor() {
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
 
-  const { labelData, updateLabelData } = useLabelContext()
-  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight } = labelData
+  const { labelData, updateLabelData, setSelectedProject } = useLabelContext()
+  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject } = labelData
 
   const [selectedNumberState, setSelectedNumberState] = useState<number>(Number(selectedNumber))
+  const [isImporting, setIsImporting] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+  const [isFormatting, setIsFormatting] = useState(false)
+
+  // 同步 selectedNumber 的变化
+  useEffect(() => {
+    setSelectedNumberState(Number(selectedNumber))
+  }, [selectedNumber])
 
   const languages = [
     { name: "AE-阿联酋-阿拉伯语", code: "AE" },
@@ -60,35 +69,229 @@ export default function LabelEditor() {
     updateLabelData({ drugInfo: value })
   }
 
+  // 临时测试格式化函数
+  const format_test = (text: string): string => {
+    if (!text || text.trim() === '' || text === '未格式化') {
+      return text
+    }
+
+    // 按行分割文本，过滤空行
+    const lines = text.split('\n').filter(line => line.trim() !== '')
+    
+    if (lines.length === 0) {
+      return text
+    }
+
+    const formattedLines: string[] = []
+    
+    for (let i = 0; i < lines.length; i++) {
+      formattedLines.push(lines[i])
+      
+      // 每三行后添加空白行
+      if ((i + 1) % 3 === 0) {
+        const groupNumber = Math.floor(i / 3) + 1
+        
+        if (groupNumber === 1) {
+          // 第一个三行文本后，增加一个空白行
+          formattedLines.push('')
+        } else if (groupNumber === 2) {
+          // 第二个三行文本后，增加两个空白行
+          formattedLines.push('', '')
+        } else if (groupNumber === 3) {
+          // 第三个三行文本后，增加一个空白行
+          formattedLines.push('')
+        } else if (groupNumber === 4) {
+          // 第四个三行文本后，增加两个空白行
+          formattedLines.push('', '')
+        } else {
+          // 后面每三行文本后，增加一个空白行
+          formattedLines.push('')
+        }
+      }
+    }
+    
+    return formattedLines.join('\n')
+  }
+
+  // 正式格式化函数（预留）
+  const format_official = (text: string): string => {
+    // 正式格式化逻辑待实现
+    console.log('正式格式化函数调用，文本长度:', text.length)
+    return text
+  }
+
+  // 重置 - 从数据库重新加载格式化后的翻译汇总
+  const handleReset = async () => {
+    if (!selectedProject) {
+      alert('请先选择一个项目')
+      return
+    }
+
+    try {
+      setIsResetting(true)
+      
+      // 获取该国别的详细信息
+      const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
+      
+      // 如果有格式化汇总，则恢复；否则显示"未格式化"
+      const resetText = countryDetail.formatted_summary || '未格式化'
+      updateLabelData({ drugInfo: resetText })
+      
+    } catch (error) {
+      console.error('重置失败:', error)
+      alert('重置失败，请重试')
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
+  // 导入翻译内容
+  const handleImport = async () => {
+    if (!selectedProject) {
+      alert('请先选择一个项目')
+      return
+    }
+
+    try {
+      setIsImporting(true)
+      
+      // 获取当前国别的翻译详情
+      const translationGroup = await getTranslationsByCountry(selectedProject.id, selectedLanguage)
+      
+      if (!translationGroup.items || translationGroup.items.length === 0) {
+        alert('该国别暂无翻译内容')
+        return
+      }
+
+      // 按 item_order 排序并拼接成文本
+      const sortedItems = translationGroup.items.sort((a, b) => a.item_order - b.item_order)
+      const importedText = sortedItems
+        .map(item => item.translated_text || item.original_text)
+        .join('\n')
+      
+      // 更新到药品信息
+      updateLabelData({ drugInfo: importedText })
+      
+    } catch (error) {
+      console.error('导入失败:', error)
+      alert('导入失败，请重试')
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  // 格式化
+  const handleFormat = async () => {
+    if (!drugInfo || drugInfo === '未格式化') {
+      alert('药品信息为空，无法格式化')
+      return
+    }
+
+    try {
+      setIsFormatting(true)
+      
+      // 使用临时测试格式化函数
+      const formattedText = format_test(drugInfo)
+      
+      // 更新到药品信息
+      updateLabelData({ drugInfo: formattedText })
+      
+    } catch (error) {
+      console.error('格式化失败:', error)
+      alert('格式化失败，请重试')
+    } finally {
+      setIsFormatting(false)
+    }
+  }
+
+  // 根据序号查找对应的国别码
+  const findCountryBySequence = async (projectId: number, sequence: number): Promise<string | null> => {
+    try {
+      const projectDetail = await getProjectById(projectId)
+      const group = projectDetail.translationGroups?.find(g => g.sequence_number === sequence)
+      return group?.country_code || null
+    } catch (error) {
+      console.error('查找国别码失败:', error)
+      return null
+    }
+  }
+
+  // 根据国别码查找对应的序号
+  const findSequenceByCountry = async (projectId: number, countryCode: string): Promise<number | null> => {
+    try {
+      const projectDetail = await getProjectById(projectId)
+      const group = projectDetail.translationGroups?.find(g => g.country_code === countryCode)
+      return group?.sequence_number || null
+    } catch (error) {
+      console.error('查找序号失败:', error)
+      return null
+    }
+  }
+
   // 处理语言选择变化
-  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLanguage = e.target.value;
-    let newFontFamily = 'Arial Unicode';  // 默认字体
+  const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLanguage = e.target.value
+    let newFontFamily = 'Arial Unicode'  // 默认字体
     
     // 根据语言设置对应的字体
     if (newLanguage === 'CN') {
-      newFontFamily = 'STHeiti';
+      newFontFamily = 'STHeiti'
     } else if (newLanguage === 'TH' || newLanguage === 'AE') {
-      newFontFamily = 'Arial Unicode';
+      newFontFamily = 'Arial Unicode'
     } else {
-      newFontFamily = 'Arial';
+      newFontFamily = 'Arial'
     }
     
-    // 更新语言和字体
-    updateLabelData({
-      selectedLanguage: newLanguage,
-      fontFamily: newFontFamily
-    });
-  };
+    // 如果有选中的项目，需要查找对应的序号和加载数据
+    if (selectedProject) {
+      try {
+        // 查找该国别码对应的序号
+        const sequence = await findSequenceByCountry(selectedProject.id, newLanguage)
+        
+        if (sequence !== null) {
+          // 获取该国别的详细信息
+          const countryDetail = await getCountryDetails(selectedProject.id, newLanguage)
+          
+          // 更新选中项目信息
+          setSelectedProject({
+            id: selectedProject.id,
+            job_name: selectedProject.job_name,
+            currentSequence: sequence,
+            countryCode: newLanguage,
+            formattedSummary: countryDetail.formatted_summary || undefined
+          })
+        } else {
+          // 如果该国别码不存在于当前项目，只更新语言和字体
+          updateLabelData({
+            selectedLanguage: newLanguage,
+            fontFamily: newFontFamily,
+            drugInfo: '该国别在当前项目中不存在'
+          })
+        }
+      } catch (error) {
+        console.error('加载国别数据失败:', error)
+        updateLabelData({
+          selectedLanguage: newLanguage,
+          fontFamily: newFontFamily
+        })
+      }
+    } else {
+      // 没有选中项目时，只更新语言和字体
+      updateLabelData({
+        selectedLanguage: newLanguage,
+        fontFamily: newFontFamily
+      })
+    }
+  }
 
   // 处理序号选择变化
-  const handleNumberChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newNumber = Number(e.target.value);
-    setSelectedNumberState(newNumber);
+  const handleNumberChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newNumber = Number(e.target.value)
+    setSelectedNumberState(newNumber)
     
     // 计算当前页面宽度和边距
-    const currentWidth = calculatePageWidth(labelWidth, newNumber);
-    const margins = calculatePageMargins(newNumber);
+    const currentWidth = calculatePageWidth(labelWidth, newNumber)
+    const margins = calculatePageMargins(newNumber)
     
     // 输出页面相关信息
     console.log('页面参数变化:', {
@@ -102,14 +305,49 @@ export default function LabelEditor() {
         左: margins.left,
         右: margins.right
       }
-    });
+    })
     
-    // 更新上下文中的序号和当前宽度
-    updateLabelData({ 
-      selectedNumber: e.target.value,
-      currentWidth
-    });
-  };
+    // 如果有选中的项目，需要查找对应的国别码和加载数据
+    if (selectedProject) {
+      try {
+        // 查找该序号对应的国别码
+        const countryCode = await findCountryBySequence(selectedProject.id, newNumber)
+        
+        if (countryCode) {
+          // 获取该国别的详细信息
+          const countryDetail = await getCountryDetails(selectedProject.id, countryCode)
+          
+          // 更新选中项目信息
+          setSelectedProject({
+            id: selectedProject.id,
+            job_name: selectedProject.job_name,
+            currentSequence: newNumber,
+            countryCode: countryCode,
+            formattedSummary: countryDetail.formatted_summary || undefined
+          })
+        } else {
+          // 如果该序号不存在于当前项目，只更新序号和宽度
+          updateLabelData({
+            selectedNumber: e.target.value,
+            currentWidth,
+            drugInfo: '该序号在当前项目中不存在'
+          })
+        }
+      } catch (error) {
+        console.error('加载序号数据失败:', error)
+        updateLabelData({
+          selectedNumber: e.target.value,
+          currentWidth
+        })
+      }
+    } else {
+      // 没有选中项目时，只更新序号和宽度
+      updateLabelData({ 
+        selectedNumber: e.target.value,
+        currentWidth
+      })
+    }
+  }
 
   return (
     <div className="h-full w-full flex flex-col card rounded-lg shadow" style={{ borderColor: theme.border }}>
@@ -169,9 +407,49 @@ export default function LabelEditor() {
       </div>
       <div className="flex-grow space-y-6 overflow-y-auto">
         <div>
-          <label className="block text-sm font-medium mb-1" style={{ color: theme.text }}>
-            药品信息
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium" style={{ color: theme.text }}>
+              药品信息
+            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={handleReset}
+                disabled={!selectedProject || isResetting}
+                className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: theme.primary,
+                  color: theme.buttonText,
+                }}
+              >
+                <RotateCcw size={14} />
+                {isResetting ? '重置中...' : '重置'}
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!selectedProject || isImporting}
+                className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: theme.secondary,
+                  color: theme.buttonText,
+                }}
+              >
+                <Download size={14} />
+                {isImporting ? '导入中...' : '导入'}
+              </button>
+              <button
+                onClick={handleFormat}
+                disabled={!drugInfo || drugInfo === '未格式化' || isFormatting}
+                className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: theme.accent,
+                  color: theme.buttonText,
+                }}
+              >
+                <Sparkles size={14} />
+                {isFormatting ? '格式化中...' : '格式化'}
+              </button>
+            </div>
+          </div>
           <textarea
             value={drugInfo}
             onChange={(e) => handleInputChange(e.target.value)}
@@ -273,4 +551,3 @@ export default function LabelEditor() {
     </div>
   )
 }
-

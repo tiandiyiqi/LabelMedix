@@ -39,6 +39,8 @@ interface CountryTranslationGroup {
   country_code: string;
   sequence_number: number;
   total_items: number;
+  formatted_summary?: string;
+  pdf_file_path?: string;
   items?: TranslationItem[];
   createdAt: string;
   updatedAt: string;
@@ -51,50 +53,32 @@ interface ProjectDetail extends Project {
 interface CreateProjectData {
   job_name: string;
   job_description?: string;
-  user_id?: number;
-  coze_result?: {
-    output: {
-      [countryCode: string]: string[];
-    };
-  };
+  coze_result?: any;
 }
 
 /**
  * 获取项目列表
  * @param page 页码
- * @param limit 每页数量
- * @param status 项目状态筛选
- * @param search 搜索关键词（工单名称或描述）
+ * @param pageSize 每页数量
+ * @param status 状态筛选
+ * @param search 搜索关键词
  */
 export const getProjects = async (
   page: number = 1,
-  limit: number = 10,
-  status?: 'draft' | 'processing' | 'completed' | 'failed',
+  pageSize: number = 10,
+  status?: string,
   search?: string
-): Promise<{
-  projects: Project[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}> => {
+): Promise<{ projects: Project[]; total: number; page: number; pageSize: number }> => {
   try {
     const params = new URLSearchParams({
       page: page.toString(),
-      limit: limit.toString(),
+      pageSize: pageSize.toString(),
     });
 
-    if (status) {
-      params.append('status', status);
-    }
+    if (status) params.append('status', status);
+    if (search) params.append('search', search);
 
-    if (search && search.trim()) {
-      params.append('search', search.trim());
-    }
-
-    const response = await fetch(`${API_BASE_URL}/api/projects?${params}`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -119,7 +103,7 @@ export const getProjects = async (
 };
 
 /**
- * 获取项目详情
+ * 获取单个项目详情
  * @param projectId 项目ID
  */
 export const getProjectById = async (projectId: number): Promise<ProjectDetail> => {
@@ -152,7 +136,7 @@ export const getProjectById = async (projectId: number): Promise<ProjectDetail> 
  * 创建项目
  * @param projectData 项目数据
  */
-export const createProject = async (projectData: CreateProjectData): Promise<ProjectDetail> => {
+export const createProject = async (projectData: CreateProjectData): Promise<Project> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/projects`, {
       method: 'POST',
@@ -163,7 +147,8 @@ export const createProject = async (projectData: CreateProjectData): Promise<Pro
     });
 
     if (!response.ok) {
-      throw new Error(`创建项目失败: ${response.status} ${response.statusText}`);
+      const errorData = await response.json();
+      throw new Error(errorData.message || `创建项目失败: ${response.status} ${response.statusText}`);
     }
 
     const result = await response.json();
@@ -182,15 +167,11 @@ export const createProject = async (projectData: CreateProjectData): Promise<Pro
 /**
  * 更新项目
  * @param projectId 项目ID
- * @param updateData 更新数据
+ * @param updates 更新数据
  */
 export const updateProject = async (
   projectId: number,
-  updateData: {
-    job_name?: string;
-    job_description?: string;
-    status?: 'draft' | 'processing' | 'completed' | 'failed';
-  }
+  updates: Partial<Project>
 ): Promise<Project> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`, {
@@ -198,7 +179,7 @@ export const updateProject = async (
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(updateData),
+      body: JSON.stringify(updates),
     });
 
     if (!response.ok) {
@@ -247,7 +228,40 @@ export const deleteProject = async (projectId: number): Promise<void> => {
 };
 
 /**
- * 获取特定国别的翻译
+ * 更新国别顺序
+ * @param projectId 项目ID
+ * @param sequenceUpdates 顺序更新数据
+ */
+export const updateCountrySequence = async (
+  projectId: number,
+  sequenceUpdates: Array<{ group_id: number; sequence_number: number }>
+): Promise<void> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/sequence`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sequence_updates: sequenceUpdates }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`更新顺序失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '更新顺序失败');
+    }
+  } catch (error) {
+    console.error('更新顺序失败:', error);
+    throw error;
+  }
+};
+
+/**
+ * 获取特定国别的翻译列表
  * @param projectId 项目ID
  * @param countryCode 国别代码
  */
@@ -257,7 +271,7 @@ export const getTranslationsByCountry = async (
 ): Promise<CountryTranslationGroup> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/projects/${projectId}/translations/${countryCode}`,
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/translations`,
       {
         method: 'GET',
         headers: {
@@ -284,25 +298,25 @@ export const getTranslationsByCountry = async (
 };
 
 /**
- * 更新翻译内容
- * @param itemId 翻译条目ID
- * @param updateData 更新数据
+ * 更新翻译项
+ * @param translationId 翻译项ID
+ * @param updates 更新数据
  */
 export const updateTranslation = async (
-  itemId: number,
-  updateData: {
-    translated_text?: string;
-    field_type?: 'basic_info' | 'number_field' | 'drug_description';
-  }
+  translationId: number,
+  updates: { translated_text: string }
 ): Promise<TranslationItem> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/projects/translations/${itemId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/translations/${translationId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`更新翻译失败: ${response.status} ${response.statusText}`);
@@ -322,34 +336,155 @@ export const updateTranslation = async (
 };
 
 /**
- * 更新国别翻译组的顺序
+ * 生成国别翻译汇总
  * @param projectId 项目ID
- * @param sequenceUpdates 顺序更新数据数组
+ * @param countryCode 国别代码
  */
-export const updateCountrySequence = async (
+export const generateCountrySummary = async (
   projectId: number,
-  sequenceUpdates: Array<{ group_id: number; sequence_number: number }>
-): Promise<void> => {
+  countryCode: string
+): Promise<{ country_code: string; formatted_summary: string }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}/sequence`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ sequenceUpdates }),
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/summary`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`更新顺序失败: ${response.status} ${response.statusText}`);
+      throw new Error(`生成翻译汇总失败: ${response.status} ${response.statusText}`);
     }
 
     const result = await response.json();
 
     if (!result.success) {
-      throw new Error(result.message || '更新顺序失败');
+      throw new Error(result.message || '生成翻译汇总失败');
     }
+
+    return result.data;
   } catch (error) {
-    console.error('更新顺序失败:', error);
+    console.error('生成翻译汇总失败:', error);
+    throw error;
+  }
+};
+
+/**
+ * 更新格式化翻译汇总
+ * @param projectId 项目ID
+ * @param countryCode 国别代码
+ * @param formattedSummary 格式化后的翻译汇总
+ */
+export const updateFormattedSummary = async (
+  projectId: number,
+  countryCode: string,
+  formattedSummary: string
+): Promise<{ country_code: string; formatted_summary: string }> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/formatted-summary`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ formatted_summary: formattedSummary }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`更新翻译汇总失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '更新翻译汇总失败');
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('更新翻译汇总失败:', error);
+    throw error;
+  }
+};
+
+/**
+ * 更新PDF文件路径
+ * @param projectId 项目ID
+ * @param countryCode 国别代码
+ * @param pdfFilePath PDF文件路径
+ */
+export const updatePdfFilePath = async (
+  projectId: number,
+  countryCode: string,
+  pdfFilePath: string
+): Promise<{ country_code: string; pdf_file_path: string }> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/pdf`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pdf_file_path: pdfFilePath }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`更新PDF文件路径失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '更新PDF文件路径失败');
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('更新PDF文件路径失败:', error);
+    throw error;
+  }
+};
+
+/**
+ * 获取国别详细信息（包括汇总和PDF）
+ * @param projectId 项目ID
+ * @param countryCode 国别代码
+ */
+export const getCountryDetails = async (
+  projectId: number,
+  countryCode: string
+): Promise<CountryTranslationGroup> => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/projects/${projectId}/countries/${countryCode}/details`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`获取国别详情失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '获取国别详情失败');
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('获取国别详情失败:', error);
     throw error;
   }
 };
@@ -362,4 +497,3 @@ export type {
   CountryTranslationGroup,
   CreateProjectData,
 };
-

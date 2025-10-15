@@ -564,3 +564,178 @@ exports.updateCountrySequence = async (req, res) => {
     });
   }
 };
+
+// 生成国别翻译汇总
+exports.generateCountrySummary = async (req, res) => {
+  try {
+    const { projectId, countryCode } = req.params;
+
+    const group = await CountryTranslationGroup.findOne({
+      where: {
+        project_id: projectId,
+        country_code: countryCode,
+      },
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "国别翻译组不存在",
+      });
+    }
+
+    const summary = await group.generateFormattedSummary();
+
+    res.json({
+      success: true,
+      message: "翻译汇总生成成功",
+      data: {
+        country_code: countryCode,
+        formatted_summary: summary,
+      },
+    });
+  } catch (error) {
+    console.error("生成翻译汇总失败:", error);
+    res.status(500).json({
+      success: false,
+      message: "生成翻译汇总失败",
+      error: error.message,
+    });
+  }
+};
+
+// 更新PDF文件路径
+exports.updatePdfFilePath = async (req, res) => {
+  try {
+    const { projectId, countryCode } = req.params;
+    const { pdf_file_path } = req.body;
+
+    const group = await CountryTranslationGroup.findOne({
+      where: {
+        project_id: projectId,
+        country_code: countryCode,
+      },
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "国别翻译组不存在",
+      });
+    }
+
+    await group.update({ pdf_file_path });
+
+    res.json({
+      success: true,
+      message: "PDF文件路径更新成功",
+      data: {
+        country_code: countryCode,
+        pdf_file_path,
+      },
+    });
+  } catch (error) {
+    console.error("更新PDF文件路径失败:", error);
+    res.status(500).json({
+      success: false,
+      message: "更新PDF文件路径失败",
+      error: error.message,
+    });
+  }
+};
+
+// 更新格式化翻译汇总
+exports.updateFormattedSummary = async (req, res) => {
+  try {
+    const { projectId, countryCode } = req.params;
+    const { formatted_summary } = req.body;
+
+    if (!formatted_summary) {
+      return res.status(400).json({
+        success: false,
+        message: "格式化翻译汇总不能为空",
+      });
+    }
+
+    const group = await CountryTranslationGroup.findOne({
+      where: {
+        project_id: projectId,
+        country_code: countryCode,
+      },
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "国别翻译组不存在",
+      });
+    }
+
+    await group.update({ formatted_summary });
+
+    res.json({
+      success: true,
+      message: "格式化翻译汇总更新成功",
+      data: {
+        country_code: countryCode,
+        formatted_summary,
+      },
+    });
+  } catch (error) {
+    console.error("更新格式化翻译汇总失败:", error);
+    res.status(500).json({
+      success: false,
+      message: "更新格式化翻译汇总失败",
+      error: error.message,
+    });
+  }
+};
+// 获取国别翻译汇总和PDF信息
+exports.getCountryDetails = async (req, res) => {
+  try {
+    const { projectId, countryCode } = req.params;
+
+    const group = await CountryTranslationGroup.findOne({
+      where: {
+        project_id: projectId,
+        country_code: countryCode,
+      },
+      include: [
+        {
+          model: TranslationItem,
+          as: "items",
+          order: [["item_order", "ASC"]],
+        },
+      ],
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "国别翻译组不存在",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: group.id,
+        country_code: group.country_code,
+        sequence_number: group.sequence_number,
+        total_items: group.total_items,
+        formatted_summary: group.formatted_summary,
+        pdf_file_path: group.pdf_file_path,
+        items: group.items,
+        createdAt: group.createdAt,
+        updatedAt: group.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("获取国别详情失败:", error);
+    res.status(500).json({
+      success: false,
+      message: "获取国别详情失败",
+      error: error.message,
+    });
+  }
+};

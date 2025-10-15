@@ -3,13 +3,14 @@
 import { useState, useContext, useEffect } from "react"
 import { Search, Plus, Edit, Trash2, Save, GripVertical } from "lucide-react"
 import { ThemeContext } from "./Layout"
+import { useLabelContext } from "@/lib/context/LabelContext"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { batchProcessFiles } from '@/lib/cozeApi'
-import { getProjects, createProject, deleteProject as deleteProjectApi, getProjectById, updateProject, updateCountrySequence, getTranslationsByCountry, updateTranslation } from '@/lib/projectApi'
+import { getProjects, createProject, deleteProject as deleteProjectApi, getProjectById, updateProject, updateCountrySequence, getTranslationsByCountry, updateTranslation, getCountryDetails } from '@/lib/projectApi'
 import type { Project } from '@/lib/projectApi'
 import ParseResultsDisplay from './ParseResultsDisplay'
 
@@ -17,6 +18,8 @@ export default function ProjectList() {
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
+
+  const { setSelectedProject } = useLabelContext()
 
   const [projects, setProjects] = useState<Project[]>([])
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -66,6 +69,38 @@ export default function ProjectList() {
   useEffect(() => {
     loadProjects()
   }, [])
+
+  // 点击项目时选中
+  const handleProjectClick = async (project: Project) => {
+    try {
+      // 获取项目完整信息
+      const projectDetail = await getProjectById(project.id)
+      
+      // 如果有国别翻译组，选择序号为1的国别
+      if (projectDetail.translationGroups && projectDetail.translationGroups.length > 0) {
+        // 按序号排序
+        const sortedGroups = projectDetail.translationGroups.sort((a, b) => 
+          a.sequence_number - b.sequence_number
+        )
+        
+        // 找到序号为1的国别（可能不存在，则选择第一个）
+        const firstGroup = sortedGroups.find(g => g.sequence_number === 1) || sortedGroups[0]
+        
+        // 获取该国别的详细信息，包括 formatted_summary
+        const countryDetail = await getCountryDetails(project.id, firstGroup.country_code)
+        
+        setSelectedProject({
+          id: project.id,
+          job_name: project.job_name,
+          currentSequence: firstGroup.sequence_number,
+          countryCode: firstGroup.country_code,
+          formattedSummary: countryDetail.formatted_summary || undefined
+        })
+      }
+    } catch (error) {
+      console.error('加载项目详情失败:', error)
+    }
+  }
 
   // 打开编辑对话框
   const handleEdit = async (project: Project) => {
@@ -542,12 +577,13 @@ export default function ProjectList() {
             {projects.map((project) => (
               <li
               key={project.id}
-              className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+              className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
               style={{ 
                 backgroundColor: "white",
                 borderColor: theme.border,
                 borderWidth: "1px",
               }}
+              onClick={() => handleProjectClick(project)}
             >
               {editingId === project.id ? (
                 <div className="flex items-center justify-between">
@@ -589,14 +625,20 @@ export default function ProjectList() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => handleEdit(project)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEdit(project)
+                      }}
                       className="p-1 rounded hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: theme.secondary, color: theme.buttonText }}
                     >
                       <Edit size={18} />
                     </button>
                     <button
-                      onClick={() => handleDelete(project.id)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDelete(project.id)
+                      }}
                       className="p-1 rounded hover:opacity-80 transition-opacity"
                       style={{ backgroundColor: theme.accent, color: theme.buttonText }}
                     >
@@ -994,4 +1036,3 @@ export default function ProjectList() {
     </div>
   )
 }
-

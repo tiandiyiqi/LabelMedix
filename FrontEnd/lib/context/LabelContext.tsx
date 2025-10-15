@@ -2,6 +2,14 @@
 
 import React, { createContext, useContext, useState } from 'react'
 
+interface SelectedProject {
+  id: number
+  job_name: string
+  currentSequence: number
+  countryCode: string
+  formattedSummary?: string
+}
+
 interface LabelData {
   selectedLanguage: string
   selectedNumber: string
@@ -18,11 +26,13 @@ interface LabelData {
   adhesiveArea: number // 粘胶区
   wasteArea: number // 排废区
   codingArea: number // 打码区
+  selectedProject?: SelectedProject // 选中的项目信息
 }
 
 interface LabelContextType {
   labelData: LabelData
   updateLabelData: (data: Partial<LabelData>) => void
+  setSelectedProject: (project: SelectedProject | undefined) => void
 }
 
 const defaultLabelData: LabelData = {
@@ -72,7 +82,8 @@ const defaultLabelData: LabelData = {
   baseSheet: 0,
   adhesiveArea: 0,
   wasteArea: 0,
-  codingArea: 0
+  codingArea: 0,
+  selectedProject: undefined
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)
@@ -84,8 +95,19 @@ export function LabelProvider({ children }: { children: React.ReactNode }) {
     setLabelData(prev => ({ ...prev, ...data }))
   }
 
+  const setSelectedProject = (project: SelectedProject | undefined) => {
+    setLabelData(prev => ({
+      ...prev,
+      selectedProject: project,
+      // 当选中项目时，同步更新相关字段
+      selectedLanguage: project?.countryCode || prev.selectedLanguage,
+      selectedNumber: project?.currentSequence.toString() || prev.selectedNumber,
+      drugInfo: project?.formattedSummary || '未格式化'
+    }))
+  }
+
   return (
-    <LabelContext.Provider value={{ labelData, updateLabelData }}>
+    <LabelContext.Provider value={{ labelData, updateLabelData, setSelectedProject }}>
       {children}
     </LabelContext.Provider>
   )
@@ -97,4 +119,7 @@ export function useLabelContext() {
     throw new Error('useLabelContext must be used within a LabelProvider')
   }
   return context
-} 
+}
+
+// 导出类型供其他组件使用
+export type { SelectedProject }

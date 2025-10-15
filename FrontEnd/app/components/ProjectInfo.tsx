@@ -1,10 +1,11 @@
 "use client"
 
-import { useContext } from "react"
-import { FileDown, Save } from "lucide-react"
+import { useContext, useState } from "react"
+import { FileDown, Save, Wand2 } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { jsPDF } from 'jspdf'
+import { updateFormattedSummary } from '@/lib/projectApi'
 
 interface LanguageMap {
   [key: string]: string
@@ -16,7 +17,45 @@ export default function ProjectInfo() {
   const { theme } = themeContext
 
   const { labelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, selectedProject } = labelData
+
+  const [isSaving, setIsSaving] = useState(false)
+
+  // 批量格式化（功能待补充）
+  const handleBatchFormat = () => {
+    alert('批量格式化功能待补充')
+  }
+
+  // 保存项目数据
+  const handleSaveProjectData = async () => {
+    if (!selectedProject) {
+      alert('请先选择一个项目')
+      return
+    }
+
+    if (!drugInfo || drugInfo === '未格式化') {
+      alert('药品信息为空，无法保存')
+      return
+    }
+
+    try {
+      setIsSaving(true)
+      
+      // 调用 API 保存药品信息到 formatted_summary
+      await updateFormattedSummary(
+        selectedProject.id,
+        selectedLanguage,
+        drugInfo
+      )
+      
+      alert('保存成功！')
+    } catch (error) {
+      console.error('保存失败:', error)
+      alert('保存失败，请重试')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleBatchExport = async () => {
     try {
@@ -112,12 +151,26 @@ export default function ProjectInfo() {
       }}
     >
       <div className="text-xl font-bold text-white">
-        示例项目
+        {selectedProject ? selectedProject.job_name : '示例项目'}
       </div>
       <div className="flex gap-4">
         <button
-          onClick={() => {}}
+          onClick={handleBatchFormat}
           className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
+          style={{
+            backgroundColor: theme.primary,
+            color: theme.buttonText,
+            border: `1px solid ${theme.neutral}`,
+            boxShadow: `0 2px 4px ${theme.neutral}33`
+          }}
+        >
+          <Wand2 className="mr-2" size={20} />
+          <span style={{ color: theme.buttonText }}>批量格式化</span>
+        </button>
+        <button
+          onClick={handleSaveProjectData}
+          disabled={!selectedProject || isSaving}
+          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             backgroundColor: theme.accent,
             color: theme.buttonText,
@@ -126,7 +179,9 @@ export default function ProjectInfo() {
           }}
         >
           <Save className="mr-2" size={20} />
-          <span style={{ color: theme.buttonText }}>保存项目数据</span>
+          <span style={{ color: theme.buttonText }}>
+            {isSaving ? '保存中...' : '保存项目数据'}
+          </span>
         </button>
         <button
           onClick={handleBatchExport}
@@ -145,4 +200,3 @@ export default function ProjectInfo() {
     </div>
   )
 }
-

@@ -17,4 +17,28 @@ router.get(
 ); // 获取特定国别的翻译
 router.put("/translations/:itemId", projectController.updateTranslation); // 更新翻译内容
 
+// 国别翻译组相关路由
+router.get(
+  "/:projectId/countries/:countryCode/translations",
+  projectController.getTranslationsByCountry
+); // 获取特定国别的翻译
+
+// 国别翻译组扩展功能路由
+router.post(
+  "/:projectId/countries/:countryCode/summary",
+  projectController.generateCountrySummary
+); // 生成国别翻译汇总
+router.put(
+  "/:projectId/countries/:countryCode/formatted-summary",
+  projectController.updateFormattedSummary
+); // 更新格式化翻译汇总
+router.put(
+  "/:projectId/countries/:countryCode/pdf",
+  projectController.updatePdfFilePath
+); // 更新PDF文件路径
+router.get(
+  "/:projectId/countries/:countryCode/details",
+  projectController.getCountryDetails
+); // 获取国别详细信息（包括汇总和PDF）
+
 module.exports = router;
