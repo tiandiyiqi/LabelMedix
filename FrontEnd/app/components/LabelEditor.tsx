@@ -264,12 +264,19 @@ export default function LabelEditor() {
   // 处理语言选择变化
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLanguage = e.target.value
-    let newFontFamily = 'Arial Unicode'  // 默认字体
+    let newFontFamily = 'Arial'  // 默认字体
+    
+    // 检查是否为从右到左的语言
+    const isRTL = () => {
+      if (!newLanguage) return false;
+      const rtlKeywords = ['Arabic', 'Hebrew', 'Persian', 'Farsi', 'Urdu', 'Punjabi', 'Somali'];
+      return rtlKeywords.some(keyword => newLanguage.includes(keyword));
+    };
     
     // 根据语言设置对应的字体
     if (newLanguage === 'CN') {
       newFontFamily = 'STHeiti'
-    } else if (newLanguage === 'TH' || newLanguage === 'AE') {
+    } else if (isRTL()) {
       newFontFamily = 'Arial Unicode'
     } else {
       newFontFamily = 'Arial'
@@ -292,6 +299,14 @@ export default function LabelEditor() {
             currentSequence: sequence,
             countryCode: newLanguage,
             formattedSummary: countryDetail.formatted_summary || undefined
+          })
+          
+          // 同时更新语言和字体
+          updateLabelData({
+            selectedLanguage: newLanguage,
+            fontFamily: newFontFamily,
+            selectedNumber: sequence.toString(),
+            drugInfo: countryDetail.formatted_summary || '未格式化'
           })
         } else {
           // 如果该国别码不存在于当前项目，只更新语言和字体
