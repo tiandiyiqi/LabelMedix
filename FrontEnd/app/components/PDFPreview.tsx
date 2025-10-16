@@ -419,14 +419,21 @@ export default function PDFPreview() {
     // 移除即时更新，让用户按回车确认
   };
 
+  // 检查是否为从右到左的语言
+  const isRTL = () => {
+    if (!selectedLanguage) return false;
+    const rtlKeywords = ['Arabic', 'Hebrew', 'Persian', 'Farsi', 'Urdu', 'Punjabi', 'Somali'];
+    return rtlKeywords.some(keyword => selectedLanguage.includes(keyword));
+  };
+
   // 创建动态内容样式
   const contentStyle = {
     ...styles.content,
     fontSize: mmToPt(fontSize),
     fontFamily: fontFamily,
     lineHeight: lineHeight,
-    textAlign: selectedLanguage === 'AE' ? 'right' : 'left',  // 阿拉伯语右对齐
-    direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',     // 阿拉伯语从右到左
+    textAlign: isRTL() ? 'right' : 'left',  // RTL语言右对齐
+    direction: isRTL() ? 'rtl' : 'ltr',     // RTL语言从右到左
   };
 
   // 处理文本

@@ -116,7 +116,14 @@ export default function LabelPreview() {
           }
         } else {
           // 非中文语言处理
-          if (selectedLanguage === "TH" || selectedLanguage === "AE") {
+          // 检查是否为从右到左的语言
+          const isRTL = () => {
+            if (!selectedLanguage) return false;
+            const rtlKeywords = ['Arabic', 'Hebrew', 'Persian', 'Farsi', 'Urdu', 'Punjabi', 'Somali'];
+            return rtlKeywords.some(keyword => selectedLanguage.includes(keyword));
+          };
+
+          if (isRTL()) {
             doc.setFont("Arial Unicode MS");
           } else {
             doc.setFont("Arial");

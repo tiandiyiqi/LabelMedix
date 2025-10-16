@@ -66,43 +66,15 @@ export default function LabelEditor() {
           setAvailableCountries([])
         }
       } else {
-        // 没有选中项目时，使用默认选项
-        setAvailableSequences(Array.from({ length: 30 }, (_, i) => i + 1))
-        setAvailableCountries(languages.map(lang => lang.code))
+        // 没有选中项目时，不设置任何默认选项
+        setAvailableSequences([])
+        setAvailableCountries([])
       }
     }
 
     loadAvailableOptions()
   }, [selectedProject])
 
-  const languages = [
-    { name: "AE-阿联酋-阿拉伯语", code: "AE" },
-    { name: "BG-保加利亚-保加利亚语", code: "BG" },
-    { name: "CN-中国-汉语", code: "CN" },
-    { name: "CZ-捷克-捷克语", code: "CZ" },
-    { name: "DE-德国-德语", code: "DE" },
-    { name: "DK-丹麦-丹麦语", code: "DK" },
-    { name: "GB-英国-英语", code: "GB" },
-    { name: "GR-希腊-希腊语", code: "GR" },
-    { name: "ID-印度尼西亚-印尼语", code: "ID" },
-    { name: "IL-以色列-希伯来语", code: "IL" },
-    { name: "IN-印度-印地语", code: "IN" },
-    { name: "IT-意大利-意大利语", code: "IT" },
-    { name: "JP-日本-日语", code: "JP" },
-    { name: "KR-韩国-韩语", code: "KR" },
-    { name: "MY-马来西亚-马来语", code: "MY" },
-    { name: "NL-荷兰-荷兰语", code: "NL" },
-    { name: "NO-挪威-挪威语", code: "NO" },
-    { name: "PL-波兰-波兰语", code: "PL" },
-    { name: "PT-葡萄牙-葡萄牙语", code: "PT" },
-    { name: "RO-罗马尼亚-罗马尼亚语", code: "RO" },
-    { name: "RS-塞尔维亚-塞尔维亚语", code: "RS" },
-    { name: "RU-俄罗斯-俄语", code: "RU" },
-    { name: "SE-瑞典-瑞典语", code: "SE" },
-    { name: "TH-泰国-泰语", code: "TH" },
-    { name: "TR-土耳其-土耳其语", code: "TR" },
-    { name: "VN-越南-越南语", code: "VN" }
-  ]
 
 
   const fonts = [
@@ -475,14 +447,11 @@ export default function LabelEditor() {
               {availableCountries.length === 0 ? (
                 <option value="">无可用国别</option>
               ) : (
-                availableCountries.map((countryCode) => {
-                  const lang = languages.find(l => l.code === countryCode)
-                  return (
-                    <option key={countryCode} value={countryCode}>
-                      {lang ? lang.name : countryCode}
-                    </option>
-                  )
-                })
+                availableCountries.map((countryCode) => (
+                  <option key={countryCode} value={countryCode}>
+                    {countryCode}
+                  </option>
+                ))
               )}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
