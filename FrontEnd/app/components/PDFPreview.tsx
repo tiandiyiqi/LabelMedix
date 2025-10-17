@@ -3,6 +3,7 @@
 import { useContext, useState, useEffect } from 'react'
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer'
 import dynamic from 'next/dynamic'
+import { SmartMixedFontText } from './SmartMixedFontText'
 
 // 动态导入 PDFViewer，禁用 SSR
 const PDFViewer = dynamic(
@@ -355,7 +356,7 @@ export default function PDFPreview() {
   }, []);
 
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -504,20 +505,20 @@ export default function PDFPreview() {
 
   // 处理文本，分离中文和非中文字符
   const processText = (text: string) => {
-    // 如果是阿拉伯语，不需要分离文字
+    // 如果是阿拉伯语或其他RTL语言，不进行混合字体处理
     if (selectedLanguage === 'AE') {
       return <Text>{text}</Text>;
     }
     
-    const parts = text.split(/([^\u4E00-\u9FA5]+)/);
-    return parts.map((part, index) => {
-      if (part.match(/[\u4E00-\u9FA5]/)) {
-        // 中文文本
-        return <Text key={index} style={styles.chineseText}>{part}</Text>;
-      }
-      // 非中文文本
-      return <Text key={index}>{part}</Text>;
-    });
+    // 使用SmartMixedFontText自动处理混合字体
+    return (
+      <SmartMixedFontText
+        primaryFont={fontFamily}
+        secondaryFont={secondaryFontFamily}
+      >
+        {text}
+      </SmartMixedFontText>
+    );
   };
 
   // 导出PDF功能

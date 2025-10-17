@@ -41,6 +41,11 @@ interface CountryTranslationGroup {
   total_items: number;
   formatted_summary?: string;
   pdf_file_path?: string;
+  font_family?: string;
+  secondary_font_family?: string;
+  font_size?: number;
+  spacing?: number;
+  line_height?: number;
   items?: TranslationItem[];
   createdAt: string;
   updatedAt: string;
@@ -373,17 +378,44 @@ export const generateCountrySummary = async (
 };
 
 /**
- * 更新格式化翻译汇总
+ * 更新格式化翻译汇总和字体设置
  * @param projectId 项目ID
  * @param countryCode 国别代码
  * @param formattedSummary 格式化后的翻译汇总
+ * @param fontSettings 字体设置（可选）
  */
 export const updateFormattedSummary = async (
   projectId: number,
   countryCode: string,
-  formattedSummary: string
-): Promise<{ country_code: string; formatted_summary: string }> => {
+  formattedSummary: string,
+  fontSettings?: {
+    fontFamily?: string;
+    secondaryFontFamily?: string;
+    fontSize?: number;
+    spacing?: number;
+    lineHeight?: number;
+  }
+): Promise<{ 
+  country_code: string; 
+  formatted_summary: string;
+  font_family?: string;
+  secondary_font_family?: string;
+  font_size?: number;
+  spacing?: number;
+  line_height?: number;
+}> => {
   try {
+    const requestBody: any = { formatted_summary: formattedSummary };
+    
+    // 如果提供了字体设置，添加到请求体中
+    if (fontSettings) {
+      if (fontSettings.fontFamily !== undefined) requestBody.font_family = fontSettings.fontFamily;
+      if (fontSettings.secondaryFontFamily !== undefined) requestBody.secondary_font_family = fontSettings.secondaryFontFamily;
+      if (fontSettings.fontSize !== undefined) requestBody.font_size = fontSettings.fontSize;
+      if (fontSettings.spacing !== undefined) requestBody.spacing = fontSettings.spacing;
+      if (fontSettings.lineHeight !== undefined) requestBody.line_height = fontSettings.lineHeight;
+    }
+
     const response = await fetch(
       `${API_BASE_URL}/api/projects/${projectId}/countries/${encodeURIComponent(countryCode)}/formatted-summary`,
       {
@@ -391,7 +423,7 @@ export const updateFormattedSummary = async (
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ formatted_summary: formattedSummary }),
+        body: JSON.stringify(requestBody),
       }
     );
 

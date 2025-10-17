@@ -1,7 +1,7 @@
 "use client"
 
 import { useContext, useState, useEffect } from "react"
-import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save } from "lucide-react"
+import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
@@ -16,6 +16,44 @@ export default function LabelEditor() {
   const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject } = labelData
 
   const [selectedNumberState, setSelectedNumberState] = useState<number>(Number(selectedNumber))
+  
+  // 字体默认值管理
+  const FONT_DEFAULTS_KEY = 'labelmedix_font_defaults'
+  
+  // 保存字体参数为默认值
+  const saveFontDefaults = () => {
+    const defaults = {
+      fontFamily: labelData.fontFamily,
+      secondaryFontFamily: labelData.secondaryFontFamily,
+      fontSize: labelData.fontSize,
+      spacing: labelData.spacing,
+      lineHeight: labelData.lineHeight
+    }
+    localStorage.setItem(FONT_DEFAULTS_KEY, JSON.stringify(defaults))
+    showToast('字体默认值已保存', 'success')
+  }
+  
+  // 应用字体默认值
+  const applyFontDefaults = () => {
+    const savedDefaults = localStorage.getItem(FONT_DEFAULTS_KEY)
+    if (savedDefaults) {
+      try {
+        const defaults = JSON.parse(savedDefaults)
+        updateLabelData({
+          fontFamily: defaults.fontFamily,
+          secondaryFontFamily: defaults.secondaryFontFamily,
+          fontSize: defaults.fontSize,
+          spacing: defaults.spacing,
+          lineHeight: defaults.lineHeight
+        })
+        showToast('已应用字体默认值', 'success')
+      } catch (error) {
+        showToast('默认值格式错误', 'error')
+      }
+    } else {
+      showToast('未找到保存的默认值', 'error')
+    }
+  }
   const [isImporting, setIsImporting] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [isFormatting, setIsFormatting] = useState(false)
@@ -225,9 +263,15 @@ export default function LabelEditor() {
     try {
       setIsSaving(true)
       
-      // 调用API保存格式化翻译汇总
-      await updateFormattedSummary(selectedProject.id, selectedLanguage, drugInfo)
-      showToast('标签保存成功', 'success')
+      // 调用API保存格式化翻译汇总和字体设置
+      await updateFormattedSummary(selectedProject.id, selectedLanguage, drugInfo, {
+        fontFamily: labelData.fontFamily,
+        secondaryFontFamily: labelData.secondaryFontFamily,
+        fontSize: labelData.fontSize,
+        spacing: labelData.spacing,
+        lineHeight: labelData.lineHeight
+      })
+      showToast('标签和字体设置保存成功', 'success')
       
     } catch (error) {
       console.error('保存标签失败:', error)
@@ -264,7 +308,8 @@ export default function LabelEditor() {
   // 处理语言选择变化
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLanguage = e.target.value
-    let newFontFamily = 'Arial'  // 默认字体
+    let newFontFamily = 'Arial'  // 默认主语言字体
+    let newSecondaryFontFamily = 'Arial'  // 默认次语言字体
     
     // 检查是否为从右到左的语言
     const isRTL = () => {
@@ -273,13 +318,27 @@ export default function LabelEditor() {
       return rtlKeywords.some(keyword => newLanguage.includes(keyword));
     };
     
+    // 检查是否为需要特殊字体的语言
+    const needsUnicodeFont = () => {
+      if (!newLanguage) return false;
+      const unicodeFontLanguages = ['Korean', 'Thai', 'Vietnamese', 'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
+      return unicodeFontLanguages.some(lang => newLanguage.includes(lang)) || 
+             newLanguage.includes('KR') || newLanguage.includes('TH') || newLanguage.includes('VN');
+    };
+    
     // 根据语言设置对应的字体
-    if (newLanguage === 'CN') {
+    if (newLanguage === 'CN' || newLanguage.includes('Chinese')) {
       newFontFamily = 'STHeiti'
-    } else if (isRTL()) {
-      newFontFamily = 'Arial Unicode'
+      newSecondaryFontFamily = 'Arial'
+    } else if (newLanguage === 'JP' || newLanguage.includes('Japanese')) {
+      newFontFamily = 'STHeiti'  // 日文也可以使用STHeiti
+      newSecondaryFontFamily = 'Arial'
+    } else if (isRTL() || needsUnicodeFont()) {
+      newFontFamily = 'Arial Unicode MS'
+      newSecondaryFontFamily = 'Arial Unicode MS'
     } else {
       newFontFamily = 'Arial'
+      newSecondaryFontFamily = 'Arial'
     }
     
     // 如果有选中的项目，需要查找对应的序号和加载数据
@@ -301,10 +360,14 @@ export default function LabelEditor() {
             formattedSummary: countryDetail.formatted_summary || undefined
           })
           
-          // 同时更新语言和字体
+          // 同时更新语言和字体，如果数据库有保存的字体设置则使用数据库的
           updateLabelData({
             selectedLanguage: newLanguage,
-            fontFamily: newFontFamily,
+            fontFamily: countryDetail.font_family || newFontFamily,
+            secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
+            fontSize: countryDetail.font_size || labelData.fontSize,
+            spacing: countryDetail.spacing || labelData.spacing,
+            lineHeight: countryDetail.line_height || labelData.lineHeight,
             selectedNumber: sequence.toString(),
             drugInfo: countryDetail.formatted_summary || '未格式化'
           })
@@ -313,6 +376,7 @@ export default function LabelEditor() {
           updateLabelData({
             selectedLanguage: newLanguage,
             fontFamily: newFontFamily,
+            secondaryFontFamily: newSecondaryFontFamily,
             drugInfo: '该国别在当前项目中不存在'
           })
         }
@@ -320,14 +384,16 @@ export default function LabelEditor() {
         console.error('加载国别数据失败:', error)
         updateLabelData({
           selectedLanguage: newLanguage,
-          fontFamily: newFontFamily
+          fontFamily: newFontFamily,
+          secondaryFontFamily: newSecondaryFontFamily
         })
       }
     } else {
       // 没有选中项目时，只更新语言和字体
       updateLabelData({
         selectedLanguage: newLanguage,
-        fontFamily: newFontFamily
+        fontFamily: newFontFamily,
+        secondaryFontFamily: newSecondaryFontFamily
       })
     }
   }
@@ -372,6 +438,19 @@ export default function LabelEditor() {
             currentSequence: newNumber,
             countryCode: countryCode,
             formattedSummary: countryDetail.formatted_summary || undefined
+          })
+          
+          // 同时更新序号、语言、字体和内容
+          updateLabelData({
+            selectedNumber: e.target.value,
+            selectedLanguage: countryCode,
+            currentWidth,
+            fontFamily: countryDetail.font_family || labelData.fontFamily,
+            secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
+            fontSize: countryDetail.font_size || labelData.fontSize,
+            spacing: countryDetail.spacing || labelData.spacing,
+            lineHeight: countryDetail.line_height || labelData.lineHeight,
+            drugInfo: countryDetail.formatted_summary || '未格式化'
           })
         } else {
           // 如果该序号不存在于当前项目，只更新序号和宽度
@@ -547,86 +626,136 @@ export default function LabelEditor() {
           />
         </div>
 
-        {/* 字体相关参数 */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center border border-[#30B8D6] rounded-md">
-            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
-              字体名称：
-            </label>
-            <div className="flex-1">
+        {/* 字体相关参数 - 紧凑设计 */}
+        <div className="space-y-2">
+          {/* 第一行：主语言字体和次语言字体 */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* 主语言字体 */}
+            <div className="flex items-center gap-2 border rounded px-3 py-1 transition-opacity relative group" style={{ borderColor: theme.border }}>
+              <Type className="h-4 w-4 text-[#30B8D6] flex-shrink-0" />
               <select
                 value={fontFamily}
                 onChange={(e) => updateLabelData({ fontFamily: e.target.value })}
-                className="w-full px-3 py-2 focus:outline-none appearance-none"
-                style={{
-                  color: theme.text,
-                  backgroundColor: "white",
-                }}
+                className="flex-1 bg-transparent focus:outline-none appearance-none cursor-pointer text-sm"
+                style={{ color: theme.text }}
+                title="主语言字体：用于中文、日文、韩文等CJK字符"
               >
                 {fonts.map((font) => (
-                  <option key={font.value} value={font.value}>
-                    {font.name}
-                  </option>
+                  <option key={font.value} value={font.value}>{font.name}</option>
                 ))}
               </select>
+              <ChevronDown className="h-3 w-3 text-gray-400 flex-shrink-0 pointer-events-none" />
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                主语言字体
+              </div>
             </div>
-            <div className="pointer-events-none absolute right-3 flex items-center">
-              <ChevronDown className="h-4 w-4" style={{ color: theme.text }} />
+
+            {/* 次语言字体 */}
+            <div className="flex items-center gap-2 border rounded px-3 py-1 transition-opacity relative group" style={{ borderColor: theme.border }}>
+              <Languages className="h-4 w-4 text-[#30B8D6] flex-shrink-0" />
+              <select
+                value={labelData.secondaryFontFamily}
+                onChange={(e) => updateLabelData({ secondaryFontFamily: e.target.value })}
+                className="flex-1 bg-transparent focus:outline-none appearance-none cursor-pointer text-sm"
+                style={{ color: theme.text }}
+                title="次语言字体：用于英文、数字等拉丁字符"
+              >
+                {fonts.map((font) => (
+                  <option key={font.value} value={font.value}>{font.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="h-3 w-3 text-gray-400 flex-shrink-0 pointer-events-none" />
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                次语言字体
+              </div>
             </div>
           </div>
-          <div className="flex items-center border border-[#30B8D6] rounded-md">
-            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
-              字体大小：
-            </label>
-            <div className="flex-1">
+
+          {/* 第二行：字体大小、间距、行高合并为一行 */}
+          <div className="flex items-center gap-2 border rounded px-3 py-1 transition-opacity" style={{ borderColor: theme.border }}>
+            {/* 字体大小 */}
+            <div className="flex items-center gap-1 flex-1 relative group">
+              <Maximize2 className="h-3 w-3 text-[#30B8D6] flex-shrink-0" />
               <input
                 type="number"
                 value={fontSize}
                 step={0.5}
                 onChange={(e) => updateLabelData({ fontSize: Number(e.target.value) })}
-                className="w-full px-3 py-2 focus:outline-none"
-                style={{
-                  color: theme.text,
-                  backgroundColor: "white",
-                }}
+                className="w-full bg-transparent focus:outline-none text-sm px-1"
+                style={{ color: theme.text }}
+                title="字体大小"
               />
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                字体大小
+              </div>
             </div>
-          </div>
-          <div className="flex items-center border border-[#30B8D6] rounded-md">
-            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
-              间距：
-            </label>
-            <div className="flex-1">
+
+            <div className="h-4 w-px bg-gray-300"></div>
+
+            {/* 间距 */}
+            <div className="flex items-center gap-1 flex-1 relative group">
+              <Space className="h-3 w-3 text-[#30B8D6] flex-shrink-0" />
               <input
                 type="number"
                 value={spacing}
                 step={0.1}
                 onChange={(e) => updateLabelData({ spacing: Number(e.target.value) })}
-                className="w-full px-3 py-2 focus:outline-none"
-                style={{
-                  color: theme.text,
-                  backgroundColor: "white",
-                }}
+                className="w-full bg-transparent focus:outline-none text-sm px-1"
+                style={{ color: theme.text }}
+                title="间距"
               />
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                间距
+              </div>
             </div>
-          </div>
-          <div className="flex items-center border border-[#30B8D6] rounded-md">
-            <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
-              行高：
-            </label>
-            <div className="flex-1">
+
+            <div className="h-4 w-px bg-gray-300"></div>
+
+            {/* 行高 */}
+            <div className="flex items-center gap-1 flex-1 relative group">
+              <AlignJustify className="h-3 w-3 text-[#30B8D6] flex-shrink-0" />
               <input
                 type="number"
                 value={lineHeight}
                 step={0.1}
                 onChange={(e) => updateLabelData({ lineHeight: Number(e.target.value) })}
-                className="w-full px-3 py-2 focus:outline-none"
-                style={{
-                  color: theme.text,
-                  backgroundColor: "white",
-                }}
+                className="w-full bg-transparent focus:outline-none text-sm px-1"
+                style={{ color: theme.text }}
+                title="行高"
               />
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                行高
+              </div>
             </div>
+          </div>
+
+          {/* 第三行：默认值操作按钮 - 参考其他按钮样式 */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={saveFontDefaults}
+              className="flex-1 px-3 py-1 rounded text-sm flex items-center justify-center gap-1 transition-opacity"
+              style={{
+                backgroundColor: theme.primary,
+                color: theme.buttonText,
+              }}
+              title="将当前字体参数保存为默认值"
+            >
+              <BookmarkPlus size={14} />
+              设为默认值
+            </button>
+            
+            <button
+              onClick={applyFontDefaults}
+              className="flex-1 px-3 py-1 rounded text-sm flex items-center justify-center gap-1 transition-opacity"
+              style={{
+                backgroundColor: theme.secondary,
+                color: theme.buttonText,
+              }}
+              title="应用已保存的字体默认值"
+            >
+              <BookmarkCheck size={14} />
+              应用默认值
+            </button>
           </div>
         </div>
       </div>

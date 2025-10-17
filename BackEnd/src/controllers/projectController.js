@@ -665,7 +665,14 @@ exports.updateFormattedSummary = async (req, res) => {
   try {
     const { projectId } = req.params;
     const countryCode = decodeURIComponent(req.params.countryCode);
-    const { formatted_summary } = req.body;
+    const {
+      formatted_summary,
+      font_family,
+      secondary_font_family,
+      font_size,
+      spacing,
+      line_height,
+    } = req.body;
 
     if (!formatted_summary) {
       return res.status(400).json({
@@ -688,14 +695,32 @@ exports.updateFormattedSummary = async (req, res) => {
       });
     }
 
-    await group.update({ formatted_summary });
+    // 准备更新数据
+    const updateData = { formatted_summary };
+
+    // 如果提供了字体参数，则一并更新
+    if (font_family !== undefined) updateData.font_family = font_family;
+    if (secondary_font_family !== undefined)
+      updateData.secondary_font_family = secondary_font_family;
+    if (font_size !== undefined) updateData.font_size = font_size;
+    if (spacing !== undefined) updateData.spacing = spacing;
+    if (line_height !== undefined) updateData.line_height = line_height;
+
+    await group.update(updateData);
 
     res.json({
       success: true,
-      message: "格式化翻译汇总更新成功",
+      message: "格式化翻译汇总和字体设置更新成功",
       data: {
-        country_code: countryCode,
-        formatted_summary,
+        id: group.id,
+        country_code: group.country_code,
+        formatted_summary: group.formatted_summary,
+        font_family: group.font_family,
+        secondary_font_family: group.secondary_font_family,
+        font_size: group.font_size,
+        spacing: group.spacing,
+        line_height: group.line_height,
+        updatedAt: group.updatedAt,
       },
     });
   } catch (error) {
@@ -743,6 +768,11 @@ exports.getCountryDetails = async (req, res) => {
         total_items: group.total_items,
         formatted_summary: group.formatted_summary,
         pdf_file_path: group.pdf_file_path,
+        font_family: group.font_family,
+        secondary_font_family: group.secondary_font_family,
+        font_size: group.font_size,
+        spacing: group.spacing,
+        line_height: group.line_height,
         items: group.items,
         createdAt: group.createdAt,
         updatedAt: group.updatedAt,

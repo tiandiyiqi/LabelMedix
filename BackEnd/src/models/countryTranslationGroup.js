@@ -150,6 +150,36 @@ module.exports = (sequelize) => {
         allowNull: true,
         comment: "生成的PDF文件存储路径",
       },
+      font_family: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        defaultValue: "STHeiti",
+        comment: "主语言字体（用于中文、日文、韩文等CJK字符）",
+      },
+      secondary_font_family: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        defaultValue: "Arial",
+        comment: "次语言字体（用于英文、数字等拉丁字符）",
+      },
+      font_size: {
+        type: DataTypes.DECIMAL(4, 1),
+        allowNull: true,
+        defaultValue: 10.0,
+        comment: "字体大小（单位：pt）",
+      },
+      spacing: {
+        type: DataTypes.DECIMAL(3, 1),
+        allowNull: true,
+        defaultValue: 1.0,
+        comment: "间距",
+      },
+      line_height: {
+        type: DataTypes.DECIMAL(3, 1),
+        allowNull: true,
+        defaultValue: 1.2,
+        comment: "行高",
+      },
     },
     {
       sequelize,
