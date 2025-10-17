@@ -247,7 +247,7 @@ export const updateCountrySequence = async (
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ sequence_updates: sequenceUpdates }),
+      body: JSON.stringify({ sequenceUpdates: sequenceUpdates }),
     });
 
     if (!response.ok) {
@@ -313,7 +313,7 @@ export const updateTranslation = async (
 ): Promise<TranslationItem> => {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/translations/${translationId}`,
+      `${API_BASE_URL}/api/projects/translations/${translationId}`,
       {
         method: 'PUT',
         headers: {

@@ -517,6 +517,8 @@ exports.updateCountrySequence = async (req, res) => {
     const { id: projectId } = req.params;
     const { sequenceUpdates } = req.body;
 
+    console.log("🔄 开始更新序列:", { projectId, sequenceUpdates });
+
     // 验证必需字段
     if (!sequenceUpdates || !Array.isArray(sequenceUpdates)) {
       return res.status(400).json({
@@ -534,35 +536,73 @@ exports.updateCountrySequence = async (req, res) => {
       });
     }
 
-    // 第一步：将所有需要更新的序号先设置为一个很大的临时值，避免唯一约束冲突
-    // 使用时间戳的后6位 + 随机数作为基数，确保唯一性且不超过INT最大值
-    const tempBase = 1000000 + Math.floor(Math.random() * 1000000); // 1000000-1999999之间
+    // 验证所有group_id都属于该项目
+    const groupIds = sequenceUpdates.map((update) => update.group_id);
+    const groups = await CountryTranslationGroup.findAll({
+      where: {
+        id: groupIds,
+        project_id: projectId,
+      },
+      transaction,
+    });
 
-    for (let i = 0; i < sequenceUpdates.length; i++) {
-      const { group_id } = sequenceUpdates[i];
-      const group = await CountryTranslationGroup.findByPk(group_id);
-
-      if (group && group.project_id === parseInt(projectId)) {
-        // 设置为临时大值：随机基数 + index，保证每次更新都是唯一的
-        const tempSequence = tempBase + i;
-        await group.update(
-          { sequence_number: tempSequence },
-          { transaction, validate: false }
-        );
-      }
+    if (groups.length !== groupIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: "存在不属于该项目的翻译组",
+      });
     }
 
-    // 第二步：再将序号更新为目标值
+    // 使用更安全的批量更新方式
+    // 先获取当前最大序号，然后使用负数作为临时值
+    const maxSequence =
+      (await CountryTranslationGroup.max("sequence_number", {
+        where: { project_id: projectId },
+        transaction,
+      })) || 0;
+
+    console.log("📊 当前最大序号:", maxSequence);
+
+    // 第一步：将所有需要更新的序号设置为负数临时值
+    for (let i = 0; i < sequenceUpdates.length; i++) {
+      const { group_id } = sequenceUpdates[i];
+      const tempSequence = -(i + 1); // 使用负数作为临时值
+
+      await CountryTranslationGroup.update(
+        { sequence_number: tempSequence },
+        {
+          where: {
+            id: group_id,
+            project_id: projectId,
+          },
+          transaction,
+          validate: false,
+        }
+      );
+
+      console.log(`🔄 临时更新 Group ${group_id} -> ${tempSequence}`);
+    }
+
+    // 第二步：将序号更新为目标值
     for (const update of sequenceUpdates) {
       const { group_id, sequence_number } = update;
-      const group = await CountryTranslationGroup.findByPk(group_id);
 
-      if (group && group.project_id === parseInt(projectId)) {
-        await group.update({ sequence_number }, { transaction });
-      }
+      await CountryTranslationGroup.update(
+        { sequence_number },
+        {
+          where: {
+            id: group_id,
+            project_id: projectId,
+          },
+          transaction,
+        }
+      );
+
+      console.log(`✅ 最终更新 Group ${group_id} -> ${sequence_number}`);
     }
 
     await transaction.commit();
+    console.log("✅ 序列更新成功");
 
     res.json({
       success: true,
@@ -570,7 +610,7 @@ exports.updateCountrySequence = async (req, res) => {
     });
   } catch (error) {
     await transaction.rollback();
-    console.error("更新国别顺序失败:", error);
+    console.error("❌ 更新国别顺序失败:", error);
     res.status(500).json({
       success: false,
       message: "更新国别顺序失败",
