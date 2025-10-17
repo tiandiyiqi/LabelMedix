@@ -445,6 +445,61 @@ export const updateFormattedSummary = async (
 };
 
 /**
+ * 保存PDF文件到服务器
+ * @param projectId 项目ID
+ * @param countryCode 国别代码
+ * @param pdfBlob PDF Blob对象
+ * @param fileName 文件名
+ */
+export const savePdfFile = async (
+  projectId: number,
+  countryCode: string,
+  pdfBlob: Blob,
+  fileName: string
+): Promise<{ pdf_file_path: string; file_size: number }> => {
+  try {
+    console.log('🔧 开始保存PDF文件:', { projectId, countryCode, fileName, blobSize: pdfBlob.size });
+    
+    // 将Blob转换为Base64
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    console.log('🔧 Base64转换完成，长度:', base64.length);
+
+    const url = `${API_BASE_URL}/api/projects/${projectId}/countries/${encodeURIComponent(countryCode)}/save-pdf`;
+    console.log('🔧 请求URL:', url);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pdfBase64: base64,
+        fileName: fileName,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`保存PDF文件失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '保存PDF文件失败');
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('保存PDF文件失败:', error);
+    throw error;
+  }
+};
+
+/**
  * 更新PDF文件路径
  * @param projectId 项目ID
  * @param countryCode 国别代码

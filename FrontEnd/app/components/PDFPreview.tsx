@@ -1,6 +1,6 @@
 "use client"
 
-import { useContext, useState, useEffect } from 'react'
+import { useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer'
 import dynamic from 'next/dynamic'
 import { SmartMixedFontText } from './SmartMixedFontText'
@@ -21,6 +21,7 @@ import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { Eye, Save, FileDown } from "lucide-react"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
+import { savePdfFile } from '../../lib/projectApi'
 
 // 罗马数字转换函数
 const toRoman = (num: number): string => {
@@ -348,19 +349,66 @@ const styles = StyleSheet.create({
 });
 
 export default function PDFPreview() {
-  // 添加客户端渲染标记
+  // ===== 所有状态声明必须在最前面 =====
   const [isClient, setIsClient] = useState(false);
-  
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfSaveRequest, setPdfSaveRequest] = useState<{projectId: number; countryCode: string; sequenceNumber: string} | null>(null);
 
+  // ===== Context hooks =====
   const { labelData, updateLabelData } = useLabelContext()
   const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
+  
+  // ===== 所有useEffect必须在条件判断之前 =====
+  // 初始化客户端渲染
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // 监听保存标签事件，自动生成并保存PDF
+  useEffect(() => {
+    if (!isClient) return;
+    
+    const handleGenerateAndSavePdf = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const { projectId, countryCode, sequenceNumber } = customEvent.detail;
+      console.log('📥 收到PDF生成请求:', { projectId, countryCode, sequenceNumber });
+      setPdfSaveRequest({ projectId, countryCode, sequenceNumber });
+    };
+
+    window.addEventListener('generate-and-save-pdf', handleGenerateAndSavePdf);
+    return () => {
+      window.removeEventListener('generate-and-save-pdf', handleGenerateAndSavePdf);
+    };
+  }, [isClient]);
+
+  // 使用ref来存储PDF生成函数，避免在useEffect中访问未定义的变量
+  const pdfGeneratorRef = useRef<((projectId: number, countryCode: string, sequenceNumber: string) => Promise<void>) | null>(null);
+
+  // 当有PDF保存请求时，执行实际的PDF生成
+  useEffect(() => {
+    if (!pdfSaveRequest || !isClient || !pdfGeneratorRef.current) return;
+
+    const { projectId, countryCode, sequenceNumber } = pdfSaveRequest;
+    
+    const executePdfSave = async () => {
+      try {
+        setIsGeneratingPdf(true);
+        await pdfGeneratorRef.current!(projectId, countryCode, sequenceNumber);
+        console.log('✅ PDF生成并保存成功');
+      } catch (error) {
+        console.error('❌ PDF生成保存失败:', error);
+      } finally {
+        setIsGeneratingPdf(false);
+        setPdfSaveRequest(null);
+      }
+    };
+
+    executePdfSave();
+  }, [pdfSaveRequest, isClient]);
 
   // 如果不是客户端环境，返回加载占位符
   if (!isClient) {
@@ -522,6 +570,134 @@ export default function PDFPreview() {
   };
 
   // 导出PDF功能
+  // 生成并保存PDF到服务器
+  const generateAndSavePdfToServer = async (projectId: number, countryCode: string, sequenceNumber: string) => {
+    const blob = await pdf(
+      <Document>
+        <Page size={[mmToPt(currentWidth), mmToPt(labelHeight)]} style={pageStyle}>
+          {/* 边距矩形框 */}
+          <View style={[
+            styles.marginBox,
+            {
+              top: mmToPt(margins.top),
+              left: mmToPt(margins.left),
+              width: mmToPt(currentWidth - margins.left - margins.right),
+              height: mmToPt(labelHeight - margins.top - margins.bottom),
+            }
+          ]} />
+
+          <View style={{
+            marginTop: mmToPt(margins.top),
+            marginBottom: mmToPt(margins.bottom),
+            marginLeft: mmToPt(margins.left),
+            marginRight: mmToPt(margins.right),
+            width: mmToPt(currentWidth - margins.left - margins.right),
+            minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
+            justifyContent: 'center',
+          }}>
+            <View style={{ width: '100%' }}>
+              {processedFirstParagraph.map((groupLines, groupIndex) => {
+                const lineSpacing = calculateSpacing(
+                  mmToPt(currentWidth - margins.left - margins.right),
+                  groupLines,
+                  fontSize,
+                  fontFamily
+                );
+                
+                return (
+                  <View 
+                    key={`first-${groupIndex}`} 
+                    style={[
+                      dynamicStyles.firstParagraphRow,
+                      { gap: lineSpacing }
+                    ]}
+                  >
+                    {groupLines.map((line, lineIndex) => (
+                      <Text 
+                        key={`first-line-${lineIndex}`} 
+                        style={[
+                          dynamicStyles.firstParagraphItem,
+                          { marginRight: 0 }
+                        ]}
+                      >
+                        {processText(line)}
+                      </Text>
+                    ))}
+                  </View>
+                );
+              })}
+              
+              {processedSecondParagraph.length > 0 && (
+                <View style={{ marginTop: mmToPt(spacing * 2) }}>
+                  {processedSecondParagraph.map((lines, groupIndex) => {
+                    const lineSpacing = calculateSpacing(
+                      mmToPt(currentWidth - margins.left - margins.right),
+                      lines,
+                      fontSize,
+                      fontFamily
+                    );
+                    
+                    return (
+                      <View 
+                        key={`second-${groupIndex}`} 
+                        style={[
+                          dynamicStyles.secondParagraphRow,
+                          { gap: lineSpacing }
+                        ]}
+                      >
+                        {lines.map((line, lineIndex) => (
+                          <View 
+                            key={`line-${lineIndex}`} 
+                            style={dynamicStyles.secondParagraphItem}
+                          >
+                            <Text>{processText(line)}</Text>
+                            <View 
+                              style={[
+                                dynamicStyles.underline,
+                                { width: lineSpacing - mmToPt(1.5) }
+                              ]} 
+                            />
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+              
+              {processedRemainingParagraphs.map((paragraph, paraIndex) => (
+                <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
+                  {paragraph.map((group, groupIndex) => (
+                    <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
+                      {group.map((line, lineIndex) => (
+                        <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
+                          {processText(line)}
+                        </Text>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          </View>
+        </Page>
+      </Document>
+    ).toBlob();
+
+    // 生成文件名（清理非法字符）
+    const jobName = selectedProject?.job_name || 'label';
+    const sanitizedJobName = jobName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5-]/g, '_');
+    const sanitizedCountryCode = countryCode.replace(/[^a-zA-Z0-9\u4e00-\u9fa5-]/g, '_');
+    const fileName = `${sanitizedJobName}-${sanitizedCountryCode}-${sequenceNumber}.pdf`;
+
+    // 保存到服务器
+    await savePdfFile(projectId, countryCode, blob, fileName);
+    console.log(`✅ PDF已保存: ${fileName}`);
+  };
+
+  // 将PDF生成函数保存到ref中，供useEffect使用
+  pdfGeneratorRef.current = generateAndSavePdfToServer;
+
   const handleExportPDF = async () => {
     const blob = await pdf(
       <Document>

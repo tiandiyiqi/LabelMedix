@@ -700,6 +700,92 @@ exports.updatePdfFilePath = async (req, res) => {
   }
 };
 
+// 保存PDF文件
+exports.savePdfFile = async (req, res) => {
+  const fs = require("fs").promises;
+  const path = require("path");
+
+  try {
+    const { projectId } = req.params;
+    const countryCode = decodeURIComponent(req.params.countryCode);
+    const { pdfBase64, fileName } = req.body;
+
+    console.log("📥 接收PDF保存请求:", {
+      projectId,
+      countryCode,
+      fileName,
+      pdfBase64Length: pdfBase64 ? pdfBase64.length : 0,
+      bodyKeys: Object.keys(req.body),
+    });
+
+    if (!pdfBase64) {
+      return res.status(400).json({
+        success: false,
+        message: "PDF数据不能为空",
+      });
+    }
+
+    // 查找翻译组
+    const group = await CountryTranslationGroup.findOne({
+      where: {
+        project_id: projectId,
+        country_code: countryCode,
+      },
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: "国别翻译组不存在",
+      });
+    }
+
+    // 创建保存目录
+    const uploadsDir = path.join(__dirname, "../../uploads/pdfs");
+    await fs.mkdir(uploadsDir, { recursive: true });
+
+    // 生成文件名
+    const sanitizedFileName =
+      fileName ||
+      `project_${projectId}_${countryCode.replace(
+        /[^a-zA-Z0-9]/g,
+        "_"
+      )}_${Date.now()}.pdf`;
+    const filePath = path.join(uploadsDir, sanitizedFileName);
+    const relativePath = `/uploads/pdfs/${sanitizedFileName}`;
+
+    // 将Base64转换为Buffer并保存
+    const pdfBuffer = Buffer.from(pdfBase64, "base64");
+    await fs.writeFile(filePath, pdfBuffer);
+
+    console.log("✅ PDF文件保存成功:", filePath);
+
+    // 更新数据库中的文件路径
+    await group.update({ pdf_file_path: relativePath });
+
+    res.json({
+      success: true,
+      message: "PDF文件保存成功",
+      data: {
+        country_code: countryCode,
+        pdf_file_path: relativePath,
+        file_size: pdfBuffer.length,
+      },
+    });
+  } catch (error) {
+    console.error("❌ 保存PDF文件失败:");
+    console.error("错误类型:", error.name);
+    console.error("错误信息:", error.message);
+    console.error("错误堆栈:", error.stack);
+    res.status(500).json({
+      success: false,
+      message: "保存PDF文件失败",
+      error: error.message,
+      errorName: error.name,
+    });
+  }
+};
+
 // 更新格式化翻译汇总
 exports.updateFormattedSummary = async (req, res) => {
   try {

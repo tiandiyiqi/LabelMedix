@@ -4,7 +4,89 @@ import { useContext, useState } from "react"
 import { FileDown, Wand2 } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
-import { jsPDF } from 'jspdf'
+import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer'
+import { SmartMixedFontText } from './SmartMixedFontText'
+import { getProjectById, getTranslationsByCountry } from "../../lib/projectApi"
+
+// 字体文件路径
+const ArialFont = '/fonts/Arial.ttf'
+const STHeitiFont = '/fonts/STHeiti.ttf'
+const ArialUnicodeFont = '/fonts/Arial Unicode.ttf'
+
+// 注册字体
+Font.register({
+  family: 'Arial',
+  src: ArialFont,
+});
+
+Font.register({
+  family: 'STHeiti',
+  src: STHeitiFont,
+});
+
+Font.register({
+  family: 'Arial Unicode MS',
+  src: ArialUnicodeFont,
+});
+
+// 单位转换：毫米到点
+const MM_TO_PT = 2.83465;
+
+// 罗马数字转换函数
+const toRoman = (num: number): string => {
+  const romanNumerals = [
+    { value: 50, symbol: 'L' },
+    { value: 40, symbol: 'XL' },
+    { value: 10, symbol: 'X' },
+    { value: 9, symbol: 'IX' },
+    { value: 5, symbol: 'V' },
+    { value: 4, symbol: 'IV' },
+    { value: 1, symbol: 'I' }
+  ];
+  
+  let result = '';
+  let remaining = num;
+  
+  for (let i = 0; i < romanNumerals.length; i++) {
+    while (remaining >= romanNumerals[i].value) {
+      result += romanNumerals[i].symbol;
+      remaining -= romanNumerals[i].value;
+    }
+  }
+  
+  return result;
+};
+
+// 文本处理函数
+const splitIntoParagraphs = (text: string): string[] => {
+  return text.split(/\n\s*\n/).filter(paragraph => paragraph.trim().length > 0);
+};
+
+const processFirstParagraph = (paragraph: string): string => {
+  const lines = paragraph.split('\n').filter(line => line.trim().length > 0);
+  if (lines.length === 0) return '';
+  
+  const firstLine = lines[0].trim();
+  const remainingLines = lines.slice(1);
+  
+  const processedFirstLine = firstLine.replace(/^(\d+)\.\s*/, (match, number) => {
+    const romanNumber = toRoman(parseInt(number));
+    return `${romanNumber}. `;
+  });
+  
+  return [processedFirstLine, ...remainingLines].join('\n');
+};
+
+const processOtherParagraph = (paragraph: string): string => {
+  return paragraph.replace(/^(\d+)\.\s*/gm, (match, number) => {
+    const romanNumber = toRoman(parseInt(number));
+    return `${romanNumber}. `;
+  });
+};
+
+const processRemainingParagraphs = (paragraphs: string[]): string[] => {
+  return paragraphs.map(processOtherParagraph);
+};
 
 interface LanguageMap {
   [key: string]: string
@@ -25,88 +107,96 @@ export default function ProjectInfo() {
   }
 
 
+  const [isExporting, setIsExporting] = useState(false);
+
   const handleBatchExport = async () => {
+    if (!selectedProject) {
+      alert('请先选择一个项目');
+      return;
+    }
+
     try {
-      console.log('开始批量导出PDF...')
+      setIsExporting(true);
+      console.log('🚀 开始批量导出PDF...');
 
-      const languages: LanguageMap = {
-        "AE": "阿联酋-阿拉伯语",
-        "BG": "保加利亚-保加利亚语",
-        "CN": "中国-汉语",
-        "CZ": "捷克-捷克语",
-        "DE": "德国-德语",
-        "DK": "丹麦-丹麦语",
-        "GB": "英国-英语",
-        "GR": "希腊-希腊语",
-        "ID": "印度尼西亚-印尼语",
-        "IL": "以色列-希伯来语",
-        "IN": "印度-印地语",
-        "IT": "意大利-意大利语",
-        "JP": "日本-日语",
-        "KR": "韩国-韩语",
-        "MY": "马来西亚-马来语",
-        "NL": "荷兰-荷兰语",
-        "NO": "挪威-挪威语",
-        "PL": "波兰-波兰语",
-        "PT": "葡萄牙-葡萄牙语",
-        "RO": "罗马尼亚-罗马尼亚语",
-        "RS": "塞尔维亚-塞尔维亚语",
-        "RU": "俄罗斯-俄语",
-        "SE": "瑞典-瑞典语",
-        "TH": "泰国-泰语",
-        "TR": "土耳其-土耳其语",
-        "VN": "越南-越南语"
+      // 获取项目完整信息
+      const projectDetail = await getProjectById(selectedProject.id);
+      
+      if (!projectDetail.translationGroups || projectDetail.translationGroups.length === 0) {
+        alert('该项目没有翻译数据');
+        return;
       }
 
-      // 为每种语言创建PDF
-      for (const [langCode, langName] of Object.entries(languages)) {
-        console.log(`正在生成 ${langName} 版本...`)
-        
-        const doc = new jsPDF({
-          orientation: labelWidth > labelHeight ? 'landscape' : 'portrait',
-          unit: 'mm',
-          format: [Math.max(labelWidth, 1), Math.max(labelHeight, 1)]
-        })
+      console.log(`📊 找到 ${projectDetail.translationGroups.length} 个语言版本`);
 
-        // 设置字体大小
-        const adjustedFontSize = fontSize * 0.352778
-        doc.setFontSize(adjustedFontSize)
+      let successCount = 0;
+      let failCount = 0;
+      let notSavedCount = 0;
 
-        // 计算边距和可用空间
-        const margin = 5
-        const availableWidth = labelWidth - (margin * 2)
-        const availableHeight = labelHeight - (margin * 2)
+      // 遍历所有翻译组
+      for (const group of projectDetail.translationGroups) {
+        try {
+          console.log(`🔄 正在处理: ${group.country_code} (序号: ${group.sequence_number})`);
 
-        // 添加文本内容
-        const lines = doc.splitTextToSize(drugInfo || '', availableWidth)
-        
-        // 分页处理
-        const lineHeight = adjustedFontSize * 0.3528
-        const linesPerPage = Math.floor(availableHeight / lineHeight)
-        
-        for (let i = 0; i < lines.length; i += linesPerPage) {
-          if (i > 0) {
-            doc.addPage([labelWidth, labelHeight])
+          // 检查是否有保存的PDF文件
+          if (!group.pdf_file_path) {
+            console.warn(`⚠️ ${group.country_code} 没有保存的PDF文件，跳过`);
+            notSavedCount++;
+            continue;
           }
-          const pageLines = lines.slice(i, i + linesPerPage)
-          doc.text(pageLines, margin, margin + lineHeight, {
-            baseline: 'top',
-            maxWidth: availableWidth
-          })
-        }
 
-        // 生成文件名并保存
-        const date = new Date().toISOString().split('T')[0]
-        const fileName = `LabelMedix-${langCode}-${langName}-${date}.pdf`
-        doc.save(fileName)
-        console.log(`${langName} 版本已生成`)
+          // 从服务器下载PDF文件
+          const pdfUrl = `http://localhost:3001${group.pdf_file_path}`;
+          const response = await fetch(pdfUrl);
+          
+          if (!response.ok) {
+            throw new Error(`下载PDF失败: ${response.status}`);
+          }
+
+          const blob = await response.blob();
+          
+          // 创建下载链接
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          
+          // 生成文件名
+          const date = new Date().toISOString().split('T')[0];
+          const projectName = selectedProject.job_name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+          const countryName = group.country_code.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+          const fileName = `${projectName}_${countryName}_序号${group.sequence_number}_${date}.pdf`;
+          
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          console.log(`✅ ${group.country_code} PDF下载成功`);
+          successCount++;
+
+          // 添加短暂延迟，避免浏览器阻止多个下载
+          await new Promise(resolve => setTimeout(resolve, 500));
+
+        } catch (error) {
+          console.error(`❌ ${group.country_code} PDF下载失败:`, error);
+          failCount++;
+        }
       }
 
-      console.log('批量导出完成')
-      alert('批量导出完成')
+      console.log(`🎉 批量导出完成: 成功 ${successCount} 个，失败 ${failCount} 个，未保存 ${notSavedCount} 个`);
+      
+      let message = `批量导出完成！\n成功下载: ${successCount} 个PDF`;
+      if (failCount > 0) message += `\n失败: ${failCount} 个PDF`;
+      if (notSavedCount > 0) message += `\n未保存: ${notSavedCount} 个PDF（请先保存标签）`;
+      
+      alert(message);
+
     } catch (error) {
-      console.error('批量导出失败:', error)
-      alert('批量导出失败，请查看控制台了解详细信息')
+      console.error('❌ 批量导出失败:', error);
+      alert('批量导出失败，请查看控制台了解详细信息');
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -137,7 +227,8 @@ export default function ProjectInfo() {
         </button>
         <button
           onClick={handleBatchExport}
-          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
+          disabled={isExporting}
+          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             backgroundColor: theme.accent,
             color: theme.buttonText,
@@ -146,7 +237,9 @@ export default function ProjectInfo() {
           }}
         >
           <FileDown className="mr-2" size={20} />
-          <span style={{ color: theme.buttonText }}>批量导出PDF</span>
+          <span style={{ color: theme.buttonText }}>
+            {isExporting ? '正在导出...' : '批量导出PDF'}
+          </span>
         </button>
       </div>
     </div>

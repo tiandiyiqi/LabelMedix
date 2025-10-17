@@ -5,7 +5,8 @@ import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Language
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
-import { getProjectById, getCountryDetails, getTranslationsByCountry, updateFormattedSummary } from '@/lib/projectApi'
+import { getProjectById, getCountryDetails, getTranslationsByCountry, updateFormattedSummary, savePdfFile } from '@/lib/projectApi'
+import { pdf } from '@react-pdf/renderer'
 
 export default function LabelEditor() {
   const themeContext = useContext(ThemeContext)
@@ -263,7 +264,7 @@ export default function LabelEditor() {
     try {
       setIsSaving(true)
       
-      // 调用API保存格式化翻译汇总和字体设置
+      // 1. 保存格式化翻译汇总和字体设置
       await updateFormattedSummary(selectedProject.id, selectedLanguage, drugInfo, {
         fontFamily: labelData.fontFamily,
         secondaryFontFamily: labelData.secondaryFontFamily,
@@ -271,7 +272,17 @@ export default function LabelEditor() {
         spacing: labelData.spacing,
         lineHeight: labelData.lineHeight
       })
-      showToast('标签和字体设置保存成功', 'success')
+      
+      // 2. 触发PDF生成和保存（通过事件通知PDFPreview组件）
+      window.dispatchEvent(new CustomEvent('generate-and-save-pdf', {
+        detail: {
+          projectId: selectedProject.id,
+          countryCode: selectedLanguage,
+          sequenceNumber: selectedNumber
+        }
+      }));
+      
+      showToast('标签保存成功，PDF正在生成中...', 'success')
       
     } catch (error) {
       console.error('保存标签失败:', error)

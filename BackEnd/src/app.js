@@ -7,8 +7,12 @@ const PORT = process.env.PORT || 3001;
 
 // 中间件
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" })); // 增加JSON大小限制以支持PDF Base64
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+// 静态文件服务 - 提供PDF文件访问
+const path = require("path");
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // 导入路由
 const projectRoutes = require("./routes/projects");

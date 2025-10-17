@@ -36,6 +36,10 @@ router.put(
   "/:projectId/countries/:countryCode/pdf",
   projectController.updatePdfFilePath
 ); // 更新PDF文件路径
+router.post(
+  "/:projectId/countries/:countryCode/save-pdf",
+  projectController.savePdfFile
+); // 保存PDF文件
 router.get(
   "/:projectId/countries/:countryCode/details",
   projectController.getCountryDetails
