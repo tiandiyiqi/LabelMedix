@@ -60,6 +60,7 @@ export default function LabelEditor() {
   const [isFormatting, setIsFormatting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
+  const [showResetMenu, setShowResetMenu] = useState(false)
   const [formatStates, setFormatStates] = useState<{[key: string]: number}>({
     basicInfo: 0,
     numberField: 0,
@@ -102,6 +103,18 @@ export default function LabelEditor() {
       return JSON.parse(originalSummary)
     } catch (error) {
       console.warn('解析原始状态失败，可能是旧格式数据:', error)
+      return null
+    }
+  }
+
+  // 解析格式化状态JSON
+  const parseFormattedSummary = (formattedSummary: string | undefined) => {
+    if (!formattedSummary) return null
+    
+    try {
+      return JSON.parse(formattedSummary)
+    } catch (error) {
+      console.warn('解析格式化状态失败，可能是旧格式数据:', error)
       return null
     }
   }
@@ -217,6 +230,20 @@ export default function LabelEditor() {
   useEffect(() => {
     setSelectedNumberState(Number(selectedNumber))
   }, [selectedNumber])
+  
+  // 点击外部关闭重置菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showResetMenu && !(event.target as Element).closest('.relative')) {
+        setShowResetMenu(false)
+      }
+    }
+    
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showResetMenu])
 
 
   // 自动调整textarea高度的函数
@@ -384,8 +411,48 @@ export default function LabelEditor() {
     return text
   }
 
-  // 重置 - 从数据库重新加载格式化后的翻译汇总
-  const handleReset = async () => {
+  // 重置到格式化状态
+  const handleResetToFormatted = async () => {
+    if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
+
+    try {
+      setIsResetting(true)
+      
+      // 获取该国别的详细信息
+      const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
+      
+      // 尝试解析JSON格式的格式化状态
+      const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
+      
+      if (formattedData && formattedData.formatStates) {
+        // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
+        updateLabelData({ 
+          basicInfo: formattedData.basicInfo || '',
+          numberField: formattedData.numberField || '',
+          drugName: formattedData.drugName || '',
+          numberOfSheets: formattedData.numberOfSheets || '',
+          drugDescription: formattedData.drugDescription || '',
+          companyName: formattedData.companyName || '',
+          originalSummary: countryDetail.original_summary,
+          formatted_summary: countryDetail.formatted_summary
+        })
+        
+        // 恢复格式化状态
+        setFormatStates(formattedData.formatStates)
+        showToast('已恢复到格式化状态', 'success')
+      } else {
+        showToast('未找到格式化状态', 'info')
+      }
+    } catch (error) {
+      console.error('重置失败:', error)
+      showToast('重置失败，请重试', 'error')
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
+  // 重置到原始状态
+  const handleResetToOriginal = async () => {
     if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
 
     try {
@@ -409,39 +476,32 @@ export default function LabelEditor() {
           originalSummary: countryDetail.original_summary,
           formatted_summary: countryDetail.formatted_summary
         })
-        showToast('已恢复到6个字段的原始状态', 'success')
-      } else {
-        // 如果没有JSON格式的原始状态，使用旧逻辑（兼容性处理）
-        const resetText = countryDetail.formatted_summary || '未格式化'
-        updateLabelData({ 
-          basicInfo: resetText,
-          numberField: '',
-          drugName: '',
-          numberOfSheets: '',
-          drugDescription: '',
-          companyName: '',
-          originalSummary: countryDetail.original_summary,
-          formatted_summary: countryDetail.formatted_summary
+        
+        // 重置格式化状态
+        setFormatStates({
+          basicInfo: 0,
+          numberField: 0,
+          drugName: 0,
+          numberOfSheets: 0,
+          drugDescription: 0,
+          companyName: 0
         })
-        showToast('已恢复（旧格式数据）', 'info')
+        
+        showToast('已恢复到原始状态', 'success')
+      } else {
+        showToast('未找到原始状态', 'info')
       }
-      
-      // 重置格式化状态
-      setFormatStates({
-        basicInfo: 0,
-        numberField: 0,
-        drugName: 0,
-        numberOfSheets: 0,
-        drugDescription: 0,
-        companyName: 0
-      })
-      
     } catch (error) {
       console.error('重置失败:', error)
       showToast('重置失败，请重试', 'error')
     } finally {
       setIsResetting(false)
     }
+  }
+
+  // 重置 - 显示重置菜单
+  const handleReset = () => {
+    setShowResetMenu(!showResetMenu)
   }
 
   // 导入翻译内容
@@ -536,6 +596,19 @@ export default function LabelEditor() {
     }
   }
 
+  // 创建格式化状态JSON
+  const createFormattedSummary = () => {
+    return JSON.stringify({
+      basicInfo: basicInfo || '',
+      numberField: numberField || '',
+      drugName: drugName || '',
+      numberOfSheets: numberOfSheets || '',
+      drugDescription: drugDescription || '',
+      companyName: companyName || '',
+      formatStates: formatStates // 保存格式化状态
+    })
+  }
+
   // 保存标签
   const handleSave = async () => {
     if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
@@ -543,7 +616,10 @@ export default function LabelEditor() {
     try {
       setIsSaving(true)
       
-      // 将所有字段内容合并为drugInfo用于保存
+      // 创建包含6个字段和格式化状态的JSON
+      const formattedSummaryJson = createFormattedSummary()
+      
+      // 同时保存合并的文本内容（用于PDF生成）和JSON格式的详细状态
       const combinedContent = [
         basicInfo,
         numberField,
@@ -554,7 +630,7 @@ export default function LabelEditor() {
       ].filter(content => content && content.trim() !== '').join('\n')
       
       // 1. 保存格式化翻译汇总和字体设置
-      await updateFormattedSummary(selectedProject.id, selectedLanguage, combinedContent, {
+      await updateFormattedSummary(selectedProject.id, selectedLanguage, formattedSummaryJson, {
         fontFamily: labelData.fontFamily,
         secondaryFontFamily: labelData.secondaryFontFamily,
         fontSize: labelData.fontSize,
@@ -562,16 +638,17 @@ export default function LabelEditor() {
         lineHeight: labelData.lineHeight
       })
       
-      // 2. 触发PDF生成和保存（通过事件通知PDFPreview组件）
+      // 2. 触发PDF生成和保存（使用合并的文本内容）
       window.dispatchEvent(new CustomEvent('generate-and-save-pdf', {
         detail: {
           projectId: selectedProject.id,
           countryCode: selectedLanguage,
-          sequenceNumber: selectedNumber
+          sequenceNumber: selectedNumber,
+          content: combinedContent // 传递合并的文本内容用于PDF生成
         }
       }));
       
-      showToast('标签保存成功，PDF正在生成中...', 'success')
+      showToast('6个字段的格式化状态已保存，PDF正在生成中...', 'success')
       
     } catch (error) {
       console.error('保存标签失败:', error)
@@ -660,11 +737,11 @@ export default function LabelEditor() {
             formattedSummary: countryDetail.formatted_summary || undefined
           })
           
-          // 尝试解析JSON格式的原始状态
-          const originalData = parseOriginalSummary(countryDetail.original_summary)
+          // 优先尝试解析JSON格式的格式化状态
+          const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
           
-          if (originalData) {
-            // 如果有JSON格式的原始状态，恢复6个字段
+          if (formattedData && formattedData.formatStates) {
+            // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
             updateLabelData({
               selectedLanguage: newLanguage,
               fontFamily: countryDetail.font_family || newFontFamily,
@@ -673,40 +750,67 @@ export default function LabelEditor() {
               spacing: countryDetail.spacing || labelData.spacing,
               lineHeight: countryDetail.line_height || labelData.lineHeight,
               selectedNumber: sequence.toString(),
-              basicInfo: originalData.basicInfo || '',
-              numberField: originalData.numberField || '',
-              drugName: originalData.drugName || '',
-              numberOfSheets: originalData.numberOfSheets || '',
-              drugDescription: originalData.drugDescription || '',
-              companyName: originalData.companyName || '',
+              basicInfo: formattedData.basicInfo || '',
+              numberField: formattedData.numberField || '',
+              drugName: formattedData.drugName || '',
+              numberOfSheets: formattedData.numberOfSheets || '',
+              drugDescription: formattedData.drugDescription || '',
+              companyName: formattedData.companyName || '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
             })
+            
+            // 恢复格式化状态
+            setFormatStates(formattedData.formatStates)
           } else {
-            // 如果没有JSON格式的原始状态，使用旧逻辑
-            updateLabelData({
-              selectedLanguage: newLanguage,
-              fontFamily: countryDetail.font_family || newFontFamily,
-              secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
-              fontSize: countryDetail.font_size || labelData.fontSize,
-              spacing: countryDetail.spacing || labelData.spacing,
-              lineHeight: countryDetail.line_height || labelData.lineHeight,
-              selectedNumber: sequence.toString(),
-              basicInfo: countryDetail.formatted_summary || '未格式化',
-              originalSummary: countryDetail.original_summary,
-              formatted_summary: countryDetail.formatted_summary
+            // 如果没有格式化状态，尝试恢复原始状态
+            const originalData = parseOriginalSummary(countryDetail.original_summary)
+            
+            if (originalData) {
+              // 如果有JSON格式的原始状态，恢复6个字段
+              updateLabelData({
+                selectedLanguage: newLanguage,
+                fontFamily: countryDetail.font_family || newFontFamily,
+                secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
+                fontSize: countryDetail.font_size || labelData.fontSize,
+                spacing: countryDetail.spacing || labelData.spacing,
+                lineHeight: countryDetail.line_height || labelData.lineHeight,
+                selectedNumber: sequence.toString(),
+                basicInfo: originalData.basicInfo || '',
+                numberField: originalData.numberField || '',
+                drugName: originalData.drugName || '',
+                numberOfSheets: originalData.numberOfSheets || '',
+                drugDescription: originalData.drugDescription || '',
+                companyName: originalData.companyName || '',
+                originalSummary: countryDetail.original_summary,
+                formatted_summary: countryDetail.formatted_summary
+              })
+            } else {
+              // 如果没有JSON格式数据，使用旧逻辑
+              updateLabelData({
+                selectedLanguage: newLanguage,
+                fontFamily: countryDetail.font_family || newFontFamily,
+                secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
+                fontSize: countryDetail.font_size || labelData.fontSize,
+                spacing: countryDetail.spacing || labelData.spacing,
+                lineHeight: countryDetail.line_height || labelData.lineHeight,
+                selectedNumber: sequence.toString(),
+                basicInfo: countryDetail.formatted_summary || '未格式化',
+                originalSummary: countryDetail.original_summary,
+                formatted_summary: countryDetail.formatted_summary
+              })
+            }
+            
+            // 重置格式化状态
+            setFormatStates({
+              basicInfo: 0,
+              numberField: 0,
+              drugName: 0,
+              numberOfSheets: 0,
+              drugDescription: 0,
+              companyName: 0
             })
           }
-          
-          // 重置格式化状态
-          setFormatStates({
-            basicInfo: 0,
-            numberField: 0,
-            drugName: 0,
-            numberOfSheets: 0,
-            drugDescription: 0,
-            companyName: 0
-          })
         } else {
           // 如果该国别码不存在于当前项目，只更新语言和字体
           updateLabelData({
@@ -776,11 +880,11 @@ export default function LabelEditor() {
             formattedSummary: countryDetail.formatted_summary || undefined
           })
           
-          // 尝试解析JSON格式的原始状态
-          const originalData = parseOriginalSummary(countryDetail.original_summary)
+          // 优先尝试解析JSON格式的格式化状态
+          const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
           
-          if (originalData) {
-            // 如果有JSON格式的原始状态，恢复6个字段
+          if (formattedData && formattedData.formatStates) {
+            // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
             updateLabelData({
               selectedNumber: e.target.value,
               selectedLanguage: countryCode,
@@ -790,41 +894,69 @@ export default function LabelEditor() {
               fontSize: countryDetail.font_size || labelData.fontSize,
               spacing: countryDetail.spacing || labelData.spacing,
               lineHeight: countryDetail.line_height || labelData.lineHeight,
-              basicInfo: originalData.basicInfo || '',
-              numberField: originalData.numberField || '',
-              drugName: originalData.drugName || '',
-              numberOfSheets: originalData.numberOfSheets || '',
-              drugDescription: originalData.drugDescription || '',
-              companyName: originalData.companyName || '',
+              basicInfo: formattedData.basicInfo || '',
+              numberField: formattedData.numberField || '',
+              drugName: formattedData.drugName || '',
+              numberOfSheets: formattedData.numberOfSheets || '',
+              drugDescription: formattedData.drugDescription || '',
+              companyName: formattedData.companyName || '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
             })
+            
+            // 恢复格式化状态
+            setFormatStates(formattedData.formatStates)
           } else {
-            // 如果没有JSON格式的原始状态，使用旧逻辑
-            updateLabelData({
-              selectedNumber: e.target.value,
-              selectedLanguage: countryCode,
-              currentWidth,
-              fontFamily: countryDetail.font_family || labelData.fontFamily,
-              secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
-              fontSize: countryDetail.font_size || labelData.fontSize,
-              spacing: countryDetail.spacing || labelData.spacing,
-              lineHeight: countryDetail.line_height || labelData.lineHeight,
-              basicInfo: countryDetail.formatted_summary || '未格式化',
-              originalSummary: countryDetail.original_summary,
-              formatted_summary: countryDetail.formatted_summary
+            // 如果没有格式化状态，尝试恢复原始状态
+            const originalData = parseOriginalSummary(countryDetail.original_summary)
+            
+            if (originalData) {
+              // 如果有JSON格式的原始状态，恢复6个字段
+              updateLabelData({
+                selectedNumber: e.target.value,
+                selectedLanguage: countryCode,
+                currentWidth,
+                fontFamily: countryDetail.font_family || labelData.fontFamily,
+                secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
+                fontSize: countryDetail.font_size || labelData.fontSize,
+                spacing: countryDetail.spacing || labelData.spacing,
+                lineHeight: countryDetail.line_height || labelData.lineHeight,
+                basicInfo: originalData.basicInfo || '',
+                numberField: originalData.numberField || '',
+                drugName: originalData.drugName || '',
+                numberOfSheets: originalData.numberOfSheets || '',
+                drugDescription: originalData.drugDescription || '',
+                companyName: originalData.companyName || '',
+                originalSummary: countryDetail.original_summary,
+                formatted_summary: countryDetail.formatted_summary
+              })
+            } else {
+              // 如果没有JSON格式数据，使用旧逻辑
+              updateLabelData({
+                selectedNumber: e.target.value,
+                selectedLanguage: countryCode,
+                currentWidth,
+                fontFamily: countryDetail.font_family || labelData.fontFamily,
+                secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
+                fontSize: countryDetail.font_size || labelData.fontSize,
+                spacing: countryDetail.spacing || labelData.spacing,
+                lineHeight: countryDetail.line_height || labelData.lineHeight,
+                basicInfo: countryDetail.formatted_summary || '未格式化',
+                originalSummary: countryDetail.original_summary,
+                formatted_summary: countryDetail.formatted_summary
+              })
+            }
+            
+            // 重置格式化状态
+            setFormatStates({
+              basicInfo: 0,
+              numberField: 0,
+              drugName: 0,
+              numberOfSheets: 0,
+              drugDescription: 0,
+              companyName: 0
             })
           }
-          
-          // 重置格式化状态
-          setFormatStates({
-            basicInfo: 0,
-            numberField: 0,
-            drugName: 0,
-            numberOfSheets: 0,
-            drugDescription: 0,
-            companyName: 0
-          })
         } else {
           // 如果该序号不存在于当前项目，只更新序号和宽度
           updateLabelData({
@@ -969,18 +1101,73 @@ export default function LabelEditor() {
                   <Sparkles size={14} />
                   {isFormatting ? '格式化中...' : '格式化'}
                 </button>
-                <button
-                  onClick={handleReset}
-                  disabled={!selectedProject || isResetting}
-                  className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                  style={{
-                    backgroundColor: theme.primary,
-                    color: theme.buttonText,
-                  }}
-                >
-                  <RotateCcw size={14} />
-                  {isResetting ? '重置中...' : '重置'}
-                </button>
+                <div className="relative flex-1">
+                  <button
+                    onClick={handleReset}
+                    disabled={!selectedProject || isResetting}
+                    className="w-full px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    style={{
+                      backgroundColor: theme.primary,
+                      color: theme.buttonText,
+                    }}
+                  >
+                    <RotateCcw size={14} />
+                    {isResetting ? '重置中...' : '重置'}
+                    <ChevronDown size={12} className="ml-1" />
+                  </button>
+                  
+                  {showResetMenu && (
+                    <div 
+                      className="absolute top-full right-0 mt-1 bg-white shadow-xl rounded-md z-10 w-40 border border-gray-200 overflow-hidden"
+                      style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                    >
+                      <div className="py-1">
+                        <button 
+                          onClick={() => { handleResetToFormatted(); setShowResetMenu(false); }}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 border-b border-gray-100 flex items-center"
+                          style={{
+                            backgroundColor: "white",
+                            color: theme.text,
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.primary;
+                            e.currentTarget.style.color = 'white';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = "white";
+                            e.currentTarget.style.color = theme.text;
+                          }}
+                        >
+                          <div className="flex items-center w-full">
+                            <span className="mr-2 text-lg">↻</span> 
+                            <span>重置到格式化</span>
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => { handleResetToOriginal(); setShowResetMenu(false); }}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center"
+                          style={{
+                            backgroundColor: "white",
+                            color: theme.text,
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = theme.accent;
+                            e.currentTarget.style.color = 'white';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = "white";
+                            e.currentTarget.style.color = theme.text;
+                          }}
+                        >
+                          <div className="flex items-center w-full">
+                            <span className="mr-2 text-lg">⟲</span> 
+                            <span>重置到初始化</span>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 <button
                   onClick={handleSave}
                   disabled={!selectedProject || isSaving}
@@ -991,7 +1178,7 @@ export default function LabelEditor() {
                   }}
                 >
                   <Save size={14} />
-                  {isSaving ? '保存中...' : '保存标签'}
+                  {isSaving ? '保存中...' : '保存'}
                 </button>
               </div>
             </div>
