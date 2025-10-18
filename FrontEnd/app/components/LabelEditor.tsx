@@ -82,6 +82,30 @@ export default function LabelEditor() {
     window.setTimeout(() => setToast({ visible: false, message: '', type }), duration)
   }
 
+  // 创建原始状态JSON
+  const createOriginalSummary = () => {
+    return JSON.stringify({
+      basicInfo: basicInfo || '',
+      numberField: numberField || '',
+      drugName: drugName || '',
+      numberOfSheets: numberOfSheets || '',
+      drugDescription: drugDescription || '',
+      companyName: companyName || ''
+    })
+  }
+
+  // 解析原始状态JSON
+  const parseOriginalSummary = (originalSummary: string | undefined) => {
+    if (!originalSummary) return null
+    
+    try {
+      return JSON.parse(originalSummary)
+    } catch (error) {
+      console.warn('解析原始状态失败，可能是旧格式数据:', error)
+      return null
+    }
+  }
+
   // 初始化 - 保存当前状态为原始状态到数据库
   const handleInitialize = async () => {
     if (!selectedProject || !selectedLanguage) { 
@@ -92,20 +116,17 @@ export default function LabelEditor() {
     try {
       setIsInitializing(true)
       
-      // 获取当前所有字段的内容作为原始状态
-      const originalSummary = [
-        basicInfo,
-        numberField,
-        drugName,
-        numberOfSheets,
-        drugDescription,
-        companyName
-      ].filter(content => content && content.trim() !== '').join('\n')
+      // 检查是否有内容
+      const hasContent = [basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName]
+        .some(content => content && content.trim() !== '')
       
-      if (!originalSummary.trim()) {
+      if (!hasContent) {
         showToast('当前内容为空，无法初始化', 'info')
         return
       }
+      
+      // 创建包含6个字段的JSON格式原始状态
+      const originalSummaryJson = createOriginalSummary()
       
       // 保存原始状态到数据库
       await updateFormattedSummary(
@@ -113,10 +134,10 @@ export default function LabelEditor() {
         selectedLanguage,
         undefined, // 不更新formatted_summary
         undefined, // 不更新字体设置
-        originalSummary // 只保存原始状态
+        originalSummaryJson // 保存JSON格式的原始状态
       )
       
-      showToast('原始状态已初始化保存', 'success')
+      showToast('6个字段的原始状态已初始化保存', 'success')
       
     } catch (error) {
       console.error('初始化失败:', error)
@@ -128,10 +149,18 @@ export default function LabelEditor() {
 
   // 基于原始状态的格式化功能
   const handleFormatField = (fieldName: string) => {
-    // 获取原始状态
-    const originalText = labelData.originalSummary
-    if (!originalText || !originalText.trim()) {
+    // 解析原始状态JSON
+    const originalData = parseOriginalSummary(labelData.originalSummary)
+    
+    if (!originalData) {
       showToast('未找到原始状态，请先点击初始化', 'info')
+      return
+    }
+
+    // 获取对应字段的原始内容
+    const originalText = originalData[fieldName]
+    if (!originalText || !originalText.trim()) {
+      showToast(`${fieldName}字段的原始状态为空`, 'info')
       return
     }
 
@@ -140,7 +169,7 @@ export default function LabelEditor() {
     const sentenceCount = sentences.length
 
     if (sentenceCount === 0) {
-      showToast('原始状态为空', 'info')
+      showToast(`${fieldName}字段的原始状态为空`, 'info')
       return
     }
 
@@ -157,7 +186,7 @@ export default function LabelEditor() {
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = '分为两行'
+      toastMessage = `${fieldName}分为两行`
     } else if (nextFormatState === 1) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
@@ -165,11 +194,11 @@ export default function LabelEditor() {
       const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = '分为三行'
+      toastMessage = `${fieldName}分为三行`
     } else {
       // 分为一行
       formattedText = sentences.join(' ')
-      toastMessage = '恢复一行'
+      toastMessage = `${fieldName}恢复一行`
     }
 
     // 更新对应字段的内容
@@ -365,20 +394,37 @@ export default function LabelEditor() {
       // 获取该国别的详细信息
       const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
       
-      // 如果有格式化汇总，则恢复；否则显示"未格式化"
-      const resetText = countryDetail.formatted_summary || '未格式化'
+      // 尝试解析JSON格式的原始状态
+      const originalData = parseOriginalSummary(countryDetail.original_summary)
       
-      // 将重置的内容分配到各个字段（这里可以根据实际需求调整分配逻辑）
-      updateLabelData({ 
-        basicInfo: resetText,
-        numberField: '',
-        drugName: '',
-        numberOfSheets: '',
-        drugDescription: '',
-        companyName: '',
-        originalSummary: countryDetail.original_summary,
-        formatted_summary: countryDetail.formatted_summary
-      })
+      if (originalData) {
+        // 如果有JSON格式的原始状态，恢复6个字段
+        updateLabelData({ 
+          basicInfo: originalData.basicInfo || '',
+          numberField: originalData.numberField || '',
+          drugName: originalData.drugName || '',
+          numberOfSheets: originalData.numberOfSheets || '',
+          drugDescription: originalData.drugDescription || '',
+          companyName: originalData.companyName || '',
+          originalSummary: countryDetail.original_summary,
+          formatted_summary: countryDetail.formatted_summary
+        })
+        showToast('已恢复到6个字段的原始状态', 'success')
+      } else {
+        // 如果没有JSON格式的原始状态，使用旧逻辑（兼容性处理）
+        const resetText = countryDetail.formatted_summary || '未格式化'
+        updateLabelData({ 
+          basicInfo: resetText,
+          numberField: '',
+          drugName: '',
+          numberOfSheets: '',
+          drugDescription: '',
+          companyName: '',
+          originalSummary: countryDetail.original_summary,
+          formatted_summary: countryDetail.formatted_summary
+        })
+        showToast('已恢复（旧格式数据）', 'info')
+      }
       
       // 重置格式化状态
       setFormatStates({
@@ -614,19 +660,43 @@ export default function LabelEditor() {
             formattedSummary: countryDetail.formatted_summary || undefined
           })
           
-          // 同时更新语言和字体，如果数据库有保存的字体设置则使用数据库的
-          updateLabelData({
-            selectedLanguage: newLanguage,
-            fontFamily: countryDetail.font_family || newFontFamily,
-            secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
-            fontSize: countryDetail.font_size || labelData.fontSize,
-            spacing: countryDetail.spacing || labelData.spacing,
-            lineHeight: countryDetail.line_height || labelData.lineHeight,
-            selectedNumber: sequence.toString(),
-            basicInfo: countryDetail.formatted_summary || '未格式化',
-            originalSummary: countryDetail.original_summary,
-            formatted_summary: countryDetail.formatted_summary
-          })
+          // 尝试解析JSON格式的原始状态
+          const originalData = parseOriginalSummary(countryDetail.original_summary)
+          
+          if (originalData) {
+            // 如果有JSON格式的原始状态，恢复6个字段
+            updateLabelData({
+              selectedLanguage: newLanguage,
+              fontFamily: countryDetail.font_family || newFontFamily,
+              secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
+              fontSize: countryDetail.font_size || labelData.fontSize,
+              spacing: countryDetail.spacing || labelData.spacing,
+              lineHeight: countryDetail.line_height || labelData.lineHeight,
+              selectedNumber: sequence.toString(),
+              basicInfo: originalData.basicInfo || '',
+              numberField: originalData.numberField || '',
+              drugName: originalData.drugName || '',
+              numberOfSheets: originalData.numberOfSheets || '',
+              drugDescription: originalData.drugDescription || '',
+              companyName: originalData.companyName || '',
+              originalSummary: countryDetail.original_summary,
+              formatted_summary: countryDetail.formatted_summary
+            })
+          } else {
+            // 如果没有JSON格式的原始状态，使用旧逻辑
+            updateLabelData({
+              selectedLanguage: newLanguage,
+              fontFamily: countryDetail.font_family || newFontFamily,
+              secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
+              fontSize: countryDetail.font_size || labelData.fontSize,
+              spacing: countryDetail.spacing || labelData.spacing,
+              lineHeight: countryDetail.line_height || labelData.lineHeight,
+              selectedNumber: sequence.toString(),
+              basicInfo: countryDetail.formatted_summary || '未格式化',
+              originalSummary: countryDetail.original_summary,
+              formatted_summary: countryDetail.formatted_summary
+            })
+          }
           
           // 重置格式化状态
           setFormatStates({
@@ -706,20 +776,45 @@ export default function LabelEditor() {
             formattedSummary: countryDetail.formatted_summary || undefined
           })
           
-          // 同时更新序号、语言、字体和内容
-          updateLabelData({
-            selectedNumber: e.target.value,
-            selectedLanguage: countryCode,
-            currentWidth,
-            fontFamily: countryDetail.font_family || labelData.fontFamily,
-            secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
-            fontSize: countryDetail.font_size || labelData.fontSize,
-            spacing: countryDetail.spacing || labelData.spacing,
-            lineHeight: countryDetail.line_height || labelData.lineHeight,
-            basicInfo: countryDetail.formatted_summary || '未格式化',
-            originalSummary: countryDetail.original_summary,
-            formatted_summary: countryDetail.formatted_summary
-          })
+          // 尝试解析JSON格式的原始状态
+          const originalData = parseOriginalSummary(countryDetail.original_summary)
+          
+          if (originalData) {
+            // 如果有JSON格式的原始状态，恢复6个字段
+            updateLabelData({
+              selectedNumber: e.target.value,
+              selectedLanguage: countryCode,
+              currentWidth,
+              fontFamily: countryDetail.font_family || labelData.fontFamily,
+              secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
+              fontSize: countryDetail.font_size || labelData.fontSize,
+              spacing: countryDetail.spacing || labelData.spacing,
+              lineHeight: countryDetail.line_height || labelData.lineHeight,
+              basicInfo: originalData.basicInfo || '',
+              numberField: originalData.numberField || '',
+              drugName: originalData.drugName || '',
+              numberOfSheets: originalData.numberOfSheets || '',
+              drugDescription: originalData.drugDescription || '',
+              companyName: originalData.companyName || '',
+              originalSummary: countryDetail.original_summary,
+              formatted_summary: countryDetail.formatted_summary
+            })
+          } else {
+            // 如果没有JSON格式的原始状态，使用旧逻辑
+            updateLabelData({
+              selectedNumber: e.target.value,
+              selectedLanguage: countryCode,
+              currentWidth,
+              fontFamily: countryDetail.font_family || labelData.fontFamily,
+              secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
+              fontSize: countryDetail.font_size || labelData.fontSize,
+              spacing: countryDetail.spacing || labelData.spacing,
+              lineHeight: countryDetail.line_height || labelData.lineHeight,
+              basicInfo: countryDetail.formatted_summary || '未格式化',
+              originalSummary: countryDetail.original_summary,
+              formatted_summary: countryDetail.formatted_summary
+            })
+          }
           
           // 重置格式化状态
           setFormatStates({
