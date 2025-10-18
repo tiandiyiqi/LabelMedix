@@ -79,24 +79,61 @@ export default function LabelEditor() {
 
   // 自动调整textarea高度的函数
   const adjustTextareaHeight = (textarea: HTMLTextAreaElement) => {
-    textarea.style.height = 'auto'
+    // 检查是否为空白
+    const isEmpty = !textarea.value || textarea.value.trim() === ''
+    
+    // 如果为空，使用更高的默认高度
+    if (isEmpty) {
+      textarea.style.height = '50px' // 空白时显示更高
+      console.log('📭 空白状态，设置高度: 50px')
+      return
+    }
+    
+    // 先重置高度到minHeight，让浏览器计算真实的scrollHeight
+    textarea.style.height = '32px'
     const scrollHeight = textarea.scrollHeight
     
-    // 计算单行高度（字体大小 + 行间距）
     const computedStyle = window.getComputedStyle(textarea)
     const fontSize = parseFloat(computedStyle.fontSize)
     const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.2
     
-    // 计算padding（py-2 = 8px上下padding）
+    // 计算padding和border
     const paddingTop = parseFloat(computedStyle.paddingTop)
     const paddingBottom = parseFloat(computedStyle.paddingBottom)
     const totalPadding = paddingTop + paddingBottom
+    const borderTop = parseFloat(computedStyle.borderTopWidth)
+    const borderBottom = parseFloat(computedStyle.borderBottomWidth)
+    const totalBorder = borderTop + borderBottom
     
-    // 如果内容只有一行，使用紧凑的单行高度
-    if (scrollHeight <= lineHeight + totalPadding) {
-      textarea.style.height = (lineHeight + totalPadding) + 'px'
+    // 计算单行文本的理论高度
+    // lineHeight * 1行 + padding + border
+    const singleLineContentHeight = lineHeight + totalPadding + totalBorder
+    
+    // 判断是否为单行：无换行符 且 scrollHeight不超过单行高度+容差
+    const hasNewline = textarea.value.includes('\n') || textarea.value.includes('\r')
+    const isSingleLine = !hasNewline && scrollHeight <= (singleLineContentHeight + 2)
+    
+    // 调试信息
+    console.log('Textarea调试信息:', {
+      value: textarea.value.substring(0, 30) + '...',
+      scrollHeight,
+      fontSize,
+      lineHeight,
+      totalPadding,
+      totalBorder,
+      singleLineContentHeight,
+      isSingleLine,
+      hasNewline
+    })
+    
+    if (isSingleLine) {
+      // 单行时使用最小高度
+      textarea.style.height = '32px'
+      console.log('✅ 判断为单行，设置高度: 32px')
     } else {
+      // 多行时使用scrollHeight
       textarea.style.height = scrollHeight + 'px'
+      console.log('📝 判断为多行，设置高度:', scrollHeight + 'px')
     }
   }
 
@@ -719,17 +756,21 @@ export default function LabelEditor() {
                   adjustTextareaHeight(e.target)
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
                   color: theme.text,
                   backgroundColor: "white",
-                  height: "32px", // 更紧凑的单行高度
+                  height: "auto", // 改为自动高度，由adjustTextareaHeight控制
+                  minHeight: "32px", // 最小单行高度：16px字体 + 12px padding + 2px border + 2px缓冲
                   fontSize: "16px", // 与"药品信息"标题字体大小一致
-                  lineHeight: "1.2", // 紧凑的行间距
+                  lineHeight: "1.2", // 恢复合理的行间距
+                  paddingTop: "6px", // 增加上padding，让多行文本更美观
+                  paddingBottom: "6px", // 增加下padding
                   resize: "none",
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  maxHeight: "none" // 移除最大高度限制
                 }}
                 placeholder="基本信息..."
               />
@@ -747,17 +788,21 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
                   color: theme.text,
                   backgroundColor: "white",
-                  height: "32px", // 更紧凑的单行高度
+                  height: "auto", // 改为自动高度，由adjustTextareaHeight控制
+                  minHeight: "32px", // 最小单行高度：16px字体 + 12px padding + 2px border + 2px缓冲
                   fontSize: "16px", // 与"药品信息"标题字体大小一致
-                  lineHeight: "1.2", // 紧凑的行间距
+                  lineHeight: "1.2", // 恢复合理的行间距
+                  paddingTop: "6px", // 增加上padding，让多行文本更美观
+                  paddingBottom: "6px", // 增加下padding
                   resize: "none",
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  maxHeight: "none" // 移除最大高度限制
                 }}
                 placeholder="编号栏..."
               />
@@ -775,17 +820,21 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
                   color: theme.text,
                   backgroundColor: "white",
-                  height: "32px", // 更紧凑的单行高度
+                  height: "auto", // 改为自动高度，由adjustTextareaHeight控制
+                  minHeight: "32px", // 最小单行高度：16px字体 + 12px padding + 2px border + 2px缓冲
                   fontSize: "16px", // 与"药品信息"标题字体大小一致
-                  lineHeight: "1.2", // 紧凑的行间距
+                  lineHeight: "1.2", // 恢复合理的行间距
+                  paddingTop: "6px", // 增加上padding，让多行文本更美观
+                  paddingBottom: "6px", // 增加下padding
                   resize: "none",
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  maxHeight: "none" // 移除最大高度限制
                 }}
                 placeholder="药品名称..."
               />
@@ -803,17 +852,21 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
                   color: theme.text,
                   backgroundColor: "white",
-                  height: "32px", // 更紧凑的单行高度
+                  height: "auto", // 改为自动高度，由adjustTextareaHeight控制
+                  minHeight: "32px", // 最小单行高度：16px字体 + 12px padding + 2px border + 2px缓冲
                   fontSize: "16px", // 与"药品信息"标题字体大小一致
-                  lineHeight: "1.2", // 紧凑的行间距
+                  lineHeight: "1.2", // 恢复合理的行间距
+                  paddingTop: "6px", // 增加上padding，让多行文本更美观
+                  paddingBottom: "6px", // 增加下padding
                   resize: "none",
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  maxHeight: "none" // 移除最大高度限制
                 }}
                 placeholder="片数内容..."
               />
@@ -831,17 +884,21 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
                   color: theme.text,
                   backgroundColor: "white",
-                  height: "32px", // 更紧凑的单行高度
+                  height: "auto", // 改为自动高度，由adjustTextareaHeight控制
+                  minHeight: "32px", // 最小单行高度：16px字体 + 12px padding + 2px border + 2px缓冲
                   fontSize: "16px", // 与"药品信息"标题字体大小一致
-                  lineHeight: "1.2", // 紧凑的行间距
+                  lineHeight: "1.2", // 恢复合理的行间距
+                  paddingTop: "6px", // 增加上padding，让多行文本更美观
+                  paddingBottom: "6px", // 增加下padding
                   resize: "none",
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  maxHeight: "none" // 移除最大高度限制
                 }}
                 placeholder="药品说明..."
               />
@@ -859,17 +916,21 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
                   color: theme.text,
                   backgroundColor: "white",
-                  height: "32px", // 更紧凑的单行高度
+                  height: "auto", // 改为自动高度，由adjustTextareaHeight控制
+                  minHeight: "32px", // 最小单行高度：16px字体 + 12px padding + 2px border + 2px缓冲
                   fontSize: "16px", // 与"药品信息"标题字体大小一致
-                  lineHeight: "1.2", // 紧凑的行间距
+                  lineHeight: "1.2", // 恢复合理的行间距
+                  paddingTop: "6px", // 增加上padding，让多行文本更美观
+                  paddingBottom: "6px", // 增加下padding
                   resize: "none",
-                  overflow: "hidden"
+                  overflow: "hidden",
+                  maxHeight: "none" // 移除最大高度限制
                 }}
                 placeholder="公司名称..."
               />
@@ -878,7 +939,7 @@ export default function LabelEditor() {
         </div>
 
         {/* 字体相关参数 - 紧凑设计 */}
-        <div className="space-y-2 mt-8">
+        <div className="space-y-2 mt-4">
           {/* 第一行：主语言字体和次语言字体 */}
           <div className="grid grid-cols-2 gap-2">
             {/* 主语言字体 */}
