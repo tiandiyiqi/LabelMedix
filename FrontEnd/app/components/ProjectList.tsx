@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useContext, useEffect } from "react"
-import { Search, Plus, Edit, Trash2, Save, GripVertical } from "lucide-react"
+import { Search, Plus, Edit, Trash2, Save, GripVertical, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "@/lib/context/LabelContext"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -13,6 +13,8 @@ import { batchProcessFiles } from '@/lib/cozeApi'
 import { getProjects, createProject, deleteProject as deleteProjectApi, getProjectById, updateProject, updateCountrySequence, getTranslationsByCountry, updateTranslation, getCountryDetails } from '@/lib/projectApi'
 import type { Project } from '@/lib/projectApi'
 import ParseResultsDisplay from './ParseResultsDisplay'
+import { classifyFieldTypes, getFieldTypeStats, getFieldTypeName } from '@/lib/fieldClassification'
+import { getFormattedKeywordList } from '@/lib/fieldTypeKeywordApi'
 
 export default function ProjectList() {
   const themeContext = useContext(ThemeContext)
@@ -31,10 +33,14 @@ export default function ProjectList() {
   const [countryGroups, setCountryGroups] = useState<Array<{ id: number; country_code: string; sequence_number: number; total_items: number }>>([])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
-  const [countryTranslations, setCountryTranslations] = useState<Array<{ id: number; original_text: string; translated_text: string; item_order: number }>>([])
+  const [countryTranslations, setCountryTranslations] = useState<Array<{ id: number; original_text: string; translated_text: string; item_order: number; field_type: string | null }>>([])
   const [isLoadingTranslations, setIsLoadingTranslations] = useState(false)
   const [editingTranslationId, setEditingTranslationId] = useState<number | null>(null)
   const [editingTranslationText, setEditingTranslationText] = useState("")
+  const [editingFieldTypeId, setEditingFieldTypeId] = useState<number | null>(null)
+  const [editingFieldType, setEditingFieldType] = useState<string>("")
+  const [sortBy, setSortBy] = useState<'order' | 'field_type'>('order')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [projectName, setProjectName] = useState('')
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [workStatus, setWorkStatus] = useState<'idle' | 'preparing' | 'uploading' | 'uploaded' | 'parsing' | 'parsed' | 'success' | 'error'>('idle')
@@ -148,7 +154,8 @@ export default function ProjectList() {
           id: item.id,
           original_text: item.original_text,
           translated_text: item.translated_text || item.original_text,
-          item_order: item.item_order
+          item_order: item.item_order,
+          field_type: item.field_type || null
         }))
         .sort((a, b) => a.item_order - b.item_order)
       
@@ -250,6 +257,95 @@ export default function ProjectList() {
   const handleCancelEditTranslation = () => {
     setEditingTranslationId(null)
     setEditingTranslationText("")
+  }
+
+  // 开始编辑字段类型
+  const handleEditFieldType = (translationId: number, currentFieldType: string | null) => {
+    setEditingFieldTypeId(translationId)
+    setEditingFieldType(currentFieldType || "")
+  }
+
+  // 保存字段类型编辑
+  const handleSaveFieldType = async (translationId: number) => {
+    if (!editingProject) return
+    
+    try {
+      await updateTranslation(translationId, {
+        field_type: editingFieldType || null,
+      })
+      
+      // 更新本地状态
+      setCountryTranslations(countryTranslations.map(item => 
+        item.id === translationId 
+          ? { ...item, field_type: editingFieldType || null }
+          : item
+      ))
+      
+      setEditingFieldTypeId(null)
+      setEditingFieldType("")
+    } catch (error) {
+      console.error('保存字段类型失败:', error)
+      alert('保存字段类型失败，请重试')
+    }
+  }
+
+  // 取消编辑字段类型
+  const handleCancelEditFieldType = () => {
+    setEditingFieldTypeId(null)
+    setEditingFieldType("")
+  }
+
+  // 排序处理函数
+  const handleSort = (column: 'order' | 'field_type') => {
+    if (sortBy === column) {
+      // 如果点击的是当前排序列，则切换排序方向
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // 如果点击的是新列，则设置为升序
+      setSortBy(column)
+      setSortDirection('asc')
+    }
+  }
+
+  // 字段类型排序优先级
+  const getFieldTypePriority = (fieldType: string | null): number => {
+    const priorities = {
+      'basic_info': 1,
+      'number_field': 2,
+      'drug_name': 3,
+      'number_of_sheets': 4,
+      'company_name': 5,
+      'drug_description': 6,
+      null: 7 // 未分类排在最后
+    }
+    return priorities[fieldType as keyof typeof priorities] || 7
+  }
+
+  // 获取排序后的翻译数据
+  const getSortedTranslations = () => {
+    const sorted = [...countryTranslations].sort((a, b) => {
+      if (sortBy === 'order') {
+        // 按原始顺序排序
+        return sortDirection === 'asc' 
+          ? a.item_order - b.item_order
+          : b.item_order - a.item_order
+      } else {
+        // 按字段类型排序
+        const priorityA = getFieldTypePriority(a.field_type)
+        const priorityB = getFieldTypePriority(b.field_type)
+        
+        if (priorityA === priorityB) {
+          // 如果字段类型相同，按原始顺序排序
+          return a.item_order - b.item_order
+        }
+        
+        return sortDirection === 'asc' 
+          ? priorityA - priorityB
+          : priorityB - priorityA
+      }
+    })
+    
+    return sorted
   }
 
   const handleSave = async (id: number) => {
@@ -407,27 +503,38 @@ export default function ProjectList() {
       console.log('🔍 result.data:', result.data)
       console.log('🔍 result.output:', result.output)
       
-      // 3. 解析完成后直接创建项目
+      // 3. 解析完成后进行字段分类
       setWorkStatus('parsed')
+      setStatusMessage('🏷️ 正在进行字段类型分类...')
+      
+      // 获取关键词清单
+      const keywordList = await getFormattedKeywordList()
+      console.log('📋 获取到的关键词清单:', keywordList)
+      
+      // 对解析结果进行字段分类
+      const classifiedResult = await classifyCozeResult(result, keywordList)
+      console.log('🏷️ 字段分类结果:', classifiedResult)
+      
+      // 4. 创建项目
       setStatusMessage('💾 正在保存项目到数据库...')
       
       // 调用后端API创建项目
       const createdProject = await createProject({
         job_name: projectName,
         job_description: `包含 ${uploadedFiles.length} 个文件`,
-        coze_result: result as any,
+        coze_result: classifiedResult as any,
       })
       
       console.log('✅ 项目创建响应:', createdProject)
       
       // 保存解析结果
-      setParseResults([result] as any[])
+      setParseResults([classifiedResult] as any[])
       
       // 更新项目列表
       await loadProjects()
       
       setWorkStatus('success')
-      setStatusMessage(`🎉 解析并创建项目成功！已处理 ${uploadedFiles.length} 个文件`)
+      setStatusMessage(`🎉 解析并创建项目成功！已处理 ${uploadedFiles.length} 个文件，完成字段分类`)
       
       // 延迟关闭窗口
       setTimeout(() => {
@@ -438,6 +545,125 @@ export default function ProjectList() {
       console.error('解析并创建项目错误:', error)
       setWorkStatus('error')
       setStatusMessage(`❌ 解析并创建项目失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
+  }
+
+  /**
+   * 对Coze解析结果进行字段分类
+   * @param cozeResult Coze API返回的结果
+   * @param keywordList 关键词清单
+   * @returns 包含字段分类的结果
+   */
+  const classifyCozeResult = async (cozeResult: any, keywordList: any) => {
+    try {
+      console.log('🔍 开始字段分类，输入数据:', {
+        cozeResult: cozeResult,
+        keywordList: keywordList,
+        hasOutput: !!cozeResult.output,
+        hasData: !!cozeResult.data
+      })
+      
+      // 解析Coze数据结构 - 数据在data字段中
+      let output
+      if (cozeResult.data && typeof cozeResult.data === 'string') {
+        try {
+          const parsedData = JSON.parse(cozeResult.data)
+          output = parsedData.output
+          console.log('🔧 从data字段解析出output:', output)
+        } catch (error) {
+          console.error('❌ 解析Coze data字段失败:', error)
+          return cozeResult
+        }
+      } else if (cozeResult.output) {
+        output = cozeResult.output
+        console.log('🔧 直接使用output字段:', output)
+      } else {
+        console.warn('⚠️ Coze结果中没有output或data数据，跳过字段分类')
+        return cozeResult
+      }
+
+      const classifiedOutput: any = {}
+      
+      console.log('🔍 Output数据:', output)
+      console.log('🔍 Output键:', Object.keys(output))
+
+      // 遍历每个国家/地区的翻译数据
+      for (const [countryKey, countryData] of Object.entries(output)) {
+        console.log(`🔍 处理国家: "${countryKey}"`, countryData)
+        
+        // 处理空国别码的情况
+        let processedCountryKey = countryKey
+        if (!countryKey || countryKey.trim() === '') {
+          processedCountryKey = 'CN China/Chinese' // 默认使用中文
+          console.log(`⚠️ 国别码为空，使用默认值: ${processedCountryKey}`)
+        }
+        
+        if (countryData && typeof countryData === 'object' && !Array.isArray(countryData)) {
+          const data = countryData as any
+          
+          console.log(`🔍 ${countryKey} 数据结构:`, {
+            hasOriginal: !!data.original,
+            originalLength: data.original?.length,
+            originalSample: data.original?.slice(0, 2)
+          })
+          
+          // 确保有original数组
+          if (data.original && Array.isArray(data.original)) {
+            console.log(`🏷️ 开始对 ${countryKey} 进行字段分类，文本数量: ${data.original.length}`)
+            
+            // 对original文本进行字段分类
+            const fieldTypes = classifyFieldTypes(data.original, keywordList)
+            
+            console.log(`🏷️ ${countryKey} 分类结果:`, fieldTypes)
+            
+            // 统计字段类型分布
+            const stats = getFieldTypeStats(fieldTypes)
+            console.log(`📊 ${countryKey} 字段分类统计:`, stats)
+            
+            // 将分类结果添加到数据中
+            classifiedOutput[processedCountryKey] = {
+              ...data,
+              field_types: fieldTypes, // 添加字段类型数组
+              field_type_stats: stats  // 添加统计信息
+            }
+            
+            console.log(`✅ ${processedCountryKey} 分类完成，包含字段类型:`, classifiedOutput[processedCountryKey].field_types)
+          } else {
+            console.warn(`⚠️ ${processedCountryKey} 没有original数组，保持原数据`)
+            // 如果没有original数组，保持原数据
+            classifiedOutput[processedCountryKey] = data
+          }
+        } else {
+          console.warn(`⚠️ ${processedCountryKey} 不是对象格式，保持原数据`)
+          // 如果不是对象格式，保持原数据
+          classifiedOutput[processedCountryKey] = countryData
+        }
+      }
+
+      // 构建包含字段分类的结果，保持原有数据结构
+      const result = {
+        ...cozeResult,
+        // 如果原来有data字段，更新data字段；如果有output字段，更新output字段
+        ...(cozeResult.data ? {
+          data: JSON.stringify({
+            output: classifiedOutput
+          })
+        } : {
+          output: classifiedOutput
+        }),
+        classification_applied: true, // 标记已应用分类
+        classification_timestamp: new Date().toISOString()
+      }
+      
+      console.log('🎉 字段分类完成，最终结果:', result)
+      
+      // 返回包含字段分类的结果
+      return result
+    } catch (error) {
+      console.error('❌ 字段分类失败:', error)
+      console.error('❌ 错误堆栈:', error instanceof Error ? error.stack : error)
+      // 如果分类失败，返回原始结果
+      return cozeResult
     }
   }
 
@@ -473,8 +699,20 @@ export default function ProjectList() {
       setWorkStatus('preparing')
       setStatusMessage('📝 正在创建项目...')
       
-      // 检查是否有解析结果，如果有则使用解析结果创建项目
-      const cozeResult = parseResults.length > 0 ? parseResults[0] : undefined
+      // 检查是否有解析结果，如果有则进行字段分类
+      let cozeResult = parseResults.length > 0 ? parseResults[0] : undefined
+      
+      if (cozeResult) {
+        setStatusMessage('🏷️ 正在进行字段类型分类...')
+        
+        // 获取关键词清单
+        const keywordList = await getFormattedKeywordList()
+        console.log('📋 获取到的关键词清单:', keywordList)
+        
+        // 对解析结果进行字段分类
+        cozeResult = await classifyCozeResult(cozeResult, keywordList)
+        console.log('🏷️ 字段分类结果:', cozeResult)
+      }
       
       const createdProject = await createProject({
         job_name: projectName,
@@ -487,7 +725,7 @@ export default function ProjectList() {
       
       setWorkStatus('success')
       const resultMessage = cozeResult 
-        ? '✅ 项目创建成功！已保存AI解析结果' 
+        ? '✅ 项目创建成功！已保存AI解析结果和字段分类' 
         : '✅ 项目创建成功！'
       setStatusMessage(resultMessage)
       
@@ -891,7 +1129,7 @@ export default function ProjectList() {
                           }}
                         >
                           <GripVertical className="h-4 w-4 text-gray-400 flex-shrink-0 mr-2" />
-                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold flex-shrink-0">
+                          <span className="text-sm text-black font-medium flex-shrink-0">
                             {index + 1}
                           </span>
                           <div className="ml-2 flex-1 min-w-0">
@@ -937,15 +1175,44 @@ export default function ProjectList() {
                       {/* 标题栏 */}
                       <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
                         <div className="col-span-1 flex justify-center">
-                          <span className="text-xs font-medium text-gray-600">序号</span>
+                          <div className="flex items-center">
+                            <span className="text-xs font-medium text-gray-600">序号</span>
+                            <button
+                              onClick={() => handleSort('order')}
+                              className="ml-1 p-0 bg-transparent border-0 text-gray-600 hover:text-gray-800 flex items-center transition-colors"
+                              title="按序号排序"
+                            >
+                              {sortBy === 'order' ? (
+                                sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 inline" /> : <ArrowDown className="h-3 w-3 inline" />
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 opacity-50 inline" />
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        <div className="col-span-5 border-r border-gray-300 pr-3">
+                        <div className="col-span-4 border-r border-gray-300 pr-3">
                           <div className="text-xs font-medium text-gray-600 flex items-center">
                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 mr-1.5"></span>
                             原文
                           </div>
                         </div>
-                        <div className="col-span-5 pl-3">
+                        <div className="col-span-2 border-r border-gray-300 pr-3">
+                          <div className="flex items-center">
+                            <span className="text-xs font-medium text-gray-600">字段类型</span>
+                            <button
+                              onClick={() => handleSort('field_type')}
+                              className="ml-1 p-0 bg-transparent border-0 text-gray-600 hover:text-gray-800 flex items-center transition-colors"
+                              title="按字段类型排序"
+                            >
+                              {sortBy === 'field_type' ? (
+                                sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 inline" /> : <ArrowDown className="h-3 w-3 inline" />
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 opacity-50 inline" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="col-span-4 pl-3">
                           <div className="text-xs font-medium text-gray-600 flex items-center">
                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>
                             翻译
@@ -957,7 +1224,7 @@ export default function ProjectList() {
                       </div>
                       
                       {/* 内容行 */}
-                      {countryTranslations.map((item, index) => (
+                      {getSortedTranslations().map((item, index) => (
                         <div
                           key={item.id}
                           className="border-l border-r border-b hover:shadow-sm transition-shadow bg-white group last:rounded-b-lg"
@@ -965,26 +1232,33 @@ export default function ProjectList() {
                           {editingTranslationId === item.id ? (
                             <div className="p-3">
                               <div className="grid grid-cols-12 gap-2 items-start">
-                                {/* 序号 */}
-                                <div className="col-span-1 flex justify-center">
-                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
-                                    {index + 1}
-                                  </span>
-                                </div>
+                                  {/* 序号 */}
+                                  <div className="col-span-1 flex justify-center">
+                                    <span className="text-sm text-black font-medium">
+                                      {index + 1}
+                                    </span>
+                                  </div>
                                 
                                 {/* 原文（只读） */}
-                                <div className="col-span-5 border-r border-gray-200 pr-3">
-                                  <div className="text-sl text-gray-700 leading-relaxed break-words">
+                                <div className="col-span-4 border-r border-gray-200 pr-3">
+                                  <div className="text-sm text-gray-700 leading-relaxed break-words">
                                     {item.original_text || '(空内容)'}
                                   </div>
                                 </div>
                                 
+                                {/* 字段类型（只读） */}
+                                <div className="col-span-2 border-r border-gray-200 pr-3">
+                                  <div className="text-sm text-black">
+                                    {item.field_type ? getFieldTypeName(item.field_type as any) : '未分类'}
+                                  </div>
+                                </div>
+                                
                                 {/* 翻译编辑 */}
-                                <div className="col-span-5 pl-3">
+                                <div className="col-span-4 pl-3">
                                   <textarea
                                     value={editingTranslationText}
                                     onChange={(e) => setEditingTranslationText(e.target.value)}
-                                    className="w-full text-sl text-gray-900 border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                    className="w-full text-sm text-gray-900 border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                                     rows={2}
                                     autoFocus
                                   />
@@ -1014,28 +1288,77 @@ export default function ProjectList() {
                             </div>
                           ) : (
                             <div className="grid grid-cols-12 gap-2 p-3 items-start">
-                              {/* 第一列：序号 */}
-                              <div className="col-span-1 flex justify-center">
-                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
-                                  {index + 1}
-                                </span>
-                              </div>
+                                {/* 第一列：序号 */}
+                                <div className="col-span-1 flex justify-center">
+                                  <span className="text-sm text-black font-medium">
+                                    {index + 1}
+                                  </span>
+                                </div>
                               
                               {/* 第二列：原文 */}
-                              <div className="col-span-5 border-r border-gray-200 pr-3">
+                              <div className="col-span-4 border-r border-gray-200 pr-3">
                                 <div className="text-sm text-gray-700 leading-relaxed break-words">
                                   {item.original_text || '(空内容)'}
                                 </div>
                               </div>
                               
-                              {/* 第三列：翻译 */}
-                              <div className="col-span-5 pl-3">
+                              {/* 第三列：字段类型 */}
+                              <div className="col-span-2 border-r border-gray-200 pr-3">
+                                {editingFieldTypeId === item.id ? (
+                                  <div className="space-y-1">
+                                    <select
+                                      value={editingFieldType}
+                                      onChange={(e) => setEditingFieldType(e.target.value)}
+                                      className="w-full text-xs border rounded p-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                      autoFocus
+                                    >
+                                      <option value="">未分类</option>
+                                      <option value="basic_info">基本信息</option>
+                                      <option value="number_field">编号栏</option>
+                                      <option value="drug_name">药品名称</option>
+                                      <option value="number_of_sheets">片数</option>
+                                      <option value="company_name">公司名称</option>
+                                      <option value="drug_description">药品说明</option>
+                                    </select>
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={() => handleSaveFieldType(item.id)}
+                                        className="px-2 py-0.5 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                      >
+                                        保存
+                                      </button>
+                                      <button
+                                        onClick={handleCancelEditFieldType}
+                                        className="px-2 py-0.5 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                                      >
+                                        取消
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-sm text-black">
+                                      {item.field_type ? getFieldTypeName(item.field_type as any) : '未分类'}
+                                    </div>
+                                    <button
+                                      onClick={() => handleEditFieldType(item.id, item.field_type)}
+                                      className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                      title="编辑字段类型"
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* 第四列：翻译 */}
+                              <div className="col-span-4 pl-3">
                                 <div className="text-sm text-gray-900 leading-relaxed break-words">
                                   {item.translated_text || '(空内容)'}
                                 </div>
                               </div>
                               
-                              {/* 第四列：编辑按钮 */}
+                              {/* 第五列：编辑按钮 */}
                               <div className="col-span-1 flex justify-center">
                                 <Button
                                   onClick={() => handleEditTranslation(item.id, item.translated_text)}
@@ -1065,6 +1388,10 @@ export default function ProjectList() {
                   setCountryTranslations([])
                   setEditingTranslationId(null)
                   setEditingTranslationText("")
+                  setEditingFieldTypeId(null)
+                  setEditingFieldType("")
+                  setSortBy('order')
+                  setSortDirection('asc')
                 }}
                 variant="outline"
                 className="h-8 text-sm border-gray-300"

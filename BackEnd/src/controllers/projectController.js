@@ -322,13 +322,26 @@ exports.createProject = async (req, res) => {
               console.log(
                 `  ➕ 添加新的翻译: ${originalText.substring(0, 30)}...`
               );
+
+              // 检查是否有字段分类结果
+              let fieldType = null;
+              if (countryData.field_types && countryData.field_types[j]) {
+                fieldType = countryData.field_types[j];
+                console.log(
+                  `  🏷️ 应用字段分类: "${originalText.substring(
+                    0,
+                    30
+                  )}..." -> ${fieldType}`
+                );
+              }
+
               await TranslationItem.create(
                 {
                   group_id: group.id,
                   original_text: originalText,
                   translated_text: translatedText,
                   item_order: existingItems.length + j + 1,
-                  field_type: null,
+                  field_type: fieldType,
                   is_edited: false,
                 },
                 { transaction }
@@ -354,14 +367,28 @@ exports.createProject = async (req, res) => {
           );
 
           // 批量创建翻译条目
-          const itemsData = originalTexts.map((originalText, index) => ({
-            group_id: group.id,
-            original_text: originalText,
-            translated_text: translatedTexts[index] || originalText,
-            item_order: index + 1,
-            field_type: null,
-            is_edited: false,
-          }));
+          const itemsData = originalTexts.map((originalText, index) => {
+            // 检查是否有字段分类结果
+            let fieldType = null;
+            if (countryData.field_types && countryData.field_types[index]) {
+              fieldType = countryData.field_types[index];
+              console.log(
+                `  🏷️ 应用字段分类: "${originalText.substring(
+                  0,
+                  30
+                )}..." -> ${fieldType}`
+              );
+            }
+
+            return {
+              group_id: group.id,
+              original_text: originalText,
+              translated_text: translatedTexts[index] || originalText,
+              item_order: index + 1,
+              field_type: fieldType,
+              is_edited: false,
+            };
+          });
 
           await TranslationItem.bulkCreate(itemsData, { transaction });
         }

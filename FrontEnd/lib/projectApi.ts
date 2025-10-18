@@ -24,7 +24,7 @@ interface Project {
 interface TranslationItem {
   id: number;
   group_id: number;
-  field_type?: 'basic_info' | 'number_field' | 'drug_description';
+  field_type?: 'basic_info' | 'number_field' | 'drug_description' | 'company_name' | 'drug_name' | 'number_of_sheets';
   original_text: string;
   translated_text?: string;
   item_order: number;
@@ -309,7 +309,7 @@ export const getTranslationsByCountry = async (
  */
 export const updateTranslation = async (
   translationId: number,
-  updates: { translated_text: string }
+  updates: { translated_text?: string; field_type?: string | null }
 ): Promise<TranslationItem> => {
   try {
     const response = await fetch(
