@@ -10,7 +10,8 @@ interface ParseResultsDisplayProps {
 
 interface ParsedOutput {
   countryCode: string
-  translations: string[]
+  original: string[]
+  translation: string[]
 }
 
 export default function ParseResultsDisplay({ results, onClose }: ParseResultsDisplayProps) {
@@ -58,10 +59,30 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
       const output = parsedData.output || result.output || {}
       
       // 将 output 对象转换为数组格式
-      const outputArray = Object.entries(output).map(([countryCode, translations]) => ({
-        countryCode: countryCode, // 保持原始键作为显示内容
-        translations: Array.isArray(translations) ? translations : []
-      }))
+      const outputArray = Object.entries(output).map(([countryCode, countryData]: [string, any]) => {
+        // 新格式：{ original: [...], translation: [...] }
+        if (countryData && typeof countryData === 'object' && !Array.isArray(countryData)) {
+          return {
+            countryCode: countryCode,
+            original: Array.isArray(countryData.original) ? countryData.original : [],
+            translation: Array.isArray(countryData.translation) ? countryData.translation : []
+          }
+        }
+        // 兼容旧格式：直接是数组
+        else if (Array.isArray(countryData)) {
+          return {
+            countryCode: countryCode,
+            original: countryData,
+            translation: countryData
+          }
+        }
+        // 其他情况
+        return {
+          countryCode: countryCode,
+          original: [],
+          translation: []
+        }
+      })
       
       console.log('解析后的输出数组:', outputArray)
       return outputArray
@@ -71,33 +92,6 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
     }
   }
 
-  // 由于新的数据结构已经是数组，这个函数现在简化为直接返回数组或过滤空值
-  const getTranslationArray = (translations: string[] | any): string[] => {
-    console.log('翻译数据:', translations)
-    
-    if (Array.isArray(translations)) {
-      return translations.filter((item: any) => item && typeof item === 'string' && item.trim() !== '')
-    }
-    
-    // 兼容旧格式：如果不是数组，尝试作为字符串处理
-    if (typeof translations === 'string') {
-      try {
-        const parsed = JSON.parse(translations)
-        if (Array.isArray(parsed)) {
-          return parsed.filter((item: any) => item && typeof item === 'string' && item.trim() !== '')
-        }
-      } catch {
-        // 解析失败，按行分割
-        const lines = translations.split('\n').filter((line: string) => line.trim() !== '')
-        if (lines.length > 0) {
-          return lines
-        }
-      }
-      return [translations]
-    }
-    
-    return []
-  }
 
   // 处理背景点击关闭
   const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -198,7 +192,7 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                             }`} />
                             <span className="font-semibold">{item.countryCode}</span>
                             <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
-                              {item.translations.length} 条
+                              {item.original.length} 条
                             </span>
                           </div>
                         </button>
@@ -221,54 +215,95 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                       <div>
                         <h4 className="text-sm font-medium text-gray-800 mb-3 flex items-center sticky top-0 bg-white py-2 -mx-4 px-4 border-b border-gray-100 z-10">
                           <Globe className="h-4 w-4 mr-2" />
-                          翻译内容
+                          翻译对比
                           <span className="ml-2 text-xs text-gray-500">
                             ({outputArray[activeCountryIndex].countryCode})
                           </span>
                           <span className="ml-auto text-xs text-blue-600">
-                            共 {getTranslationArray(outputArray[activeCountryIndex].translations).length} 条
+                            共 {outputArray[activeCountryIndex].original.length} 条
                           </span>
                         </h4>
-                        <div className="space-y-2 mt-4">
-                          {getTranslationArray(outputArray[activeCountryIndex].translations).map((text: string, textIndex: number) => (
-                            <div
-                              key={textIndex}
-                              className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors duration-200 border border-gray-200 hover:border-gray-300"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1 flex items-start">
-                                  <span className="text-xs font-medium text-blue-600 mr-3 mt-0.5 flex-shrink-0 bg-blue-50 px-2 py-1 rounded">
+                        <div className="space-y-3 mt-4">
+                          {outputArray[activeCountryIndex].original.map((originalText: string, textIndex: number) => {
+                            const translatedText = outputArray[activeCountryIndex].translation[textIndex] || originalText
+                            return (
+                              <div
+                                key={textIndex}
+                                className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
+                              >
+                                {/* 序号标题 */}
+                                <div className="flex items-center px-3 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
+                                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
                                     {textIndex + 1}
                                   </span>
-                                  <div className="text-sm text-gray-900 leading-relaxed min-h-[1.5rem]">
-                                    {text || '(空内容)'}
+                                </div>
+                                
+                                {/* 原文 */}
+                                <div className="px-3 py-2 border-b border-gray-100">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="text-xs font-medium text-gray-500 mb-1">原文 (Original)</div>
+                                      <div className="text-sm text-gray-900 leading-relaxed">
+                                        {originalText || '(空内容)'}
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        copyToClipboard(originalText, `${activeCountryIndex}-${textIndex}-original`)
+                                      }}
+                                      className={`ml-2 p-1.5 rounded-md transition-all duration-200 flex-shrink-0 ${
+                                        copiedIndex === `${activeCountryIndex}-${textIndex}-original` 
+                                          ? 'bg-green-100 text-green-600' 
+                                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                      }`}
+                                      title={copiedIndex === `${activeCountryIndex}-${textIndex}-original` ? "已复制" : "复制原文"}
+                                    >
+                                      {copiedIndex === `${activeCountryIndex}-${textIndex}-original` ? (
+                                        <Check className="h-3 w-3" />
+                                      ) : (
+                                        <Copy className="h-3 w-3" />
+                                      )}
+                                    </button>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    copyToClipboard(text, `${activeCountryIndex}-${textIndex}`)
-                                  }}
-                                  className={`ml-2 p-1.5 rounded-md transition-all duration-200 flex-shrink-0 ${
-                                    copiedIndex === `${activeCountryIndex}-${textIndex}` 
-                                      ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-                                  }`}
-                                  title={copiedIndex === `${activeCountryIndex}-${textIndex}` ? "已复制" : "复制内容"}
-                                >
-                                  {copiedIndex === `${activeCountryIndex}-${textIndex}` ? (
-                                    <Check className="h-3 w-3" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </button>
+                                
+                                {/* 翻译 */}
+                                <div className="px-3 py-2 bg-blue-50/30">
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                      <div className="text-xs font-medium text-blue-600 mb-1">翻译 (Translation)</div>
+                                      <div className="text-sm text-gray-900 leading-relaxed">
+                                        {translatedText || '(空内容)'}
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        copyToClipboard(translatedText, `${activeCountryIndex}-${textIndex}-translation`)
+                                      }}
+                                      className={`ml-2 p-1.5 rounded-md transition-all duration-200 flex-shrink-0 ${
+                                        copiedIndex === `${activeCountryIndex}-${textIndex}-translation` 
+                                          ? 'bg-green-100 text-green-600' 
+                                          : 'bg-blue-100 text-blue-500 hover:bg-blue-200'
+                                      }`}
+                                      title={copiedIndex === `${activeCountryIndex}-${textIndex}-translation` ? "已复制" : "复制翻译"}
+                                    >
+                                      {copiedIndex === `${activeCountryIndex}-${textIndex}-translation` ? (
+                                        <Check className="h-3 w-3" />
+                                      ) : (
+                                        <Copy className="h-3 w-3" />
+                                      )}
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                         
                         {/* 滚动提示 */}
-                        {getTranslationArray(outputArray[activeCountryIndex].translations).length > 5 && (
+                        {outputArray[activeCountryIndex].original.length > 5 && (
                           <div className="text-center py-4 text-xs text-gray-400 border-t border-gray-100 mt-4">
                             <span className="bg-gray-100 px-3 py-1 rounded-full">
                               ↑ 向上滚动查看更多内容 ↑

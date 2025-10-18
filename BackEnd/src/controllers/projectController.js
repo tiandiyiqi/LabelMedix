@@ -204,35 +204,74 @@ exports.createProject = async (req, res) => {
     }
 
     // 如果有 Coze 解析结果，则处理翻译数据
-    if (coze_result && coze_result.data) {
-      // 解析 data 字段（可能是字符串）
+    if (coze_result && (coze_result.output || coze_result.data)) {
+      // 解析数据字段（可能是字符串）
       let output;
       try {
+        // 优先使用 output 字段（新格式），如果没有则使用 data 字段（旧格式）
+        const sourceData = coze_result.output || coze_result.data;
         output =
-          typeof coze_result.data === "string"
-            ? JSON.parse(coze_result.data)
-            : coze_result.data;
+          typeof sourceData === "string" ? JSON.parse(sourceData) : sourceData;
         output = output.output || output; // 如果解析后还有 output 字段，取 output
+
+        console.log("🔍 解析后的output对象键:", Object.keys(output));
       } catch (error) {
-        console.error("解析 coze_result.data 失败:", error);
-        output = coze_result.data;
+        console.error("解析 coze_result 失败:", error);
+        output = coze_result.output || coze_result.data;
       }
+
       const countryEntries = Object.entries(output);
+      console.log(`📊 共有 ${countryEntries.length} 个国别需要处理`);
 
       // 处理每个国别的翻译数据
       for (let i = 0; i < countryEntries.length; i++) {
-        const [rawCountryKey, translations] = countryEntries[i];
+        const [rawCountryKey, countryData] = countryEntries[i];
 
-        if (!Array.isArray(translations) || translations.length === 0) {
+        // 新数据结构：countryData 包含 original 和 translation 数组
+        let originalTexts = [];
+        let translatedTexts = [];
+
+        // 判断数据结构类型
+        if (
+          countryData &&
+          typeof countryData === "object" &&
+          !Array.isArray(countryData)
+        ) {
+          // 新格式：{ original: [...], translation: [...] }
+          originalTexts = countryData.original || [];
+          translatedTexts = countryData.translation || [];
+
+          console.log(
+            `🔍 处理国别: "${rawCountryKey}"，原文条目数: ${originalTexts.length}，翻译条目数: ${translatedTexts.length}`
+          );
+
+          if (originalTexts.length !== translatedTexts.length) {
+            console.warn(
+              `⚠️ 国别 "${rawCountryKey}" 的原文和翻译条目数不匹配，原文: ${originalTexts.length}，翻译: ${translatedTexts.length}`
+            );
+          }
+        } else if (Array.isArray(countryData)) {
+          // 兼容旧格式：直接是数组
+          originalTexts = countryData;
+          translatedTexts = countryData;
+
+          console.log(
+            `🔍 处理国别（旧格式）: "${rawCountryKey}"，翻译条目数: ${countryData.length}`
+          );
+        } else {
+          console.warn(`⚠️ 国别 "${rawCountryKey}" 的数据格式不正确，跳过处理`);
+          continue;
+        }
+
+        if (originalTexts.length === 0) {
+          console.warn(`⚠️ 国别 "${rawCountryKey}" 没有翻译内容，跳过处理`);
           continue;
         }
 
         // 直接使用原始键作为国别码
         const countryCode = rawCountryKey;
 
-        console.log(
-          `🔍 处理国别: "${countryCode}"，翻译条目数: ${translations.length}`
-        );
+        console.log(`📝 准备保存国别: "${countryCode}"`);
 
         // 验证国别码不为空
         if (!countryCode || countryCode.trim() === "") {
@@ -255,7 +294,7 @@ exports.createProject = async (req, res) => {
           // 更新现有翻译组
           await existingGroup.update(
             {
-              total_items: translations.length,
+              total_items: originalTexts.length,
             },
             { transaction }
           );
@@ -269,22 +308,25 @@ exports.createProject = async (req, res) => {
           );
 
           // 处理新的翻译条目
-          for (let j = 0; j < translations.length; j++) {
-            const text = translations[j];
+          for (let j = 0; j < originalTexts.length; j++) {
+            const originalText = originalTexts[j];
+            const translatedText = translatedTexts[j] || originalText;
 
-            if (existingTexts.has(text)) {
+            if (existingTexts.has(originalText)) {
               // 如果已存在，可以选择更新（这里暂时跳过，保持原有数据）
               console.log(
-                `  ⏭️  跳过已存在的翻译: ${text.substring(0, 30)}...`
+                `  ⏭️  跳过已存在的翻译: ${originalText.substring(0, 30)}...`
               );
             } else {
               // 如果不存在，添加新的翻译条目
-              console.log(`  ➕ 添加新的翻译: ${text.substring(0, 30)}...`);
+              console.log(
+                `  ➕ 添加新的翻译: ${originalText.substring(0, 30)}...`
+              );
               await TranslationItem.create(
                 {
                   group_id: group.id,
-                  original_text: text,
-                  translated_text: text,
+                  original_text: originalText,
+                  translated_text: translatedText,
                   item_order: existingItems.length + j + 1,
                   field_type: null,
                   is_edited: false,
@@ -306,16 +348,16 @@ exports.createProject = async (req, res) => {
               project_id: project.id,
               country_code: countryCode,
               sequence_number: sequenceNumber,
-              total_items: translations.length,
+              total_items: originalTexts.length,
             },
             { transaction }
           );
 
           // 批量创建翻译条目
-          const itemsData = translations.map((text, index) => ({
+          const itemsData = originalTexts.map((originalText, index) => ({
             group_id: group.id,
-            original_text: text,
-            translated_text: text,
+            original_text: originalText,
+            translated_text: translatedTexts[index] || originalText,
             item_order: index + 1,
             field_type: null,
             is_edited: false,

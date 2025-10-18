@@ -30,7 +30,14 @@ module.exports = (sequelize) => {
         allowNull: false,
       },
       field_type: {
-        type: DataTypes.ENUM("basic_info", "number_field", "drug_description"),
+        type: DataTypes.ENUM(
+          "basic_info",
+          "number_field",
+          "drug_description",
+          "company_name",
+          "drug_name",
+          "number_of_sheets"
+        ),
         allowNull: true,
       },
       original_text: {

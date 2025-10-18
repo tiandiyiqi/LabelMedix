@@ -934,58 +934,120 @@ export default function ProjectList() {
                     </div>
                   ) : (
                     <div className="space-y-1">
+                      {/* 标题栏 */}
+                      <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
+                        <div className="col-span-1 flex justify-center">
+                          <span className="text-xs font-medium text-gray-600">序号</span>
+                        </div>
+                        <div className="col-span-5 border-r border-gray-300 pr-3">
+                          <div className="text-xs font-medium text-gray-600 flex items-center">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 mr-1.5"></span>
+                            原文
+                          </div>
+                        </div>
+                        <div className="col-span-5 pl-3">
+                          <div className="text-xs font-medium text-gray-600 flex items-center">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>
+                            翻译
+                          </div>
+                        </div>
+                        <div className="col-span-1 flex justify-center">
+                          <span className="text-xs font-medium text-gray-600">操作</span>
+                        </div>
+                      </div>
+                      
+                      {/* 内容行 */}
                       {countryTranslations.map((item, index) => (
                         <div
                           key={item.id}
-                          className="flex items-start p-2 border rounded hover:shadow-sm transition-shadow bg-white group"
+                          className="border-l border-r border-b hover:shadow-sm transition-shadow bg-white group last:rounded-b-lg"
                         >
-                          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 text-gray-600 text-xs font-medium flex-shrink-0 mt-0.5">
-                            {index + 1}
-                          </span>
-                          <div className="flex-1 min-w-0 ml-2">
-                            {editingTranslationId === item.id ? (
-                              <div className="space-y-1">
-                                <textarea
-                                  value={editingTranslationText}
-                                  onChange={(e) => setEditingTranslationText(e.target.value)}
-                                  className="w-full text-xs text-gray-900 border rounded p-1.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                  rows={3}
-                                  autoFocus
-                                />
-                                <div className="flex space-x-1">
-                                  <Button
-                                    onClick={() => handleSaveTranslation(item.id)}
-                                    size="sm"
-                                    className="h-6 text-xs bg-blue-600 hover:bg-blue-700"
-                                  >
-                                    保存
-                                  </Button>
-                                  <Button
-                                    onClick={handleCancelEditTranslation}
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-6 text-xs"
-                                  >
-                                    取消
-                                  </Button>
+                          {editingTranslationId === item.id ? (
+                            <div className="p-3">
+                              <div className="grid grid-cols-12 gap-2 items-start">
+                                {/* 序号 */}
+                                <div className="col-span-1 flex justify-center">
+                                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
+                                    {index + 1}
+                                  </span>
+                                </div>
+                                
+                                {/* 原文（只读） */}
+                                <div className="col-span-5 border-r border-gray-200 pr-3">
+                                  <div className="text-sl text-gray-700 leading-relaxed break-words">
+                                    {item.original_text || '(空内容)'}
+                                  </div>
+                                </div>
+                                
+                                {/* 翻译编辑 */}
+                                <div className="col-span-5 pl-3">
+                                  <textarea
+                                    value={editingTranslationText}
+                                    onChange={(e) => setEditingTranslationText(e.target.value)}
+                                    className="w-full text-sl text-gray-900 border rounded p-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                    rows={2}
+                                    autoFocus
+                                  />
+                                </div>
+                                
+                                {/* 操作按钮 */}
+                                <div className="col-span-1 flex justify-center">
+                                  <div className="flex flex-col space-y-1">
+                                    <Button
+                                      onClick={() => handleSaveTranslation(item.id)}
+                                      size="sm"
+                                      className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white font-medium px-3 shadow-sm"
+                                    >
+                                      ✓ 保存
+                                    </Button>
+                                    <Button
+                                      onClick={handleCancelEditTranslation}
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 text-xs  bg-red-400 text-white hover:bg-gray-500 px-3"
+                                    >
+                                      ✕ 取消
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
-                            ) : (
-                              <div className="flex items-start justify-between">
-                                <div className="text-xs text-gray-900 break-words flex-1 pr-2">
-                                  {item.translated_text}
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-12 gap-2 p-3 items-start">
+                              {/* 第一列：序号 */}
+                              <div className="col-span-1 flex justify-center">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
+                                  {index + 1}
+                                </span>
+                              </div>
+                              
+                              {/* 第二列：原文 */}
+                              <div className="col-span-5 border-r border-gray-200 pr-3">
+                                <div className="text-sm text-gray-700 leading-relaxed break-words">
+                                  {item.original_text || '(空内容)'}
                                 </div>
+                              </div>
+                              
+                              {/* 第三列：翻译 */}
+                              <div className="col-span-5 pl-3">
+                                <div className="text-sm text-gray-900 leading-relaxed break-words">
+                                  {item.translated_text || '(空内容)'}
+                                </div>
+                              </div>
+                              
+                              {/* 第四列：编辑按钮 */}
+                              <div className="col-span-1 flex justify-center">
                                 <Button
                                   onClick={() => handleEditTranslation(item.id, item.translated_text)}
                                   size="sm"
                                   variant="ghost"
-                                  className="h-6 px-2 text-xs opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                  className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
                                   <Edit className="h-3 w-3" />
                                 </Button>
                               </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
