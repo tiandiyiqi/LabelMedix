@@ -77,6 +77,35 @@ export default function LabelEditor() {
     setSelectedNumberState(Number(selectedNumber))
   }, [selectedNumber])
 
+  // 自动调整textarea高度的函数
+  const adjustTextareaHeight = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = 'auto'
+    const scrollHeight = textarea.scrollHeight
+    
+    // 计算单行高度（字体大小 + 行间距）
+    const computedStyle = window.getComputedStyle(textarea)
+    const fontSize = parseFloat(computedStyle.fontSize)
+    const lineHeight = parseFloat(computedStyle.lineHeight) || fontSize * 1.2
+    
+    // 计算padding（py-2 = 8px上下padding）
+    const paddingTop = parseFloat(computedStyle.paddingTop)
+    const paddingBottom = parseFloat(computedStyle.paddingBottom)
+    const totalPadding = paddingTop + paddingBottom
+    
+    // 如果内容只有一行，使用紧凑的单行高度
+    if (scrollHeight <= lineHeight + totalPadding) {
+      textarea.style.height = (lineHeight + totalPadding) + 'px'
+    } else {
+      textarea.style.height = scrollHeight + 'px'
+    }
+  }
+
+  // 当字段内容变化时，自动调整所有textarea的高度
+  useEffect(() => {
+    const textareas = document.querySelectorAll('textarea[data-auto-height="true"]') as NodeListOf<HTMLTextAreaElement>
+    textareas.forEach(adjustTextareaHeight)
+  }, [basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName])
+
   // 加载当前项目的可用序号和国别码
   useEffect(() => {
     const loadAvailableOptions = async () => {
@@ -124,10 +153,6 @@ export default function LabelEditor() {
     { name: "Arial Unicode", value: "Arial Unicode" },
     { name: "Arial Bold Italic", value: "Arial Bold Italic" }
   ]
-
-  const handleInputChange = (value: string) => {
-    updateLabelData({ drugInfo: value })
-  }
 
   // 临时测试格式化函数
   const format_test = (text: string): string => {
@@ -192,7 +217,16 @@ export default function LabelEditor() {
       
       // 如果有格式化汇总，则恢复；否则显示"未格式化"
       const resetText = countryDetail.formatted_summary || '未格式化'
-      updateLabelData({ drugInfo: resetText })
+      
+      // 将重置的内容分配到各个字段（这里可以根据实际需求调整分配逻辑）
+      updateLabelData({ 
+        basicInfo: resetText,
+        numberField: '',
+        drugName: '',
+        numberOfSheets: '',
+        drugDescription: '',
+        companyName: ''
+      })
       
     } catch (error) {
       console.error('重置失败:', error)
@@ -253,12 +287,6 @@ export default function LabelEditor() {
         companyName: fieldTypeGroups.company_name.join('\n')
       })
       
-      // 同时保持原有的导入到药品信息（暂时保留）
-      const importedText = sortedItems
-        .map(item => item.translated_text || item.original_text)
-        .join('\n')
-      updateLabelData({ drugInfo: importedText })
-      
       showToast('翻译内容已按字段类型分类导入', 'success')
       
     } catch (error) {
@@ -271,16 +299,26 @@ export default function LabelEditor() {
 
   // 格式化
   const handleFormat = async () => {
-    if (!drugInfo || drugInfo === '未格式化') { showToast('药品信息为空，无法格式化', 'info'); return }
-
     try {
       setIsFormatting(true)
       
-      // 使用临时测试格式化函数
-      const formattedText = format_test(drugInfo)
+      // 格式化各个字段的内容
+      const formattedBasicInfo = format_test(basicInfo)
+      const formattedNumberField = format_test(numberField)
+      const formattedDrugName = format_test(drugName)
+      const formattedNumberOfSheets = format_test(numberOfSheets)
+      const formattedDrugDescription = format_test(drugDescription)
+      const formattedCompanyName = format_test(companyName)
       
-      // 更新到药品信息
-      updateLabelData({ drugInfo: formattedText })
+      // 更新各个字段
+      updateLabelData({
+        basicInfo: formattedBasicInfo,
+        numberField: formattedNumberField,
+        drugName: formattedDrugName,
+        numberOfSheets: formattedNumberOfSheets,
+        drugDescription: formattedDrugDescription,
+        companyName: formattedCompanyName
+      })
       
     } catch (error) {
       console.error('格式化失败:', error)
@@ -294,13 +332,21 @@ export default function LabelEditor() {
   const handleSave = async () => {
     if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
 
-    if (!drugInfo || drugInfo.trim() === '') { showToast('药品信息为空，无法保存', 'info'); return }
-
     try {
       setIsSaving(true)
       
+      // 将所有字段内容合并为drugInfo用于保存
+      const combinedContent = [
+        basicInfo,
+        numberField,
+        drugName,
+        numberOfSheets,
+        drugDescription,
+        companyName
+      ].filter(content => content && content.trim() !== '').join('\n')
+      
       // 1. 保存格式化翻译汇总和字体设置
-      await updateFormattedSummary(selectedProject.id, selectedLanguage, drugInfo, {
+      await updateFormattedSummary(selectedProject.id, selectedLanguage, combinedContent, {
         fontFamily: labelData.fontFamily,
         secondaryFontFamily: labelData.secondaryFontFamily,
         fontSize: labelData.fontSize,
@@ -415,7 +461,7 @@ export default function LabelEditor() {
             spacing: countryDetail.spacing || labelData.spacing,
             lineHeight: countryDetail.line_height || labelData.lineHeight,
             selectedNumber: sequence.toString(),
-            drugInfo: countryDetail.formatted_summary || '未格式化'
+            basicInfo: countryDetail.formatted_summary || '未格式化'
           })
         } else {
           // 如果该国别码不存在于当前项目，只更新语言和字体
@@ -423,7 +469,7 @@ export default function LabelEditor() {
             selectedLanguage: newLanguage,
             fontFamily: newFontFamily,
             secondaryFontFamily: newSecondaryFontFamily,
-            drugInfo: '该国别在当前项目中不存在'
+            basicInfo: '该国别在当前项目中不存在'
           })
         }
       } catch (error) {
@@ -496,14 +542,14 @@ export default function LabelEditor() {
             fontSize: countryDetail.font_size || labelData.fontSize,
             spacing: countryDetail.spacing || labelData.spacing,
             lineHeight: countryDetail.line_height || labelData.lineHeight,
-            drugInfo: countryDetail.formatted_summary || '未格式化'
+            basicInfo: countryDetail.formatted_summary || '未格式化'
           })
         } else {
           // 如果该序号不存在于当前项目，只更新序号和宽度
           updateLabelData({
             selectedNumber: e.target.value,
             currentWidth,
-            drugInfo: '该序号在当前项目中不存在'
+            basicInfo: '该序号在当前项目中不存在'
           })
         }
       } catch (error) {
@@ -600,219 +646,239 @@ export default function LabelEditor() {
           </div>
         </div>
       </div>
-      <div className="flex-grow space-y-6 overflow-y-auto">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium" style={{ color: theme.text }}>
-              药品信息
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={handleReset}
-                disabled={!selectedProject || isResetting}
-                className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: theme.primary,
-                  color: theme.buttonText,
-                }}
-              >
-                <RotateCcw size={14} />
-                {isResetting ? '重置中...' : '重置'}
-              </button>
-              <button
-                onClick={handleImport}
-                disabled={!selectedProject || isImporting}
-                className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: theme.secondary,
-                  color: theme.buttonText,
-                }}
-              >
-                <Download size={14} />
-                {isImporting ? '导入中...' : '导入'}
-              </button>
-              <button
-                onClick={handleFormat}
-                disabled={!drugInfo || drugInfo === '未格式化' || isFormatting}
-                className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: theme.accent,
-                  color: theme.buttonText,
-                }}
-              >
-                <Sparkles size={14} />
-                {isFormatting ? '格式化中...' : '格式化'}
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!selectedProject || !drugInfo || drugInfo.trim() === '' || isSaving}
-                className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: '#10B981', // 绿色表示保存
-                  color: 'white',
-                }}
-              >
-                <Save size={14} />
-                {isSaving ? '保存中...' : '保存标签'}
-              </button>
+      <div className="flex-grow overflow-y-auto">
+        <div className="space-y-6">
+          {/* 药品信息标题和按钮区域 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-base font-medium" style={{ color: theme.text }}>
+                药品信息
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleReset}
+                  disabled={!selectedProject || isResetting}
+                  className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: theme.primary,
+                    color: theme.buttonText,
+                  }}
+                >
+                  <RotateCcw size={14} />
+                  {isResetting ? '重置中...' : '重置'}
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!selectedProject || isImporting}
+                  className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: theme.secondary,
+                    color: theme.buttonText,
+                  }}
+                >
+                  <Download size={14} />
+                  {isImporting ? '导入中...' : '导入'}
+                </button>
+                <button
+                  onClick={handleFormat}
+                  disabled={isFormatting}
+                  className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: theme.accent,
+                    color: theme.buttonText,
+                  }}
+                >
+                  <Sparkles size={14} />
+                  {isFormatting ? '格式化中...' : '格式化'}
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={!selectedProject || isSaving}
+                  className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: '#10B981', // 绿色表示保存
+                    color: 'white',
+                  }}
+                >
+                  <Save size={14} />
+                  {isSaving ? '保存中...' : '保存标签'}
+                </button>
+              </div>
             </div>
           </div>
-          <textarea
-            value={drugInfo}
-            onChange={(e) => handleInputChange(e.target.value)}
-            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-            style={{
-              borderColor: theme.border,
-              borderWidth: "1px",
-              color: theme.text,
-              backgroundColor: "white",
-              minHeight: "400px",
-              resize: "none"
-            }}
-          />
-        </div>
 
-        {/* 新增：6个字段类型分类区域 */}
-        {/* 1. 基本信息 */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium" style={{ color: theme.text }}>
-              基本信息
-            </label>
-          </div>
-          <textarea
-            value={basicInfo}
-            onChange={(e) => updateLabelData({ basicInfo: e.target.value })}
-            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-            style={{
-              borderColor: theme.border,
-              borderWidth: "1px",
-              color: theme.text,
-              backgroundColor: "white",
-              minHeight: "120px",
-              resize: "none"
-            }}
-            placeholder="基本信息内容将在此显示..."
-          />
-        </div>
+          {/* 6个字段类型分类区域 - 紧凑间距 */}
+          <div className="space-y-1">
+            {/* 1. 基本信息 */}
+            <div>
+              <textarea
+                value={basicInfo}
+                onChange={(e) => {
+                  updateLabelData({ basicInfo: e.target.value })
+                  // 自动调整高度
+                  adjustTextareaHeight(e.target)
+                }}
+                data-auto-height="true"
+                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                style={{
+                  borderColor: theme.border,
+                  borderWidth: "1px",
+                  color: theme.text,
+                  backgroundColor: "white",
+                  height: "32px", // 更紧凑的单行高度
+                  fontSize: "16px", // 与"药品信息"标题字体大小一致
+                  lineHeight: "1.2", // 紧凑的行间距
+                  resize: "none",
+                  overflow: "hidden"
+                }}
+                placeholder="基本信息..."
+              />
+            </div>
 
-        {/* 2. 编号栏 */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium" style={{ color: theme.text }}>
-              编号栏
-            </label>
-          </div>
-          <textarea
-            value={numberField}
-            onChange={(e) => updateLabelData({ numberField: e.target.value })}
-            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-            style={{
-              borderColor: theme.border,
-              borderWidth: "1px",
-              color: theme.text,
-              backgroundColor: "white",
-              minHeight: "120px",
-              resize: "none"
-            }}
-            placeholder="编号栏内容将在此显示..."
-          />
-        </div>
+            {/* 2. 编号栏 */}
+            <div>
+              <textarea
+                value={numberField}
+                onChange={(e) => {
+                  updateLabelData({ numberField: e.target.value })
+                  // 自动调整高度
+                  const textarea = e.target
+                  textarea.style.height = 'auto'
+                  textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
+                }}
+                data-auto-height="true"
+                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                style={{
+                  borderColor: theme.border,
+                  borderWidth: "1px",
+                  color: theme.text,
+                  backgroundColor: "white",
+                  height: "32px", // 更紧凑的单行高度
+                  fontSize: "16px", // 与"药品信息"标题字体大小一致
+                  lineHeight: "1.2", // 紧凑的行间距
+                  resize: "none",
+                  overflow: "hidden"
+                }}
+                placeholder="编号栏..."
+              />
+            </div>
 
-        {/* 3. 药品名称 */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium" style={{ color: theme.text }}>
-              药品名称
-            </label>
-          </div>
-          <textarea
-            value={drugName}
-            onChange={(e) => updateLabelData({ drugName: e.target.value })}
-            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-            style={{
-              borderColor: theme.border,
-              borderWidth: "1px",
-              color: theme.text,
-              backgroundColor: "white",
-              minHeight: "120px",
-              resize: "none"
-            }}
-            placeholder="药品名称内容将在此显示..."
-          />
-        </div>
+            {/* 3. 药品名称 */}
+            <div>
+              <textarea
+                value={drugName}
+                onChange={(e) => {
+                  updateLabelData({ drugName: e.target.value })
+                  // 自动调整高度
+                  const textarea = e.target
+                  textarea.style.height = 'auto'
+                  textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
+                }}
+                data-auto-height="true"
+                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                style={{
+                  borderColor: theme.border,
+                  borderWidth: "1px",
+                  color: theme.text,
+                  backgroundColor: "white",
+                  height: "32px", // 更紧凑的单行高度
+                  fontSize: "16px", // 与"药品信息"标题字体大小一致
+                  lineHeight: "1.2", // 紧凑的行间距
+                  resize: "none",
+                  overflow: "hidden"
+                }}
+                placeholder="药品名称..."
+              />
+            </div>
 
-        {/* 4. 片数 */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium" style={{ color: theme.text }}>
-              片数
-            </label>
-          </div>
-          <textarea
-            value={numberOfSheets}
-            onChange={(e) => updateLabelData({ numberOfSheets: e.target.value })}
-            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-            style={{
-              borderColor: theme.border,
-              borderWidth: "1px",
-              color: theme.text,
-              backgroundColor: "white",
-              minHeight: "120px",
-              resize: "none"
-            }}
-            placeholder="片数内容将在此显示..."
-          />
-        </div>
+            {/* 4. 片数 */}
+            <div>
+              <textarea
+                value={numberOfSheets}
+                onChange={(e) => {
+                  updateLabelData({ numberOfSheets: e.target.value })
+                  // 自动调整高度
+                  const textarea = e.target
+                  textarea.style.height = 'auto'
+                  textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
+                }}
+                data-auto-height="true"
+                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                style={{
+                  borderColor: theme.border,
+                  borderWidth: "1px",
+                  color: theme.text,
+                  backgroundColor: "white",
+                  height: "32px", // 更紧凑的单行高度
+                  fontSize: "16px", // 与"药品信息"标题字体大小一致
+                  lineHeight: "1.2", // 紧凑的行间距
+                  resize: "none",
+                  overflow: "hidden"
+                }}
+                placeholder="片数内容..."
+              />
+            </div>
 
-        {/* 5. 药品说明 */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium" style={{ color: theme.text }}>
-              药品说明
-            </label>
-          </div>
-          <textarea
-            value={drugDescription}
-            onChange={(e) => updateLabelData({ drugDescription: e.target.value })}
-            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-            style={{
-              borderColor: theme.border,
-              borderWidth: "1px",
-              color: theme.text,
-              backgroundColor: "white",
-              minHeight: "120px",
-              resize: "none"
-            }}
-            placeholder="药品说明内容将在此显示..."
-          />
-        </div>
+            {/* 5. 药品说明 */}
+            <div>
+              <textarea
+                value={drugDescription}
+                onChange={(e) => {
+                  updateLabelData({ drugDescription: e.target.value })
+                  // 自动调整高度
+                  const textarea = e.target
+                  textarea.style.height = 'auto'
+                  textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
+                }}
+                data-auto-height="true"
+                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                style={{
+                  borderColor: theme.border,
+                  borderWidth: "1px",
+                  color: theme.text,
+                  backgroundColor: "white",
+                  height: "32px", // 更紧凑的单行高度
+                  fontSize: "16px", // 与"药品信息"标题字体大小一致
+                  lineHeight: "1.2", // 紧凑的行间距
+                  resize: "none",
+                  overflow: "hidden"
+                }}
+                placeholder="药品说明..."
+              />
+            </div>
 
-        {/* 6. 公司名称 */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium" style={{ color: theme.text }}>
-              公司名称
-            </label>
+            {/* 6. 公司名称 */}
+            <div>
+              <textarea
+                value={companyName}
+                onChange={(e) => {
+                  updateLabelData({ companyName: e.target.value })
+                  // 自动调整高度
+                  const textarea = e.target
+                  textarea.style.height = 'auto'
+                  textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
+                }}
+                data-auto-height="true"
+                className="w-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+                style={{
+                  borderColor: theme.border,
+                  borderWidth: "1px",
+                  color: theme.text,
+                  backgroundColor: "white",
+                  height: "32px", // 更紧凑的单行高度
+                  fontSize: "16px", // 与"药品信息"标题字体大小一致
+                  lineHeight: "1.2", // 紧凑的行间距
+                  resize: "none",
+                  overflow: "hidden"
+                }}
+                placeholder="公司名称..."
+              />
+            </div>
           </div>
-          <textarea
-            value={companyName}
-            onChange={(e) => updateLabelData({ companyName: e.target.value })}
-            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
-            style={{
-              borderColor: theme.border,
-              borderWidth: "1px",
-              color: theme.text,
-              backgroundColor: "white",
-              minHeight: "120px",
-              resize: "none"
-            }}
-            placeholder="公司名称内容将在此显示..."
-          />
         </div>
 
         {/* 字体相关参数 - 紧凑设计 */}
-        <div className="space-y-2">
+        <div className="space-y-2 mt-8">
           {/* 第一行：主语言字体和次语言字体 */}
           <div className="grid grid-cols-2 gap-2">
             {/* 主语言字体 */}
