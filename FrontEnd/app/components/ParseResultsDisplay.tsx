@@ -211,106 +211,108 @@ export default function ParseResultsDisplay({ results, onClose }: ParseResultsDi
                   }}
                 >
                   {outputArray.length > 0 && outputArray[activeCountryIndex] ? (
-                    <div className="space-y-3">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-800 mb-3 flex items-center sticky top-0 bg-white py-2 -mx-4 px-4 border-b border-gray-100 z-10">
-                          <Globe className="h-4 w-4 mr-2" />
-                          翻译对比
-                          <span className="ml-2 text-xs text-gray-500">
-                            ({outputArray[activeCountryIndex].countryCode})
-                          </span>
-                          <span className="ml-auto text-xs text-blue-600">
-                            共 {outputArray[activeCountryIndex].original.length} 条
-                          </span>
-                        </h4>
-                        <div className="space-y-3 mt-4">
-                          {outputArray[activeCountryIndex].original.map((originalText: string, textIndex: number) => {
-                            const translatedText = outputArray[activeCountryIndex].translation[textIndex] || originalText
-                            return (
-                              <div
-                                key={textIndex}
-                                className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
-                              >
-                                {/* 序号标题 */}
-                                <div className="flex items-center px-3 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg">
-                                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                    {textIndex + 1}
-                                  </span>
-                                </div>
-                                
-                                {/* 原文 */}
-                                <div className="px-3 py-2 border-b border-gray-100">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="text-xs font-medium text-gray-500 mb-1">原文 (Original)</div>
-                                      <div className="text-sm text-gray-900 leading-relaxed">
-                                        {originalText || '(空内容)'}
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        copyToClipboard(originalText, `${activeCountryIndex}-${textIndex}-original`)
-                                      }}
-                                      className={`ml-2 p-1.5 rounded-md transition-all duration-200 flex-shrink-0 ${
-                                        copiedIndex === `${activeCountryIndex}-${textIndex}-original` 
-                                          ? 'bg-green-100 text-green-600' 
-                                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                      }`}
-                                      title={copiedIndex === `${activeCountryIndex}-${textIndex}-original` ? "已复制" : "复制原文"}
-                                    >
-                                      {copiedIndex === `${activeCountryIndex}-${textIndex}-original` ? (
-                                        <Check className="h-3 w-3" />
-                                      ) : (
-                                        <Copy className="h-3 w-3" />
-                                      )}
-                                    </button>
+                    <div className="space-y-1">
+                      {/* 标题栏 */}
+                      <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 rounded-t-lg sticky top-0 z-10">
+                        <div className="col-span-1 flex justify-center">
+                          <span className="text-xs font-medium text-gray-600">序号</span>
+                        </div>
+                        <div className="col-span-5 border-r border-gray-300 pr-3">
+                          <div className="text-xs font-medium text-gray-600 flex items-center">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 mr-1.5"></span>
+                            原文
+                          </div>
+                        </div>
+                        <div className="col-span-6 pl-3">
+                          <div className="text-xs font-medium text-gray-600 flex items-center">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>
+                            翻译
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 内容行 */}
+                      {outputArray[activeCountryIndex].original.map((originalText: string, textIndex: number) => {
+                        const translatedText = outputArray[activeCountryIndex].translation[textIndex] || originalText
+                        return (
+                          <div
+                            key={textIndex}
+                            className="border-l border-r border-b hover:shadow-sm transition-shadow bg-white group last:rounded-b-lg"
+                          >
+                            <div className="grid grid-cols-12 gap-2 p-3 items-start">
+                              {/* 第一列：序号 */}
+                              <div className="col-span-1 flex justify-center">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs font-medium">
+                                  {textIndex + 1}
+                                </span>
+                              </div>
+                              
+                              {/* 第二列：原文 + 复制按钮 */}
+                              <div className="col-span-5 border-r border-gray-200 pr-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="text-sm text-gray-700 leading-relaxed break-words flex-1">
+                                    {originalText || '(空内容)'}
                                   </div>
-                                </div>
-                                
-                                {/* 翻译 */}
-                                <div className="px-3 py-2 bg-blue-50/30">
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="text-xs font-medium text-blue-600 mb-1">翻译 (Translation)</div>
-                                      <div className="text-sm text-gray-900 leading-relaxed">
-                                        {translatedText || '(空内容)'}
-                                      </div>
-                                    </div>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        copyToClipboard(translatedText, `${activeCountryIndex}-${textIndex}-translation`)
-                                      }}
-                                      className={`ml-2 p-1.5 rounded-md transition-all duration-200 flex-shrink-0 ${
-                                        copiedIndex === `${activeCountryIndex}-${textIndex}-translation` 
-                                          ? 'bg-green-100 text-green-600' 
-                                          : 'bg-blue-100 text-blue-500 hover:bg-blue-200'
-                                      }`}
-                                      title={copiedIndex === `${activeCountryIndex}-${textIndex}-translation` ? "已复制" : "复制翻译"}
-                                    >
-                                      {copiedIndex === `${activeCountryIndex}-${textIndex}-translation` ? (
-                                        <Check className="h-3 w-3" />
-                                      ) : (
-                                        <Copy className="h-3 w-3" />
-                                      )}
-                                    </button>
-                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      copyToClipboard(originalText, `${activeCountryIndex}-${textIndex}-original`)
+                                    }}
+                                    className={`flex-shrink-0 p-1 rounded-md transition-all duration-200 ${
+                                      copiedIndex === `${activeCountryIndex}-${textIndex}-original` 
+                                        ? 'bg-green-100 text-green-600' 
+                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200 opacity-0 group-hover:opacity-100'
+                                    }`}
+                                    title={copiedIndex === `${activeCountryIndex}-${textIndex}-original` ? "已复制原文" : "复制原文"}
+                                  >
+                                    {copiedIndex === `${activeCountryIndex}-${textIndex}-original` ? (
+                                      <Check className="h-3 w-3" />
+                                    ) : (
+                                      <Copy className="h-3 w-3" />
+                                    )}
+                                  </button>
                                 </div>
                               </div>
-                            )
-                          })}
-                        </div>
-                        
-                        {/* 滚动提示 */}
-                        {outputArray[activeCountryIndex].original.length > 5 && (
-                          <div className="text-center py-4 text-xs text-gray-400 border-t border-gray-100 mt-4">
-                            <span className="bg-gray-100 px-3 py-1 rounded-full">
-                              ↑ 向上滚动查看更多内容 ↑
-                            </span>
+                              
+                              {/* 第三列：翻译 + 复制按钮 */}
+                              <div className="col-span-6 pl-3">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="text-sm text-gray-900 leading-relaxed break-words flex-1">
+                                    {translatedText || '(空内容)'}
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      copyToClipboard(translatedText, `${activeCountryIndex}-${textIndex}-translation`)
+                                    }}
+                                    className={`flex-shrink-0 p-1 rounded-md transition-all duration-200 ${
+                                      copiedIndex === `${activeCountryIndex}-${textIndex}-translation` 
+                                        ? 'bg-green-100 text-green-600' 
+                                        : 'bg-blue-100 text-blue-500 hover:bg-blue-200 opacity-0 group-hover:opacity-100'
+                                    }`}
+                                    title={copiedIndex === `${activeCountryIndex}-${textIndex}-translation` ? "已复制翻译" : "复制翻译"}
+                                  >
+                                    {copiedIndex === `${activeCountryIndex}-${textIndex}-translation` ? (
+                                      <Check className="h-3 w-3" />
+                                    ) : (
+                                      <Copy className="h-3 w-3" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </div>
+                        )
+                      })}
+                      
+                      {/* 滚动提示 */}
+                      {outputArray[activeCountryIndex].original.length > 5 && (
+                        <div className="text-center py-4 text-xs text-gray-400 border-t border-gray-100 mt-4">
+                          <span className="bg-gray-100 px-3 py-1 rounded-full">
+                            ↑ 向上滚动查看更多内容 ↑
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-12 text-gray-500">
