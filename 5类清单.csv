@@ -1,0 +1,48 @@
+original_text,field_type
+Protocol No.:,basic_info
+Manufacturing Lot:,basic_info
+Packaging Lot:,basic_info
+Expiry Date:,basic_info
+Kit No.:,basic_info
+Batch No.:,basic_info
+MED ID Number:,basic_info
+Investigator:,number_field
+Site No.:,number_field
+Subject No.:,number_field
+Visit No.:,number_field
+Principal Investigator:,number_field
+Wallet contains,number_of_sheets
+A cartela cont?m,number_of_sheets
+Number of tablets per Bottle,number_of_sheets
+Sponsor,company_name
+BeOne,company_name
+Clinical trial applicant,company_name
+Beigene,company_name
+Venetoclax,drug_name
+Capecitabine,drug_name
+Azacitidine,drug_name
+Pirtobrutinib,drug_name
+Rituximab,drug_name
+Fulvestrant,drug_name
+Letrozole,drug_name
+Cisplatin,drug_name
+Carboplatin,drug_name
+Paclitaxel,drug_name
+Nab-Paclitaxel,drug_name
+Pemetrexed,drug_name
+Obinutuzumab,drug_name
+Fruquintinib,drug_name
+Chlorambucil,drug_name
+Idelalisib,drug_name
+VEGZELMA,drug_name
+Trastuzumab,drug_name
+Mosunetuzumab,drug_name
+Daratumumab,drug_name
+Elacestrant,drug_name
+Methylprednisolone,drug_name
+Methylprednisolone,drug_name
+Bendamustine,drug_name
+Erbitux,drug_name
+Zanubrutinib,drug_name
+Sonrotoclax,drug_name
+Glofitamab,drug_name

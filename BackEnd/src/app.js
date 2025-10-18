@@ -16,6 +16,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // 导入路由
 const projectRoutes = require("./routes/projects");
+const fieldTypeKeywordsRoutes = require("./routes/fieldTypeKeywords");
 
 // 基本路由
 app.get("/", (req, res) => {
@@ -33,6 +34,7 @@ app.get("/health", (req, res) => {
 
 // API 路由
 app.use("/api/projects", projectRoutes);
+app.use("/api/field-type-keywords", fieldTypeKeywordsRoutes);
 
 // 错误处理中间件
 app.use((err, req, res, next) => {
