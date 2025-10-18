@@ -28,6 +28,13 @@ interface LabelData {
   wasteArea: number // 排废区
   codingArea: number // 打码区
   selectedProject?: SelectedProject // 选中的项目信息
+  // 新增：6个字段类型的分类内容
+  basicInfo: string // 基本信息
+  numberField: string // 编号栏
+  drugName: string // 药品名称
+  numberOfSheets: string // 片数
+  drugDescription: string // 药品说明
+  companyName: string // 公司名称
 }
 
 interface LabelContextType {
@@ -85,7 +92,14 @@ const defaultLabelData: LabelData = {
   adhesiveArea: 0,
   wasteArea: 0,
   codingArea: 0,
-  selectedProject: undefined
+  selectedProject: undefined,
+  // 新增：6个字段类型的默认值
+  basicInfo: '',
+  numberField: '',
+  drugName: '',
+  numberOfSheets: '',
+  drugDescription: '',
+  companyName: ''
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)

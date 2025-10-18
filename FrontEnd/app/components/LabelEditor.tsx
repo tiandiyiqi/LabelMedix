@@ -14,7 +14,7 @@ export default function LabelEditor() {
   const { theme } = themeContext
 
   const { labelData, updateLabelData, setSelectedProject } = useLabelContext()
-  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject } = labelData
+  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName } = labelData
 
   const [selectedNumberState, setSelectedNumberState] = useState<number>(Number(selectedNumber))
   
@@ -217,14 +217,49 @@ export default function LabelEditor() {
         return
       }
 
-      // 按 item_order 排序并拼接成文本
+      // 按 item_order 排序
       const sortedItems = translationGroup.items.sort((a, b) => a.item_order - b.item_order)
+      
+      // 根据字段类型分类内容
+      const fieldTypeGroups = {
+        basic_info: [] as string[],
+        number_field: [] as string[],
+        drug_name: [] as string[],
+        number_of_sheets: [] as string[],
+        drug_description: [] as string[],
+        company_name: [] as string[]
+      }
+      
+      // 分类翻译内容
+      sortedItems.forEach(item => {
+        const text = item.translated_text || item.original_text
+        const fieldType = item.field_type
+        
+        if (fieldType && fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups]) {
+          fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups].push(text)
+        } else {
+          // 未分类的内容放入药品说明
+          fieldTypeGroups.drug_description.push(text)
+        }
+      })
+      
+      // 更新到对应的字段类型区域
+      updateLabelData({
+        basicInfo: fieldTypeGroups.basic_info.join('\n'),
+        numberField: fieldTypeGroups.number_field.join('\n'),
+        drugName: fieldTypeGroups.drug_name.join('\n'),
+        numberOfSheets: fieldTypeGroups.number_of_sheets.join('\n'),
+        drugDescription: fieldTypeGroups.drug_description.join('\n'),
+        companyName: fieldTypeGroups.company_name.join('\n')
+      })
+      
+      // 同时保持原有的导入到药品信息（暂时保留）
       const importedText = sortedItems
         .map(item => item.translated_text || item.original_text)
         .join('\n')
-      
-      // 更新到药品信息
       updateLabelData({ drugInfo: importedText })
+      
+      showToast('翻译内容已按字段类型分类导入', 'success')
       
     } catch (error) {
       console.error('导入失败:', error)
@@ -634,6 +669,145 @@ export default function LabelEditor() {
               minHeight: "400px",
               resize: "none"
             }}
+          />
+        </div>
+
+        {/* 新增：6个字段类型分类区域 */}
+        {/* 1. 基本信息 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium" style={{ color: theme.text }}>
+              基本信息
+            </label>
+          </div>
+          <textarea
+            value={basicInfo}
+            onChange={(e) => updateLabelData({ basicInfo: e.target.value })}
+            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+            style={{
+              borderColor: theme.border,
+              borderWidth: "1px",
+              color: theme.text,
+              backgroundColor: "white",
+              minHeight: "120px",
+              resize: "none"
+            }}
+            placeholder="基本信息内容将在此显示..."
+          />
+        </div>
+
+        {/* 2. 编号栏 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium" style={{ color: theme.text }}>
+              编号栏
+            </label>
+          </div>
+          <textarea
+            value={numberField}
+            onChange={(e) => updateLabelData({ numberField: e.target.value })}
+            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+            style={{
+              borderColor: theme.border,
+              borderWidth: "1px",
+              color: theme.text,
+              backgroundColor: "white",
+              minHeight: "120px",
+              resize: "none"
+            }}
+            placeholder="编号栏内容将在此显示..."
+          />
+        </div>
+
+        {/* 3. 药品名称 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium" style={{ color: theme.text }}>
+              药品名称
+            </label>
+          </div>
+          <textarea
+            value={drugName}
+            onChange={(e) => updateLabelData({ drugName: e.target.value })}
+            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+            style={{
+              borderColor: theme.border,
+              borderWidth: "1px",
+              color: theme.text,
+              backgroundColor: "white",
+              minHeight: "120px",
+              resize: "none"
+            }}
+            placeholder="药品名称内容将在此显示..."
+          />
+        </div>
+
+        {/* 4. 片数 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium" style={{ color: theme.text }}>
+              片数
+            </label>
+          </div>
+          <textarea
+            value={numberOfSheets}
+            onChange={(e) => updateLabelData({ numberOfSheets: e.target.value })}
+            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+            style={{
+              borderColor: theme.border,
+              borderWidth: "1px",
+              color: theme.text,
+              backgroundColor: "white",
+              minHeight: "120px",
+              resize: "none"
+            }}
+            placeholder="片数内容将在此显示..."
+          />
+        </div>
+
+        {/* 5. 药品说明 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium" style={{ color: theme.text }}>
+              药品说明
+            </label>
+          </div>
+          <textarea
+            value={drugDescription}
+            onChange={(e) => updateLabelData({ drugDescription: e.target.value })}
+            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+            style={{
+              borderColor: theme.border,
+              borderWidth: "1px",
+              color: theme.text,
+              backgroundColor: "white",
+              minHeight: "120px",
+              resize: "none"
+            }}
+            placeholder="药品说明内容将在此显示..."
+          />
+        </div>
+
+        {/* 6. 公司名称 */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium" style={{ color: theme.text }}>
+              公司名称
+            </label>
+          </div>
+          <textarea
+            value={companyName}
+            onChange={(e) => updateLabelData({ companyName: e.target.value })}
+            className="w-full h-full rounded-md shadow-md px-3 py-2 hover:shadow-lg transition-shadow border"
+            style={{
+              borderColor: theme.border,
+              borderWidth: "1px",
+              color: theme.text,
+              backgroundColor: "white",
+              minHeight: "120px",
+              resize: "none"
+            }}
+            placeholder="公司名称内容将在此显示..."
           />
         </div>
 
