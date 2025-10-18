@@ -8,6 +8,7 @@ interface SelectedProject {
   currentSequence: number
   countryCode: string
   formattedSummary?: string
+  originalSummary?: string
 }
 
 interface LabelData {
@@ -35,6 +36,9 @@ interface LabelData {
   numberOfSheets: string // 片数
   drugDescription: string // 药品说明
   companyName: string // 公司名称
+  // 原始状态管理
+  originalSummary?: string // 从数据库加载的原始状态
+  formatted_summary?: string // 格式化后的汇总
 }
 
 interface LabelContextType {
@@ -99,7 +103,10 @@ const defaultLabelData: LabelData = {
   drugName: '',
   numberOfSheets: '',
   drugDescription: '',
-  companyName: ''
+  companyName: '',
+  // 原始状态管理默认值
+  originalSummary: undefined,
+  formatted_summary: undefined
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)

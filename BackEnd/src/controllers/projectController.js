@@ -862,6 +862,7 @@ exports.updateFormattedSummary = async (req, res) => {
     const countryCode = decodeURIComponent(req.params.countryCode);
     const {
       formatted_summary,
+      original_summary,
       font_family,
       secondary_font_family,
       font_size,
@@ -869,10 +870,11 @@ exports.updateFormattedSummary = async (req, res) => {
       line_height,
     } = req.body;
 
-    if (!formatted_summary) {
+    // 如果既没有formatted_summary也没有original_summary，则返回错误
+    if (!formatted_summary && !original_summary) {
       return res.status(400).json({
         success: false,
-        message: "格式化翻译汇总不能为空",
+        message: "格式化翻译汇总和原始状态汇总不能同时为空",
       });
     }
 
@@ -891,7 +893,15 @@ exports.updateFormattedSummary = async (req, res) => {
     }
 
     // 准备更新数据
-    const updateData = { formatted_summary };
+    const updateData = {};
+
+    // 如果提供了格式化汇总，则更新
+    if (formatted_summary !== undefined)
+      updateData.formatted_summary = formatted_summary;
+
+    // 如果提供了原始状态汇总，则一并更新
+    if (original_summary !== undefined)
+      updateData.original_summary = original_summary;
 
     // 如果提供了字体参数，则一并更新
     if (font_family !== undefined) updateData.font_family = font_family;
@@ -910,6 +920,7 @@ exports.updateFormattedSummary = async (req, res) => {
         id: group.id,
         country_code: group.country_code,
         formatted_summary: group.formatted_summary,
+        original_summary: group.original_summary,
         font_family: group.font_family,
         secondary_font_family: group.secondary_font_family,
         font_size: group.font_size,
@@ -962,6 +973,7 @@ exports.getCountryDetails = async (req, res) => {
         sequence_number: group.sequence_number,
         total_items: group.total_items,
         formatted_summary: group.formatted_summary,
+        original_summary: group.original_summary,
         pdf_file_path: group.pdf_file_path,
         font_family: group.font_family,
         secondary_font_family: group.secondary_font_family,

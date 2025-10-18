@@ -40,6 +40,7 @@ interface CountryTranslationGroup {
   sequence_number: number;
   total_items: number;
   formatted_summary?: string;
+  original_summary?: string;
   pdf_file_path?: string;
   font_family?: string;
   secondary_font_family?: string;
@@ -387,17 +388,19 @@ export const generateCountrySummary = async (
 export const updateFormattedSummary = async (
   projectId: number,
   countryCode: string,
-  formattedSummary: string,
+  formattedSummary?: string,
   fontSettings?: {
     fontFamily?: string;
     secondaryFontFamily?: string;
     fontSize?: number;
     spacing?: number;
     lineHeight?: number;
-  }
+  },
+  originalSummary?: string
 ): Promise<{ 
   country_code: string; 
-  formatted_summary: string;
+  formatted_summary?: string;
+  original_summary?: string;
   font_family?: string;
   secondary_font_family?: string;
   font_size?: number;
@@ -405,7 +408,13 @@ export const updateFormattedSummary = async (
   line_height?: number;
 }> => {
   try {
-    const requestBody: any = { formatted_summary: formattedSummary };
+    const requestBody: any = {};
+    
+    // 如果提供了格式化汇总，添加到请求体中
+    if (formattedSummary !== undefined) requestBody.formatted_summary = formattedSummary;
+    
+    // 如果提供了原始状态汇总，添加到请求体中
+    if (originalSummary !== undefined) requestBody.original_summary = originalSummary;
     
     // 如果提供了字体设置，添加到请求体中
     if (fontSettings) {

@@ -145,6 +145,11 @@ module.exports = (sequelize) => {
         allowNull: true,
         comment: "格式化后的翻译汇总，对翻译详情表内容的汇总和重新整理",
       },
+      original_summary: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: "原始状态汇总（用于格式化功能的基础数据）",
+      },
       pdf_file_path: {
         type: DataTypes.STRING(500),
         allowNull: true,

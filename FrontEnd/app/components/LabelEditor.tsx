@@ -1,7 +1,7 @@
 "use client"
 
 import { useContext, useState, useEffect } from "react"
-import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck, Zap } from "lucide-react"
+import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck, Zap, Settings } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
@@ -59,14 +59,7 @@ export default function LabelEditor() {
   const [isResetting, setIsResetting] = useState(false)
   const [isFormatting, setIsFormatting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  // 轻量提示（非阻断式）
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>(
-    { visible: false, message: '', type: 'info' }
-  )
-  const [availableSequences, setAvailableSequences] = useState<number[]>([])
-  const [availableCountries, setAvailableCountries] = useState<string[]>([])
-  
-  // 格式化状态管理 - 记录每个字段的格式化次数
+  const [isInitializing, setIsInitializing] = useState(false)
   const [formatStates, setFormatStates] = useState<{[key: string]: number}>({
     basicInfo: 0,
     numberField: 0,
@@ -75,6 +68,13 @@ export default function LabelEditor() {
     drugDescription: 0,
     companyName: 0
   })
+  // 轻量提示（非阻断式）
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>(
+    { visible: false, message: '', type: 'info' }
+  )
+  const [availableSequences, setAvailableSequences] = useState<number[]>([])
+  const [availableCountries, setAvailableCountries] = useState<string[]>([])
+  
 
   // 显示自动消失的提示
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info', duration = 2000) => {
@@ -82,60 +82,113 @@ export default function LabelEditor() {
     window.setTimeout(() => setToast({ visible: false, message: '', type }), duration)
   }
 
-  // 单个字段格式化函数
+  // 初始化 - 保存当前状态为原始状态到数据库
+  const handleInitialize = async () => {
+    if (!selectedProject || !selectedLanguage) { 
+      showToast('请先选择项目和国别', 'info')
+      return 
+    }
+
+    try {
+      setIsInitializing(true)
+      
+      // 获取当前所有字段的内容作为原始状态
+      const originalSummary = [
+        basicInfo,
+        numberField,
+        drugName,
+        numberOfSheets,
+        drugDescription,
+        companyName
+      ].filter(content => content && content.trim() !== '').join('\n')
+      
+      if (!originalSummary.trim()) {
+        showToast('当前内容为空，无法初始化', 'info')
+        return
+      }
+      
+      // 保存原始状态到数据库
+      await updateFormattedSummary(
+        selectedProject.id,
+        selectedLanguage,
+        undefined, // 不更新formatted_summary
+        undefined, // 不更新字体设置
+        originalSummary // 只保存原始状态
+      )
+      
+      showToast('原始状态已初始化保存', 'success')
+      
+    } catch (error) {
+      console.error('初始化失败:', error)
+      showToast('初始化失败，请重试', 'error')
+    } finally {
+      setIsInitializing(false)
+    }
+  }
+
+  // 基于原始状态的格式化功能
   const handleFormatField = (fieldName: string) => {
-    const currentText = labelData[fieldName as keyof typeof labelData] as string
-    
-    if (!currentText || currentText.trim() === '') {
-      showToast('该字段为空，无法格式化', 'info')
+    // 获取原始状态
+    const originalText = labelData.originalSummary
+    if (!originalText || !originalText.trim()) {
+      showToast('未找到原始状态，请先点击初始化', 'info')
       return
     }
 
-    // 获取当前格式化状态
-    const currentFormatCount = formatStates[fieldName] || 0
-    const nextFormatCount = (currentFormatCount + 1) % 3 // 循环：0->1->2->0
-    
-    // 计算文本数量
-    const textCount = currentText.length
-    
-    let formattedText = ''
-    
-    if (nextFormatCount === 0) {
-      // 第一次点击：分为两行
-      const linesPerGroup = Math.ceil(textCount / 2)
-      const firstLine = currentText.substring(0, linesPerGroup)
-      const secondLine = currentText.substring(linesPerGroup)
-      formattedText = firstLine + '\n' + secondLine
-    } else if (nextFormatCount === 1) {
-      // 第二次点击：分为三行
-      const linesPerGroup = Math.ceil(textCount / 3)
-      const firstLine = currentText.substring(0, linesPerGroup)
-      const secondLine = currentText.substring(linesPerGroup, linesPerGroup * 2)
-      const thirdLine = currentText.substring(linesPerGroup * 2)
-      formattedText = firstLine + '\n' + secondLine + '\n' + thirdLine
-    } else {
-      // 第三次点击：恢复为一行
-      formattedText = currentText.replace(/\n/g, '')
+    // 将原始状态按行分割为数组
+    const sentences = originalText.split('\n').filter((line: string) => line.trim() !== '')
+    const sentenceCount = sentences.length
+
+    if (sentenceCount === 0) {
+      showToast('原始状态为空', 'info')
+      return
     }
-    
-    // 更新字段内容
+
+    // 获取当前格式化状态并计算下一个状态
+    const currentFormatState = formatStates[fieldName] || 0
+    const nextFormatState = (currentFormatState + 1) % 3
+
+    let formattedText = ''
+    let toastMessage = ''
+
+    if (nextFormatState === 0) {
+      // 分为两行
+      const sentencesPerLine = Math.ceil(sentenceCount / 2)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine).join(' ')
+      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '分为两行'
+    } else if (nextFormatState === 1) {
+      // 分为三行
+      const sentencesPerLine = Math.ceil(sentenceCount / 3)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '分为三行'
+    } else {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '恢复一行'
+    }
+
+    // 更新对应字段的内容
     updateLabelData({ [fieldName]: formattedText })
     
     // 更新格式化状态
     setFormatStates(prev => ({
       ...prev,
-      [fieldName]: nextFormatCount
+      [fieldName]: nextFormatState
     }))
-    
-    // 显示提示
-    const formatMessages = ['分为两行', '分为三行', '恢复一行']
-    showToast(`${formatMessages[nextFormatCount]}`, 'success')
+
+    showToast(toastMessage, 'success')
   }
 
   // 同步 selectedNumber 的变化
   useEffect(() => {
     setSelectedNumberState(Number(selectedNumber))
   }, [selectedNumber])
+
 
   // 自动调整textarea高度的函数
   const adjustTextareaHeight = (textarea: HTMLTextAreaElement) => {
@@ -322,7 +375,19 @@ export default function LabelEditor() {
         drugName: '',
         numberOfSheets: '',
         drugDescription: '',
-        companyName: ''
+        companyName: '',
+        originalSummary: countryDetail.original_summary,
+        formatted_summary: countryDetail.formatted_summary
+      })
+      
+      // 重置格式化状态
+      setFormatStates({
+        basicInfo: 0,
+        numberField: 0,
+        drugName: 0,
+        numberOfSheets: 0,
+        drugDescription: 0,
+        companyName: 0
       })
       
     } catch (error) {
@@ -558,7 +623,19 @@ export default function LabelEditor() {
             spacing: countryDetail.spacing || labelData.spacing,
             lineHeight: countryDetail.line_height || labelData.lineHeight,
             selectedNumber: sequence.toString(),
-            basicInfo: countryDetail.formatted_summary || '未格式化'
+            basicInfo: countryDetail.formatted_summary || '未格式化',
+            originalSummary: countryDetail.original_summary,
+            formatted_summary: countryDetail.formatted_summary
+          })
+          
+          // 重置格式化状态
+          setFormatStates({
+            basicInfo: 0,
+            numberField: 0,
+            drugName: 0,
+            numberOfSheets: 0,
+            drugDescription: 0,
+            companyName: 0
           })
         } else {
           // 如果该国别码不存在于当前项目，只更新语言和字体
@@ -639,7 +716,19 @@ export default function LabelEditor() {
             fontSize: countryDetail.font_size || labelData.fontSize,
             spacing: countryDetail.spacing || labelData.spacing,
             lineHeight: countryDetail.line_height || labelData.lineHeight,
-            basicInfo: countryDetail.formatted_summary || '未格式化'
+            basicInfo: countryDetail.formatted_summary || '未格式化',
+            originalSummary: countryDetail.original_summary,
+            formatted_summary: countryDetail.formatted_summary
+          })
+          
+          // 重置格式化状态
+          setFormatStates({
+            basicInfo: 0,
+            numberField: 0,
+            drugName: 0,
+            numberOfSheets: 0,
+            drugDescription: 0,
+            companyName: 0
           })
         } else {
           // 如果该序号不存在于当前项目，只更新序号和宽度
@@ -747,27 +836,12 @@ export default function LabelEditor() {
         <div className="space-y-6">
           {/* 药品信息标题和按钮区域 */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-base font-medium" style={{ color: theme.text }}>
-                药品信息
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleReset}
-                  disabled={!selectedProject || isResetting}
-                  className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: theme.primary,
-                    color: theme.buttonText,
-                  }}
-                >
-                  <RotateCcw size={14} />
-                  {isResetting ? '重置中...' : '重置'}
-                </button>
+            <div className="flex items-center justify-center mb-2">
+              <div className="flex gap-2 w-full">
                 <button
                   onClick={handleImport}
                   disabled={!selectedProject || isImporting}
-                  className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                   style={{
                     backgroundColor: theme.secondary,
                     color: theme.buttonText,
@@ -777,9 +851,21 @@ export default function LabelEditor() {
                   {isImporting ? '导入中...' : '导入'}
                 </button>
                 <button
+                  onClick={handleInitialize}
+                  disabled={!selectedProject || isInitializing}
+                  className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  style={{
+                    backgroundColor: '#8B5CF6', // 紫色表示初始化
+                    color: 'white',
+                  }}
+                >
+                  <Settings size={14} />
+                  {isInitializing ? '初始化中...' : '初始化'}
+                </button>
+                <button
                   onClick={handleFormat}
                   disabled={isFormatting}
-                  className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                   style={{
                     backgroundColor: theme.accent,
                     color: theme.buttonText,
@@ -789,9 +875,21 @@ export default function LabelEditor() {
                   {isFormatting ? '格式化中...' : '格式化'}
                 </button>
                 <button
+                  onClick={handleReset}
+                  disabled={!selectedProject || isResetting}
+                  className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  style={{
+                    backgroundColor: theme.primary,
+                    color: theme.buttonText,
+                  }}
+                >
+                  <RotateCcw size={14} />
+                  {isResetting ? '重置中...' : '重置'}
+                </button>
+                <button
                   onClick={handleSave}
                   disabled={!selectedProject || isSaving}
-                  className="px-3 py-1 rounded text-sm flex items-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                   style={{
                     backgroundColor: '#10B981', // 绿色表示保存
                     color: 'white',
@@ -836,10 +934,10 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                onClick={() => handleFormatField('basicInfo')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
-                onClick={() => handleFormatField('basicInfo')}
               >
                 <Zap size={16} />
               </button>
@@ -877,10 +975,10 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                onClick={() => handleFormatField('numberField')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
-                onClick={() => handleFormatField('numberField')}
               >
                 <Zap size={16} />
               </button>
@@ -918,10 +1016,10 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                onClick={() => handleFormatField('drugName')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
-                onClick={() => handleFormatField('drugName')}
               >
                 <Zap size={16} />
               </button>
@@ -959,10 +1057,10 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                onClick={() => handleFormatField('numberOfSheets')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
-                onClick={() => handleFormatField('numberOfSheets')}
               >
                 <Zap size={16} />
               </button>
@@ -1000,10 +1098,10 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                onClick={() => handleFormatField('drugDescription')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
-                onClick={() => handleFormatField('drugDescription')}
               >
                 <Zap size={16} />
               </button>
@@ -1041,10 +1139,10 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                onClick={() => handleFormatField('companyName')}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
-                onClick={() => handleFormatField('companyName')}
               >
                 <Zap size={16} />
               </button>
