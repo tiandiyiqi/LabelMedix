@@ -1,7 +1,7 @@
 "use client"
 
 import { useContext, useState, useEffect } from "react"
-import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck } from "lucide-react"
+import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck, Zap } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
@@ -65,11 +65,71 @@ export default function LabelEditor() {
   )
   const [availableSequences, setAvailableSequences] = useState<number[]>([])
   const [availableCountries, setAvailableCountries] = useState<string[]>([])
+  
+  // 格式化状态管理 - 记录每个字段的格式化次数
+  const [formatStates, setFormatStates] = useState<{[key: string]: number}>({
+    basicInfo: 0,
+    numberField: 0,
+    drugName: 0,
+    numberOfSheets: 0,
+    drugDescription: 0,
+    companyName: 0
+  })
 
   // 显示自动消失的提示
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info', duration = 2000) => {
     setToast({ visible: true, message, type })
     window.setTimeout(() => setToast({ visible: false, message: '', type }), duration)
+  }
+
+  // 单个字段格式化函数
+  const handleFormatField = (fieldName: string) => {
+    const currentText = labelData[fieldName as keyof typeof labelData] as string
+    
+    if (!currentText || currentText.trim() === '') {
+      showToast('该字段为空，无法格式化', 'info')
+      return
+    }
+
+    // 获取当前格式化状态
+    const currentFormatCount = formatStates[fieldName] || 0
+    const nextFormatCount = (currentFormatCount + 1) % 3 // 循环：0->1->2->0
+    
+    // 计算文本数量
+    const textCount = currentText.length
+    
+    let formattedText = ''
+    
+    if (nextFormatCount === 0) {
+      // 第一次点击：分为两行
+      const linesPerGroup = Math.ceil(textCount / 2)
+      const firstLine = currentText.substring(0, linesPerGroup)
+      const secondLine = currentText.substring(linesPerGroup)
+      formattedText = firstLine + '\n' + secondLine
+    } else if (nextFormatCount === 1) {
+      // 第二次点击：分为三行
+      const linesPerGroup = Math.ceil(textCount / 3)
+      const firstLine = currentText.substring(0, linesPerGroup)
+      const secondLine = currentText.substring(linesPerGroup, linesPerGroup * 2)
+      const thirdLine = currentText.substring(linesPerGroup * 2)
+      formattedText = firstLine + '\n' + secondLine + '\n' + thirdLine
+    } else {
+      // 第三次点击：恢复为一行
+      formattedText = currentText.replace(/\n/g, '')
+    }
+    
+    // 更新字段内容
+    updateLabelData({ [fieldName]: formattedText })
+    
+    // 更新格式化状态
+    setFormatStates(prev => ({
+      ...prev,
+      [fieldName]: nextFormatCount
+    }))
+    
+    // 显示提示
+    const formatMessages = ['分为两行', '分为三行', '恢复一行']
+    showToast(`${formatMessages[nextFormatCount]}`, 'success')
   }
 
   // 同步 selectedNumber 的变化
@@ -747,7 +807,7 @@ export default function LabelEditor() {
           {/* 6个字段类型分类区域 - 紧凑间距 */}
           <div className="space-y-1">
             {/* 1. 基本信息 */}
-            <div>
+            <div className="relative">
               <textarea
                 value={basicInfo}
                 onChange={(e) => {
@@ -756,7 +816,7 @@ export default function LabelEditor() {
                   adjustTextareaHeight(e.target)
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 pr-10 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
@@ -774,10 +834,19 @@ export default function LabelEditor() {
                 }}
                 placeholder="基本信息..."
               />
+              {/* 闪电图标 */}
+              <button
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                style={{ color: theme.accent, backgroundColor: 'transparent' }}
+                title="格式化此字段"
+                onClick={() => handleFormatField('basicInfo')}
+              >
+                <Zap size={16} />
+              </button>
             </div>
 
             {/* 2. 编号栏 */}
-            <div>
+            <div className="relative">
               <textarea
                 value={numberField}
                 onChange={(e) => {
@@ -788,7 +857,7 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 pr-10 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
@@ -806,10 +875,19 @@ export default function LabelEditor() {
                 }}
                 placeholder="编号栏..."
               />
+              {/* 闪电图标 */}
+              <button
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                style={{ color: theme.accent, backgroundColor: 'transparent' }}
+                title="格式化此字段"
+                onClick={() => handleFormatField('numberField')}
+              >
+                <Zap size={16} />
+              </button>
             </div>
 
             {/* 3. 药品名称 */}
-            <div>
+            <div className="relative">
               <textarea
                 value={drugName}
                 onChange={(e) => {
@@ -820,7 +898,7 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 pr-10 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
@@ -838,10 +916,19 @@ export default function LabelEditor() {
                 }}
                 placeholder="药品名称..."
               />
+              {/* 闪电图标 */}
+              <button
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                style={{ color: theme.accent, backgroundColor: 'transparent' }}
+                title="格式化此字段"
+                onClick={() => handleFormatField('drugName')}
+              >
+                <Zap size={16} />
+              </button>
             </div>
 
             {/* 4. 片数 */}
-            <div>
+            <div className="relative">
               <textarea
                 value={numberOfSheets}
                 onChange={(e) => {
@@ -852,7 +939,7 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 pr-10 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
@@ -870,10 +957,19 @@ export default function LabelEditor() {
                 }}
                 placeholder="片数内容..."
               />
+              {/* 闪电图标 */}
+              <button
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                style={{ color: theme.accent, backgroundColor: 'transparent' }}
+                title="格式化此字段"
+                onClick={() => handleFormatField('numberOfSheets')}
+              >
+                <Zap size={16} />
+              </button>
             </div>
 
             {/* 5. 药品说明 */}
-            <div>
+            <div className="relative">
               <textarea
                 value={drugDescription}
                 onChange={(e) => {
@@ -884,7 +980,7 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 pr-10 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
@@ -902,10 +998,19 @@ export default function LabelEditor() {
                 }}
                 placeholder="药品说明..."
               />
+              {/* 闪电图标 */}
+              <button
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                style={{ color: theme.accent, backgroundColor: 'transparent' }}
+                title="格式化此字段"
+                onClick={() => handleFormatField('drugDescription')}
+              >
+                <Zap size={16} />
+              </button>
             </div>
 
             {/* 6. 公司名称 */}
-            <div>
+            <div className="relative">
               <textarea
                 value={companyName}
                 onChange={(e) => {
@@ -916,7 +1021,7 @@ export default function LabelEditor() {
                   textarea.style.height = Math.max(40, textarea.scrollHeight) + 'px'
                 }}
                 data-auto-height="true"
-                className="w-full rounded-md shadow-md px-3 hover:shadow-lg transition-shadow border"
+                className="w-full rounded-md shadow-md px-3 pr-10 hover:shadow-lg transition-shadow border"
                 style={{
                   borderColor: theme.border,
                   borderWidth: "1px",
@@ -934,6 +1039,15 @@ export default function LabelEditor() {
                 }}
                 placeholder="公司名称..."
               />
+              {/* 闪电图标 */}
+              <button
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none"
+                style={{ color: theme.accent, backgroundColor: 'transparent' }}
+                title="格式化此字段"
+                onClick={() => handleFormatField('companyName')}
+              >
+                <Zap size={16} />
+              </button>
             </div>
           </div>
         </div>
