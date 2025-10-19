@@ -579,19 +579,21 @@ export default function PDFPreview() {
       lineHeight: lineHeight,
       marginBottom: mmToPt(spacing*5),
     },
-    // 新的简单样式：用于6个字段独立显示
-    fieldContainer: {
-      marginBottom: mmToPt(spacing),
-      width: '100%',
-    },
-    fieldLine: {
-      fontSize: mmToPt(fontSize),
-      fontFamily: fontFamily,
-      lineHeight: lineHeight,
-      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
-      marginBottom: mmToPt(spacing * 0.5),
-    },
+  // 新的简单样式：用于6个字段独立显示
+  fieldContainer: {
+    marginBottom: mmToPt(spacing),
+    width: '100%',
+    paddingHorizontal: mmToPt(2), // 添加左右内边距，形成文本域效果
+  },
+  lineContainer: {
+    marginBottom: mmToPt(spacing * 0.5),
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  fieldLine: {
+    fontSize: fontSize, // fontSize已经是pt单位，不需要再转换
+    lineHeight: lineHeight,
+  },
     firstParagraphRow: {
       ...styles.firstParagraphRow,
       marginBottom: mmToPt(spacing),
@@ -662,6 +664,7 @@ export default function PDFPreview() {
 
   // ============================================
   // 新的渲染函数：渲染6个字段（简单排列）
+  // 使用SmartMixedFontText组件处理中英文混排
   // ============================================
   const renderSixFields = () => {
     return (
@@ -669,9 +672,15 @@ export default function PDFPreview() {
         {processedFields.map((field, fieldIndex) => (
           <View key={`field-${fieldIndex}`} style={dynamicStyles.fieldContainer}>
             {field.lines.map((line, lineIndex) => (
-              <Text key={`line-${lineIndex}`} style={dynamicStyles.fieldLine}>
-                {processText(line)}
-              </Text>
+              <View key={`line-${lineIndex}`} style={dynamicStyles.lineContainer}>
+                <SmartMixedFontText
+                  primaryFont={fontFamily}
+                  secondaryFont={labelData.secondaryFontFamily}
+                  style={dynamicStyles.fieldLine}
+                >
+                  {line}
+                </SmartMixedFontText>
+              </View>
             ))}
           </View>
         ))}
