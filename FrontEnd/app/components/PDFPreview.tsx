@@ -166,6 +166,60 @@ const processRemainingParagraphs = (paragraph: string): Array<Array<string>> => 
   });
 };
 
+// ============================================
+// 新的6字段独立处理函数（简单排列方式）
+// ============================================
+
+// 处理单个字段的文本内容，返回行数组
+const processFieldContent = (fieldContent: string): string[] => {
+  if (!fieldContent || fieldContent.trim() === '') {
+    return [];
+  }
+  
+  // 按换行符分割，过滤空行
+  return fieldContent
+    .split('\n')
+    .filter(line => line.trim() !== '')
+    .map(line => line.trim());
+};
+
+// 处理6个字段，返回字段数据结构
+interface FieldData {
+  fieldName: string;
+  lines: string[];
+}
+
+const processSixFields = (
+  basicInfo: string,
+  numberField: string,
+  drugName: string,
+  numberOfSheets: string,
+  drugDescription: string,
+  companyName: string
+): FieldData[] => {
+  const fields: FieldData[] = [];
+  
+  // 按顺序处理6个字段
+  const fieldContents = [
+    { fieldName: 'basicInfo', content: basicInfo },
+    { fieldName: 'numberField', content: numberField },
+    { fieldName: 'drugName', content: drugName },
+    { fieldName: 'numberOfSheets', content: numberOfSheets },
+    { fieldName: 'drugDescription', content: drugDescription },
+    { fieldName: 'companyName', content: companyName }
+  ];
+  
+  // 处理每个字段，只保留有内容的字段
+  fieldContents.forEach(({ fieldName, content }) => {
+    const lines = processFieldContent(content);
+    if (lines.length > 0) {
+      fields.push({ fieldName, lines });
+    }
+  });
+  
+  return fields;
+};
+
 // 字符宽度映射表类型
 interface CharWidthMap {
   chinese: number;
@@ -485,7 +539,9 @@ export default function PDFPreview() {
     direction: isRTL() ? 'rtl' : 'ltr',     // RTL语言从右到左
   };
 
-  // 从6个独立字段合成显示内容
+  // ============================================
+  // 旧的处理方式：合成为三段落处理（保留作为参考）
+  // ============================================
   const combinedContent = [
     basicInfo,
     numberField,
@@ -495,11 +551,23 @@ export default function PDFPreview() {
     companyName
   ].filter(content => content && content.trim() !== '').join('\n\n\n');
   
-  // 处理文本
+  // 处理文本（旧方式）
   const paragraphs = splitIntoParagraphs(combinedContent);
   const processedFirstParagraph = paragraphs.length > 0 ? processFirstParagraph(paragraphs[0]) : [];
   const processedSecondParagraph = paragraphs.length > 1 ? processOtherParagraph(paragraphs[1]) : [];
   const processedRemainingParagraphs = paragraphs.slice(2).map(para => processRemainingParagraphs(para));
+
+  // ============================================
+  // 新的处理方式：6个字段独立处理，简单排列
+  // ============================================
+  const processedFields = processSixFields(
+    basicInfo,
+    numberField,
+    drugName,
+    numberOfSheets,
+    drugDescription,
+    companyName
+  );
 
   // 更新样式以使用动态参数
   const dynamicStyles = StyleSheet.create({
@@ -510,6 +578,19 @@ export default function PDFPreview() {
       fontFamily: fontFamily,
       lineHeight: lineHeight,
       marginBottom: mmToPt(spacing*5),
+    },
+    // 新的简单样式：用于6个字段独立显示
+    fieldContainer: {
+      marginBottom: mmToPt(spacing),
+      width: '100%',
+    },
+    fieldLine: {
+      fontSize: mmToPt(fontSize),
+      fontFamily: fontFamily,
+      lineHeight: lineHeight,
+      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
+      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+      marginBottom: mmToPt(spacing * 0.5),
     },
     firstParagraphRow: {
       ...styles.firstParagraphRow,
@@ -579,6 +660,25 @@ export default function PDFPreview() {
     );
   };
 
+  // ============================================
+  // 新的渲染函数：渲染6个字段（简单排列）
+  // ============================================
+  const renderSixFields = () => {
+    return (
+      <>
+        {processedFields.map((field, fieldIndex) => (
+          <View key={`field-${fieldIndex}`} style={dynamicStyles.fieldContainer}>
+            {field.lines.map((line, lineIndex) => (
+              <Text key={`line-${lineIndex}`} style={dynamicStyles.fieldLine}>
+                {processText(line)}
+              </Text>
+            ))}
+          </View>
+        ))}
+      </>
+    );
+  };
+
   // 导出PDF功能
   // 生成并保存PDF到服务器
   const generateAndSavePdfToServer = async (projectId: number, countryCode: string, sequenceNumber: string) => {
@@ -603,91 +703,11 @@ export default function PDFPreview() {
             marginRight: mmToPt(margins.right),
             width: mmToPt(currentWidth - margins.left - margins.right),
             minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
           }}>
             <View style={{ width: '100%' }}>
-              {processedFirstParagraph.map((groupLines, groupIndex) => {
-                const lineSpacing = calculateSpacing(
-                  mmToPt(currentWidth - margins.left - margins.right),
-                  groupLines,
-                  fontSize,
-                  fontFamily
-                );
-                
-                return (
-                  <View 
-                    key={`first-${groupIndex}`} 
-                    style={[
-                      dynamicStyles.firstParagraphRow,
-                      { gap: lineSpacing }
-                    ]}
-                  >
-                    {groupLines.map((line, lineIndex) => (
-                      <Text 
-                        key={`first-line-${lineIndex}`} 
-                        style={[
-                          dynamicStyles.firstParagraphItem,
-                          { marginRight: 0 }
-                        ]}
-                      >
-                        {processText(line)}
-                      </Text>
-                    ))}
-                  </View>
-                );
-              })}
-              
-              {processedSecondParagraph.length > 0 && (
-                <View style={{ marginTop: mmToPt(spacing * 2) }}>
-                  {processedSecondParagraph.map((lines, groupIndex) => {
-                    const lineSpacing = calculateSpacing(
-                      mmToPt(currentWidth - margins.left - margins.right),
-                      lines,
-                      fontSize,
-                      fontFamily
-                    );
-                    
-                    return (
-                      <View 
-                        key={`second-${groupIndex}`} 
-                        style={[
-                          dynamicStyles.secondParagraphRow,
-                          { gap: lineSpacing }
-                        ]}
-                      >
-                        {lines.map((line, lineIndex) => (
-                          <View 
-                            key={`line-${lineIndex}`} 
-                            style={dynamicStyles.secondParagraphItem}
-                          >
-                            <Text>{processText(line)}</Text>
-                            <View 
-                              style={[
-                                dynamicStyles.underline,
-                                { width: lineSpacing - mmToPt(1.5) }
-                              ]} 
-                            />
-                          </View>
-                        ))}
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-              
-              {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-                <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
-                  {paragraph.map((group, groupIndex) => (
-                    <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
-                      {group.map((line, lineIndex) => (
-                        <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
-                          {processText(line)}
-                        </Text>
-                      ))}
-                    </View>
-                  ))}
-                </View>
-              ))}
+              {/* 使用新的简单排列方式渲染6个字段 */}
+              {renderSixFields()}
             </View>
           </View>
         </Page>
@@ -730,91 +750,11 @@ export default function PDFPreview() {
             marginRight: mmToPt(margins.right),
             width: mmToPt(currentWidth - margins.left - margins.right),
             minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
-            justifyContent: 'center',
+            justifyContent: 'flex-start',
           }}>
             <View style={{ width: '100%' }}>
-              {processedFirstParagraph.map((groupLines, groupIndex) => {
-                const lineSpacing = calculateSpacing(
-                  mmToPt(currentWidth - margins.left - margins.right), // 修正宽度计算
-                  groupLines,
-                  fontSize,
-                  fontFamily
-                );
-                
-                return (
-                  <View 
-                    key={`first-${groupIndex}`} 
-                    style={[
-                      dynamicStyles.firstParagraphRow,
-                      { gap: lineSpacing }
-                    ]}
-                  >
-                    {groupLines.map((line, lineIndex) => (
-                      <Text 
-                        key={`first-line-${lineIndex}`} 
-                        style={[
-                          dynamicStyles.firstParagraphItem,
-                          { marginRight: 0 }
-                        ]}
-                      >
-                        {processText(line)}
-                      </Text>
-                    ))}
-                  </View>
-                );
-              })}
-              
-              {processedSecondParagraph.length > 0 && (
-                <View style={{ marginTop: mmToPt(spacing * 2) }}>
-                  {processedSecondParagraph.map((lines, groupIndex) => {
-                    const lineSpacing = calculateSpacing(
-                      mmToPt(currentWidth - margins.left - margins.right), // 修正宽度计算
-                      lines,
-                      fontSize,
-                      fontFamily
-                    );
-                    
-                    return (
-                      <View 
-                        key={`second-${groupIndex}`} 
-                        style={[
-                          dynamicStyles.secondParagraphRow,
-                          { gap: lineSpacing }
-                        ]}
-                      >
-                        {lines.map((line, lineIndex) => (
-                          <View 
-                            key={`line-${lineIndex}`} 
-                            style={dynamicStyles.secondParagraphItem}
-                          >
-                            <Text>{processText(line)}</Text>
-                            <View 
-                              style={[
-                                dynamicStyles.underline,
-                                { width: lineSpacing - mmToPt(1.5) }
-                              ]} 
-                            />
-                          </View>
-                        ))}
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-              
-              {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-                <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
-                  {paragraph.map((group, groupIndex) => (
-                    <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
-                      {group.map((line, lineIndex) => (
-                        <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
-                          {processText(line)}
-                        </Text>
-                      ))}
-                    </View>
-                  ))}
-                </View>
-              ))}
+              {/* 使用新的简单排列方式渲染6个字段 */}
+              {renderSixFields()}
             </View>
           </View>
         </Page>
@@ -1053,91 +993,11 @@ export default function PDFPreview() {
                 marginRight: mmToPt(margins.right),
                 width: mmToPt(currentWidth - margins.left - margins.right),
                 minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
-                justifyContent: 'center',
+                justifyContent: 'flex-start',
               }}>
                 <View style={{ width: '100%' }}>
-                  {processedFirstParagraph.map((groupLines, groupIndex) => {
-                    const lineSpacing = calculateSpacing(
-                      mmToPt(currentWidth - margins.left - margins.right), // 修正宽度计算
-                      groupLines,
-                      fontSize,
-                      fontFamily
-                    );
-                    
-                    return (
-                      <View 
-                        key={`first-${groupIndex}`} 
-                        style={[
-                          dynamicStyles.firstParagraphRow,
-                          { gap: lineSpacing }
-                        ]}
-                      >
-                        {groupLines.map((line, lineIndex) => (
-                          <Text 
-                            key={`first-line-${lineIndex}`} 
-                            style={[
-                              dynamicStyles.firstParagraphItem,
-                              { marginRight: 0 }
-                            ]}
-                          >
-                            {processText(line)}
-                          </Text>
-                        ))}
-                      </View>
-                    );
-                  })}
-                  
-                  {processedSecondParagraph.length > 0 && (
-                    <View style={{ marginTop: mmToPt(spacing * 2) }}>
-                      {processedSecondParagraph.map((lines, groupIndex) => {
-                        const lineSpacing = calculateSpacing(
-                          mmToPt(currentWidth - margins.left - margins.right), // 修正宽度计算
-                          lines,
-                          fontSize,
-                          fontFamily
-                        );
-                        
-                        return (
-                          <View 
-                            key={`second-${groupIndex}`} 
-                            style={[
-                              dynamicStyles.secondParagraphRow,
-                              { gap: lineSpacing }
-                            ]}
-                          >
-                            {lines.map((line, lineIndex) => (
-                              <View 
-                                key={`line-${lineIndex}`} 
-                                style={dynamicStyles.secondParagraphItem}
-                              >
-                                <Text>{processText(line)}</Text>
-                                <View 
-                                  style={[
-                                    dynamicStyles.underline,
-                                    { width: lineSpacing - mmToPt(1.5) }
-                                  ]} 
-                                />
-                              </View>
-                            ))}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-                  
-                  {processedRemainingParagraphs.map((paragraph, paraIndex) => (
-                    <View key={`para-${paraIndex}`} style={{ marginTop: mmToPt(spacing * 2) }}>
-                      {paragraph.map((group, groupIndex) => (
-                        <View key={`group-${groupIndex}`} style={dynamicStyles.remainingContentRow}>
-                          {group.map((line, lineIndex) => (
-                            <Text key={`line-${lineIndex}`} style={dynamicStyles.remainingContentItem}>
-                              {processText(line)}
-                            </Text>
-                          ))}
-                        </View>
-                      ))}
-                    </View>
-                  ))}
+                  {/* 使用新的简单排列方式渲染6个字段 */}
+                  {renderSixFields()}
                 </View>
               </View>
             </Page>
