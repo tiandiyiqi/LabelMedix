@@ -119,6 +119,184 @@ export default function LabelEditor() {
     }
   }
 
+  // 单位转换常量
+  const MM_TO_PT = 2.83465;
+  const mmToPt = (mm: number) => mm * MM_TO_PT;
+
+  // 字符宽度映射表类型
+  interface CharWidthMap {
+    chinese: number;
+    [key: string]: number;
+  }
+
+  // 字符宽度映射表（相对于字体大小的比例）
+  const charWidthMap: CharWidthMap = {
+    // 中文字符
+    chinese: 1.0,  // 中文字符固定为字体大小
+    
+    // 大写英文字母
+    'A': 0.722, 'B': 0.667, 'C': 0.722, 'D': 0.722, 'E': 0.611,
+    'F': 0.556, 'G': 0.722, 'H': 0.722, 'I': 0.278, 'J': 0.5,
+    'K': 0.667, 'L': 0.556, 'M': 0.833, 'N': 0.722, 'O': 0.778,
+    'P': 0.667, 'Q': 0.778, 'R': 0.722, 'S': 0.667, 'T': 0.611,
+    'U': 0.722, 'V': 0.667, 'W': 0.944, 'X': 0.667, 'Y': 0.667,
+    'Z': 0.611,
+    
+    // 小写英文字母
+    'a': 0.556, 'b': 0.556, 'c': 0.5, 'd': 0.556, 'e': 0.556,
+    'f': 0.278, 'g': 0.556, 'h': 0.556, 'i': 0.222, 'j': 0.222,
+    'k': 0.5, 'l': 0.222, 'm': 0.833, 'n': 0.556, 'o': 0.556,
+    'p': 0.556, 'q': 0.556, 'r': 0.333, 's': 0.5, 't': 0.278,
+    'u': 0.556, 'v': 0.5, 'w': 0.722, 'x': 0.5, 'y': 0.5,
+    'z': 0.5,
+    
+    // 数字
+    '0': 0.556, '1': 0.556, '2': 0.556, '3': 0.556, '4': 0.556,
+    '5': 0.556, '6': 0.556, '7': 0.556, '8': 0.556, '9': 0.556,
+    
+    // 标点符号
+    '.': 0.527, ',': 0.25, ':': 0.277, ';': 0.277, '!': 0.333,
+    '?': 0.556, '"': 0.556, "'": 0.222, '`': 0.222, '(': 0.333,
+    ')': 0.333, '[': 0.333, ']': 0.333, '{': 0.333, '}': 0.333,
+    '/': 0.278, '\\': 0.278, '|': 0.222, '-': 0.333, '_': 0.556,
+    '+': 0.584, '=': 0.584, '*': 0.389, '&': 0.722, '#': 0.556,
+    '%': 0.889, '$': 0.556, '@': 1.015,
+    
+    // 中文标点符号（全角字符，宽度等于中文字符）
+    '\uff1a': 1.0, '\uff1b': 1.0, '\uff0c': 1.0, '\u3002': 1.0, '\uff1f': 1.0, '\uff01': 1.0,
+    '\u201c': 1.0, '\u201d': 1.0, '\u2018': 1.0, '\u2019': 1.0, '\uff08': 1.0, '\uff09': 1.0,
+    '\u3010': 1.0, '\u3011': 1.0, '\u300a': 1.0, '\u300b': 1.0, '\u3008': 1.0, '\u3009': 1.0,
+    
+    // 空格
+    ' ': 0.25,
+    
+    // 其他特殊字符
+    '·': 0.333, '—': 1.0, '…': 1.0, '™': 1.0, '©': 1.0, '®': 1.0,
+    '°': 0.4, '′': 0.333, '″': 0.556, '§': 0.556, '¶': 0.556,
+    '†': 0.556, '‡': 0.556, '•': 0.35
+  };
+
+  // 文本宽度测量函数
+  const measureTextWidth = (text: string, fontSize: number, fontFamily: string): number => {
+    // 检查是否在客户端环境
+    if (typeof window === 'undefined') {
+      // 服务器端渲染时返回一个估算值
+      return text.length * fontSize;
+    }
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (context) {
+      // 设置字体
+      context.font = `${fontSize}pt ${fontFamily}`;
+      
+      // 将文本分成字符
+      const chars = Array.from(text);
+      let totalWidth = 0;
+      
+      chars.forEach(char => {
+        let charWidth = 0;
+        
+        if (/[\u4E00-\u9FA5]/.test(char)) {
+          // 中文字符
+          charWidth = fontSize * charWidthMap.chinese;
+        } else if (char in charWidthMap) {
+          // 使用映射表中的宽度
+          charWidth = fontSize * charWidthMap[char];
+        } else {
+          // 未知字符使用canvas测量
+          charWidth = context.measureText(char).width;
+          // 缓存测量结果
+          charWidthMap[char] = charWidth / fontSize;
+        }
+        
+        totalWidth += charWidth;
+      });
+      
+      return totalWidth;
+    }
+    return 0;
+  };
+
+  // 间距计算函数
+  const calculateSpacing = (containerWidth: number, elements: string[], fontSize: number, fontFamily: string): number => {
+    // 安全检查：确保输入参数有效
+    if (!elements || elements.length === 0 || containerWidth <= 0 || fontSize <= 0) {
+      return 0; // 返回0间距
+    }
+
+    // 如果只有一个元素，不需要内部间距
+    if (elements.length === 1) {
+      return 0;
+    }
+
+    // 1. 计算所有元素的总宽度
+    const elementsWidth = elements.map(text => {
+      const width = measureTextWidth(text, fontSize, fontFamily);
+      return { text, width };
+    });
+
+    const totalContentWidth = elementsWidth.reduce((sum, item) => sum + item.width, 0);
+    
+    // 2. 从容器宽度中减去总宽度得到可用空间
+    const availableSpace = containerWidth - totalContentWidth;
+    
+    // 3. 计算需要分配间距的"缝隙"数量（N个元素有N-1个缝隙）
+    const numberOfGaps = elements.length - 1;
+
+    if (numberOfGaps <= 0) {
+      return 0;
+    }
+
+    // 4. 将可用空间除以缝隙数量得到每个缝隙的间距
+    const calculatedSpacing = availableSpace / numberOfGaps;
+    
+    // 5. 添加最小间距保护（但允许0间距）
+    const minSpacing = mmToPt(1); // 降低最小间距到1mm
+    const spacing = Math.max(calculatedSpacing, minSpacing);
+    
+    // 确保返回值是有限数且非负
+    return isFinite(spacing) && spacing >= 0 ? spacing : 0;
+  };
+
+  // 安全的字符串重复函数
+  const safeRepeat = (str: string, count: number): string => {
+    // 确保count是有限的非负整数
+    const safeCount = Math.max(0, Math.min(Math.floor(count), 20));
+    return str.repeat(safeCount);
+  };
+
+  // 将间距转换为空格数量
+  const spacingToSpaces = (spacing: number, fontSize: number, fontFamily: string): number => {
+    // 如果不需要间距，直接返回0个空格
+    if (spacing <= 0) {
+      return 0;
+    }
+
+    // 使用更保守的空格宽度估算
+    // 根据实际测试调整空格宽度系数
+    let spaceWidthRatio = 0.35; // 增加默认空格宽度比例
+    
+    if (fontFamily.includes('STHeiti') || fontFamily.includes('Chinese')) {
+      spaceWidthRatio = 0.4; // 中文字体的空格更宽
+    } else if (fontFamily.includes('Arial')) {
+      spaceWidthRatio = 0.38; // Arial字体的空格宽度
+    }
+    
+    const conservativeSpaceWidth = fontSize * spaceWidthRatio;
+    
+    // 安全检查：避免除零和无效值
+    if (conservativeSpaceWidth <= 0 || !isFinite(spacing)) {
+      return 0; // 返回0个空格作为回退
+    }
+    
+    // 使用更保守的计算，向下取整以避免溢出
+    const spaces = Math.floor(spacing / conservativeSpaceWidth);
+    
+    // 限制空格数量在合理范围内（允许0个空格）
+    return Math.max(0, Math.min(spaces, 15)); // 最少0个空格，最多15个空格
+  };
+
   // 罗马数字序号映射
   const getRomanNumber = (num: number): string => {
     const romanNumerals = [
@@ -291,25 +469,104 @@ export default function LabelEditor() {
     let formattedText = ''
     let toastMessage = ''
 
+    // 计算容器宽度（使用基础标签宽度，减去边距）
+    const baseWidth = labelData.labelWidth // 使用基础宽度，不是计算后的currentWidth
+    const margins = calculatePageMargins(Number(labelData.selectedNumber))
+    const effectiveWidth = baseWidth - margins.left - margins.right // 减去左右边距
+    const safetyMargin = 2 // 预留2mm的安全边距
+    const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95)) // 使用95%的有效宽度
+
     if (nextFormatState === 0) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
-      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
-      const secondLine = sentences.slice(sentencesPerLine).join(' ')
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine)
+      
+      // 计算第一行的间距
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineSpaces = spacingToSpaces(firstLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      // 计算第二行的间距
+      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
+      const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      // 调试信息
+      console.log('两行格式 - 间距计算:', {
+        容器宽度: containerWidth.toFixed(1) + 'pt',
+        第一行元素: firstLineSentences,
+        第一行间距: firstLineSpacing.toFixed(1) + 'pt',
+        第一行空格数: firstLineSpaces,
+        第二行元素: secondLineSentences,
+        第二行间距: secondLineSpacing.toFixed(1) + 'pt',
+        第二行空格数: secondLineSpaces
+      })
+      
+      // 添加计算出的空格
+      const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
+      const secondLine = secondLineSentences.join(safeRepeat(' ', secondLineSpaces))
+      
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = '基本信息分为两行（已添加罗马数字序号）'
+      toastMessage = `基本信息分为两行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}空格）`
     } else if (nextFormatState === 1) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
-      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
-      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
-      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2)
+      
+      // 计算各行的间距
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineSpaces = spacingToSpaces(firstLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
+      const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
+      const thirdLineSpaces = spacingToSpaces(thirdLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      // 添加计算出的空格
+      const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
+      const secondLine = secondLineSentences.join(safeRepeat(' ', secondLineSpaces))
+      const thirdLine = thirdLineSentences.join(safeRepeat(' ', thirdLineSpaces))
+      
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = '基本信息分为三行（已添加罗马数字序号）'
+      toastMessage = `基本信息分为三行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}/${thirdLineSpaces}空格）`
     } else {
       // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '基本信息分为一行（已添加罗马数字序号）'
+      // 计算整行的间距
+      const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
+      const lineSpaces = spacingToSpaces(lineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      // 详细调试信息
+      const elementsWithWidth = sentences.map(text => ({
+        text,
+        width: measureTextWidth(text, labelData.fontSize, labelData.fontFamily).toFixed(1) + 'pt'
+      }))
+      const totalContentWidth = sentences.reduce((sum, text) => 
+        sum + measureTextWidth(text, labelData.fontSize, labelData.fontFamily), 0
+      )
+      
+      console.log('一行格式 - 详细间距计算:', {
+        基础标签宽度: baseWidth + 'mm',
+        页边距: margins,
+        有效宽度: effectiveWidth.toFixed(1) + 'mm',
+        安全容器宽度: containerWidth.toFixed(1) + 'pt',
+        元素数量: sentences.length,
+        各元素宽度: elementsWithWidth,
+        总内容宽度: totalContentWidth.toFixed(1) + 'pt',
+        可用空间: (containerWidth - totalContentWidth).toFixed(1) + 'pt',
+        缝隙数量: sentences.length - 1,
+        计算间距: lineSpacing.toFixed(1) + 'pt',
+        空格宽度系数: labelData.fontFamily.includes('STHeiti') ? 0.4 : 0.38,
+        估算空格宽度: (labelData.fontSize * (labelData.fontFamily.includes('STHeiti') ? 0.4 : 0.38)).toFixed(1) + 'pt',
+        空格数: lineSpaces,
+        字体大小: labelData.fontSize + 'pt',
+        字体: labelData.fontFamily
+      })
+      
+      // 添加计算出的空格
+      formattedText = sentences.join(safeRepeat(' ', lineSpaces))
+      toastMessage = `基本信息分为一行（已添加罗马数字序号和间距：${lineSpaces}空格）`
     }
 
     // 更新对应字段的内容
