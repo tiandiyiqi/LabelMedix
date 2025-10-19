@@ -125,7 +125,8 @@ export function LabelProvider({ children }: { children: React.ReactNode }) {
       // 当选中项目时，同步更新相关字段
       selectedLanguage: project?.countryCode || prev.selectedLanguage,
       selectedNumber: project?.currentSequence.toString() || prev.selectedNumber,
-      drugInfo: project?.formattedSummary || '未格式化'
+      // drugInfo 已废弃，不再使用，改用6个独立字段
+      drugInfo: project?.formattedSummary || ''
     }))
   }
 

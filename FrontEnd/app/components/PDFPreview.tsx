@@ -356,7 +356,7 @@ export default function PDFPreview() {
 
   // ===== Context hooks =====
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -485,8 +485,18 @@ export default function PDFPreview() {
     direction: isRTL() ? 'rtl' : 'ltr',     // RTL语言从右到左
   };
 
+  // 从6个独立字段合成显示内容
+  const combinedContent = [
+    basicInfo,
+    numberField,
+    drugName,
+    numberOfSheets,
+    drugDescription,
+    companyName
+  ].filter(content => content && content.trim() !== '').join('\n\n\n');
+  
   // 处理文本
-  const paragraphs = splitIntoParagraphs(drugInfo);
+  const paragraphs = splitIntoParagraphs(combinedContent);
   const processedFirstParagraph = paragraphs.length > 0 ? processFirstParagraph(paragraphs[0]) : [];
   const processedSecondParagraph = paragraphs.length > 1 ? processOtherParagraph(paragraphs[1]) : [];
   const processedRemainingParagraphs = paragraphs.slice(2).map(para => processRemainingParagraphs(para));

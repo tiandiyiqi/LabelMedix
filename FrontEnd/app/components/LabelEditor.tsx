@@ -150,6 +150,11 @@ export default function LabelEditor() {
         originalSummaryJson // 保存JSON格式的原始状态
       )
       
+      // 立即更新本地状态，确保格式化功能可以访问到原始状态
+      updateLabelData({
+        originalSummary: originalSummaryJson
+      })
+      
       showToast('6个字段的原始状态已初始化保存', 'success')
       
     } catch (error) {
@@ -349,6 +354,126 @@ export default function LabelEditor() {
     loadAvailableOptions()
   }, [selectedProject])
 
+  // 当项目被选中时，自动加载格式化内容到6个字段
+  useEffect(() => {
+    const loadFormattedContent = async () => {
+      if (selectedProject && selectedLanguage) {
+        try {
+          // 获取该国别的详细信息
+          const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
+          
+          // 尝试解析JSON格式的格式化状态
+          const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
+          
+          if (formattedData && formattedData.formatStates) {
+            // 如果有JSON格式的格式化状态，加载6个字段和格式化状态
+            updateLabelData({ 
+              basicInfo: formattedData.basicInfo || '',
+              numberField: formattedData.numberField || '',
+              drugName: formattedData.drugName || '',
+              numberOfSheets: formattedData.numberOfSheets || '',
+              drugDescription: formattedData.drugDescription || '',
+              companyName: formattedData.companyName || '',
+              originalSummary: countryDetail.original_summary,
+              formatted_summary: countryDetail.formatted_summary
+            })
+            
+            // 恢复格式化状态
+            setFormatStates(formattedData.formatStates)
+            
+            console.log('✅ 已自动加载格式化内容', {
+              project: selectedProject.job_name,
+              country: selectedLanguage,
+              hasData: true
+            })
+          } else {
+            // 如果没有格式化状态，尝试加载原始状态
+            const originalData = parseOriginalSummary(countryDetail.original_summary)
+            
+            if (originalData) {
+              updateLabelData({ 
+                basicInfo: originalData.basicInfo || '',
+                numberField: originalData.numberField || '',
+                drugName: originalData.drugName || '',
+                numberOfSheets: originalData.numberOfSheets || '',
+                drugDescription: originalData.drugDescription || '',
+                companyName: originalData.companyName || '',
+                originalSummary: countryDetail.original_summary,
+                formatted_summary: countryDetail.formatted_summary
+              })
+              
+              // 重置格式化状态为0
+              setFormatStates({
+                basicInfo: 0,
+                numberField: 0,
+                drugName: 0,
+                numberOfSheets: 0,
+                drugDescription: 0,
+                companyName: 0
+              })
+              
+              console.log('✅ 已自动加载原始内容（未格式化）', {
+                project: selectedProject.job_name,
+                country: selectedLanguage,
+                hasData: true
+              })
+            } else {
+              // 如果既没有格式化数据也没有原始数据，清空所有字段
+              updateLabelData({ 
+                basicInfo: '',
+                numberField: '',
+                drugName: '',
+                numberOfSheets: '',
+                drugDescription: '',
+                companyName: '',
+                originalSummary: undefined,
+                formatted_summary: undefined
+              })
+              
+              // 重置格式化状态为0
+              setFormatStates({
+                basicInfo: 0,
+                numberField: 0,
+                drugName: 0,
+                numberOfSheets: 0,
+                drugDescription: 0,
+                companyName: 0
+              })
+              
+              console.log('⚠️ 未找到格式化或原始数据，已清空所有字段', {
+                project: selectedProject.job_name,
+                country: selectedLanguage
+              })
+            }
+          }
+        } catch (error) {
+          console.error('❌ 自动加载内容失败:', error)
+          // 出错时也清空字段，避免显示错误的旧数据
+          updateLabelData({ 
+            basicInfo: '',
+            numberField: '',
+            drugName: '',
+            numberOfSheets: '',
+            drugDescription: '',
+            companyName: '',
+            originalSummary: undefined,
+            formatted_summary: undefined
+          })
+          setFormatStates({
+            basicInfo: 0,
+            numberField: 0,
+            drugName: 0,
+            numberOfSheets: 0,
+            drugDescription: 0,
+            companyName: 0
+          })
+        }
+      }
+    }
+
+    loadFormattedContent()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject, selectedLanguage])
 
 
   const fonts = [
@@ -636,6 +761,11 @@ export default function LabelEditor() {
         fontSize: labelData.fontSize,
         spacing: labelData.spacing,
         lineHeight: labelData.lineHeight
+      })
+      
+      // 立即更新本地状态，确保后续操作可以访问到最新的格式化状态
+      updateLabelData({
+        formatted_summary: formattedSummaryJson
       })
       
       // 2. 触发PDF生成和保存（使用合并的文本内容）
