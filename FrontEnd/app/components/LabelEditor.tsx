@@ -293,9 +293,43 @@ export default function LabelEditor() {
     // 使用更保守的计算，向下取整以避免溢出
     const spaces = Math.floor(spacing / conservativeSpaceWidth);
     
-    // 限制空格数量在合理范围内（允许0个空格）
-    return Math.max(0, Math.min(spaces, 15)); // 最少0个空格，最多15个空格
-  };
+  // 限制空格数量在合理范围内（允许0个空格）
+  return Math.max(0, Math.min(spaces, 15)); // 最少0个空格，最多15个空格
+};
+
+// 将间距转换为下划线数量（每个句子后面的下划线数量）
+const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: string, sentenceCount: number): number => {
+  // 如果不需要间距或没有句子，直接返回0个下划线
+  if (spacing <= 0 || sentenceCount <= 0) {
+    return 0;
+  }
+
+  // 下划线的宽度约等于正常字符宽度的0.5倍
+  let underscoreWidthRatio = 0.5; // 基础下划线宽度比例
+  
+  if (fontFamily.includes('STHeiti') || fontFamily.includes('Chinese')) {
+    underscoreWidthRatio = 0.5; // 中文字体的下划线宽度
+  } else if (fontFamily.includes('Arial')) {
+    underscoreWidthRatio = 0.5; // Arial字体的下划线宽度
+  }
+  
+  const underscoreWidth = fontSize * underscoreWidthRatio;
+  
+  // 安全检查：避免除零和无效值
+  if (underscoreWidth <= 0 || !isFinite(spacing)) {
+    return 0; // 返回0个下划线作为回退
+  }
+  
+  // 计算整行的总下划线数量
+  const totalUnderscores = Math.floor(spacing / underscoreWidth);
+  
+  // 将总下划线数量平均分配给每个句子
+  const underscoresPerSentence = Math.floor(totalUnderscores / sentenceCount);
+  
+  // 限制每个句子的下划线数量在合理范围内（允许0个下划线）
+  return Math.max(0, Math.min(underscoresPerSentence, 20)); // 最少0个下划线，最多20个下划线
+};
+
 
   // 罗马数字序号映射
   const getRomanNumber = (num: number): string => {
@@ -490,16 +524,6 @@ export default function LabelEditor() {
       const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
       const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
       
-      // 调试信息
-      console.log('两行格式 - 间距计算:', {
-        容器宽度: containerWidth.toFixed(1) + 'pt',
-        第一行元素: firstLineSentences,
-        第一行间距: firstLineSpacing.toFixed(1) + 'pt',
-        第一行空格数: firstLineSpaces,
-        第二行元素: secondLineSentences,
-        第二行间距: secondLineSpacing.toFixed(1) + 'pt',
-        第二行空格数: secondLineSpaces
-      })
       
       // 添加计算出的空格
       const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
@@ -537,32 +561,6 @@ export default function LabelEditor() {
       const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
       const lineSpaces = spacingToSpaces(lineSpacing, labelData.fontSize, labelData.fontFamily)
       
-      // 详细调试信息
-      const elementsWithWidth = sentences.map(text => ({
-        text,
-        width: measureTextWidth(text, labelData.fontSize, labelData.fontFamily).toFixed(1) + 'pt'
-      }))
-      const totalContentWidth = sentences.reduce((sum, text) => 
-        sum + measureTextWidth(text, labelData.fontSize, labelData.fontFamily), 0
-      )
-      
-      console.log('一行格式 - 详细间距计算:', {
-        基础标签宽度: baseWidth + 'mm',
-        页边距: margins,
-        有效宽度: effectiveWidth.toFixed(1) + 'mm',
-        安全容器宽度: containerWidth.toFixed(1) + 'pt',
-        元素数量: sentences.length,
-        各元素宽度: elementsWithWidth,
-        总内容宽度: totalContentWidth.toFixed(1) + 'pt',
-        可用空间: (containerWidth - totalContentWidth).toFixed(1) + 'pt',
-        缝隙数量: sentences.length - 1,
-        计算间距: lineSpacing.toFixed(1) + 'pt',
-        空格宽度系数: labelData.fontFamily.includes('STHeiti') ? 0.4 : 0.38,
-        估算空格宽度: (labelData.fontSize * (labelData.fontFamily.includes('STHeiti') ? 0.4 : 0.38)).toFixed(1) + 'pt',
-        空格数: lineSpaces,
-        字体大小: labelData.fontSize + 'pt',
-        字体: labelData.fontFamily
-      })
       
       // 添加计算出的空格
       formattedText = sentences.join(safeRepeat(' ', lineSpaces))
@@ -614,25 +612,65 @@ export default function LabelEditor() {
     let formattedText = ''
     let toastMessage = ''
 
+    // 计算容器宽度（使用基础标签宽度，减去边距）
+    const baseWidth = labelData.labelWidth // 使用基础宽度，不是计算后的currentWidth
+    const margins = calculatePageMargins(Number(labelData.selectedNumber))
+    const effectiveWidth = baseWidth - margins.left - margins.right // 减去左右边距
+    const safetyMargin = 2 // 预留2mm的安全边距
+    const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95)) // 使用95%的有效宽度
+
     if (nextFormatState === 0) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
-      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
-      const secondLine = sentences.slice(sentencesPerLine).join(' ')
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine)
+      
+      // 计算第一行的间距和下划线数量
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 计算第二行的间距和下划线数量
+      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
+      const secondLineUnderscores = spacingToUnderscores(secondLineSpacing, labelData.fontSize, labelData.fontFamily, secondLineSentences.length)
+      
+      // 为每个元素后面添加下划线
+      const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      const secondLine = secondLineSentences.map((text: string) => text + safeRepeat('_', secondLineUnderscores)).join('')
+      
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = '编号栏分为两行'
+      toastMessage = `编号栏分为两行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}下划线）`
     } else if (nextFormatState === 1) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
-      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
-      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
-      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2)
+      
+      // 计算各行的间距和下划线数量
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
+      const secondLineUnderscores = spacingToUnderscores(secondLineSpacing, labelData.fontSize, labelData.fontFamily, secondLineSentences.length)
+      
+      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
+      const thirdLineUnderscores = spacingToUnderscores(thirdLineSpacing, labelData.fontSize, labelData.fontFamily, thirdLineSentences.length)
+      
+      // 为每个元素后面添加下划线
+      const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      const secondLine = secondLineSentences.map((text: string) => text + safeRepeat('_', secondLineUnderscores)).join('')
+      const thirdLine = thirdLineSentences.map((text: string) => text + safeRepeat('_', thirdLineUnderscores)).join('')
+      
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = '编号栏分为三行'
+      toastMessage = `编号栏分为三行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}/${thirdLineUnderscores}下划线）`
     } else {
       // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '编号栏分为一行'
+      const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
+      const lineUnderscores = spacingToUnderscores(lineSpacing, labelData.fontSize, labelData.fontFamily, sentences.length)
+      
+      // 为每个元素后面添加下划线
+      formattedText = sentences.map((text: string) => text + safeRepeat('_', lineUnderscores)).join('')
+      toastMessage = `编号栏分为一行（每个字段后添加${lineUnderscores}下划线）`
     }
 
     // 更新对应字段的内容
