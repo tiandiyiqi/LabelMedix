@@ -96,7 +96,7 @@ export default function LabelEditor() {
   }
 
   // 解析原始状态JSON
-  const parseOriginalSummary = (originalSummary: string | undefined) => {
+  const parseOriginalSummary = (originalSummary: string | undefined): any => {
     if (!originalSummary) return null
     
     try {
@@ -117,6 +117,95 @@ export default function LabelEditor() {
       console.warn('解析格式化状态失败，可能是旧格式数据:', error)
       return null
     }
+  }
+
+  // 罗马数字序号映射
+  const getRomanNumber = (num: number): string => {
+    const romanNumerals = [
+      { value: 1000, symbol: 'M' },
+      { value: 900, symbol: 'CM' },
+      { value: 500, symbol: 'D' },
+      { value: 400, symbol: 'CD' },
+      { value: 100, symbol: 'C' },
+      { value: 90, symbol: 'XC' },
+      { value: 50, symbol: 'L' },
+      { value: 40, symbol: 'XL' },
+      { value: 10, symbol: 'X' },
+      { value: 9, symbol: 'IX' },
+      { value: 5, symbol: 'V' },
+      { value: 4, symbol: 'IV' },
+      { value: 1, symbol: 'I' }
+    ]
+    
+    let result = ''
+    let remaining = num
+    
+    for (let i = 0; i < romanNumerals.length; i++) {
+      while (remaining >= romanNumerals[i].value) {
+        result += romanNumerals[i].symbol
+        remaining -= romanNumerals[i].value
+      }
+    }
+    
+    return result
+  }
+
+  // 变量控制函数
+  const applyVariableControl = (text: string, fieldType: 'basicInfo' | 'drugName' | 'numberOfSheets', startIndex: number = 1): { processedText: string, nextIndex: number } => {
+    if (!text || text.trim() === '') {
+      return { processedText: text, nextIndex: startIndex }
+    }
+
+    let processedText = text
+    let currentIndex = startIndex
+
+    if (fieldType === 'basicInfo') {
+      // 对basicInfo的每一行行首添加罗马数字序号
+      const lines = text.split('\n').filter(line => line.trim() !== '')
+      const processedLines = lines.map(line => {
+        const romanNumber = getRomanNumber(currentIndex)
+        currentIndex++
+        return `${romanNumber}. ${line.trim()}`
+      })
+      processedText = processedLines.join('\n')
+    } else if (fieldType === 'drugName' || fieldType === 'numberOfSheets') {
+      // 替换文本中的"XX"或"XXX"为罗马数字序号
+      processedText = text.replace(/XXX?/g, () => {
+        const romanNumber = getRomanNumber(currentIndex)
+        currentIndex++
+        return romanNumber
+      })
+    }
+
+    return { processedText, nextIndex: currentIndex }
+  }
+
+  // 计算当前罗马数字序号的起始位置
+  const calculateRomanStartIndex = (fieldType: 'basicInfo' | 'drugName' | 'numberOfSheets'): number => {
+    let startIndex = 1
+
+    // 获取原始数据以计算行数/占位符
+    const originalData = parseOriginalSummary(labelData.originalSummary)
+    if (!originalData) {
+      // 如果没有原始数据（例如未初始化），则从1开始
+      return 1
+    }
+
+    // 如果是drugName或numberOfSheets，需要计算basicInfo使用了多少个序号
+    if (fieldType === 'drugName' || fieldType === 'numberOfSheets') {
+      const basicInfoOriginalText = originalData.basicInfo || ''
+      const basicInfoLines = basicInfoOriginalText.split('\n').filter((line: string) => line.trim() !== '')
+      startIndex += basicInfoLines.length
+    }
+
+    // 如果是numberOfSheets，还需要计算drugName使用了多少个序号
+    if (fieldType === 'numberOfSheets') {
+      const drugNameOriginalText = originalData.drugName || ''
+      const drugNameXXCount = (drugNameOriginalText).match(/XXX?/g)?.length || 0
+      startIndex += drugNameXXCount
+    }
+
+    return startIndex
   }
 
   // 初始化 - 保存当前状态为原始状态到数据库
@@ -165,10 +254,10 @@ export default function LabelEditor() {
     }
   }
 
-  // 基于原始状态的格式化功能
-  const handleFormatField = (fieldName: string) => {
+  // 基于原始状态的格式化功能 - 基本信息
+  const handleFormatBasicInfo = () => {
     // 解析原始状态JSON
-    const originalData = parseOriginalSummary(labelData.originalSummary)
+    const originalData: any = parseOriginalSummary(labelData.originalSummary)
     
     if (!originalData) {
       showToast('未找到原始状态，请先点击初始化', 'info')
@@ -176,23 +265,27 @@ export default function LabelEditor() {
     }
 
     // 获取对应字段的原始内容
-    const originalText = originalData[fieldName]
+    const originalText = originalData.basicInfo
     if (!originalText || !originalText.trim()) {
-      showToast(`${fieldName}字段的原始状态为空`, 'info')
+      showToast('基本信息字段的原始状态为空', 'info')
       return
     }
 
-    // 将原始状态按行分割为数组
-    const sentences = originalText.split('\n').filter((line: string) => line.trim() !== '')
+    // 应用变量控制（在分行之前）
+    const startIndex = calculateRomanStartIndex('basicInfo')
+    const { processedText: variableControlledText } = applyVariableControl(originalText, 'basicInfo', startIndex)
+
+    // 将处理后的文本按行分割为数组
+    const sentences = variableControlledText.split('\n').filter((line: string) => line.trim() !== '')
     const sentenceCount = sentences.length
 
     if (sentenceCount === 0) {
-      showToast(`${fieldName}字段的原始状态为空`, 'info')
+      showToast('基本信息字段的原始状态为空', 'info')
       return
     }
 
     // 获取当前格式化状态并计算下一个状态
-    const currentFormatState = formatStates[fieldName] || 0
+    const currentFormatState = formatStates.basicInfo || 0
     const nextFormatState = (currentFormatState + 1) % 3
 
     let formattedText = ''
@@ -204,7 +297,7 @@ export default function LabelEditor() {
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `${fieldName}分为两行`
+      toastMessage = '基本信息分为两行（已添加罗马数字序号）'
     } else if (nextFormatState === 1) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
@@ -212,20 +305,358 @@ export default function LabelEditor() {
       const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `${fieldName}分为三行`
+      toastMessage = '基本信息分为三行（已添加罗马数字序号）'
     } else {
       // 分为一行
       formattedText = sentences.join(' ')
-      toastMessage = `${fieldName}恢复一行`
+      toastMessage = '基本信息分为一行（已添加罗马数字序号）'
     }
 
     // 更新对应字段的内容
-    updateLabelData({ [fieldName]: formattedText })
+    updateLabelData({ basicInfo: formattedText })
     
     // 更新格式化状态
     setFormatStates(prev => ({
       ...prev,
-      [fieldName]: nextFormatState
+      basicInfo: nextFormatState
+    }))
+
+    showToast(toastMessage, 'success')
+  }
+
+  // 基于原始状态的格式化功能 - 编号栏
+  const handleFormatNumberField = () => {
+    // 解析原始状态JSON
+    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    
+    if (!originalData) {
+      showToast('未找到原始状态，请先点击初始化', 'info')
+      return
+    }
+
+    // 获取对应字段的原始内容
+    const originalText = originalData.numberField
+    if (!originalText || !originalText.trim()) {
+      showToast('编号栏字段的原始状态为空', 'info')
+      return
+    }
+
+    // 将原始状态按行分割为数组
+    const sentences = originalText.split('\n').filter((line: string) => line.trim() !== '')
+    const sentenceCount = sentences.length
+
+    if (sentenceCount === 0) {
+      showToast('编号栏字段的原始状态为空', 'info')
+      return
+    }
+
+    // 获取当前格式化状态并计算下一个状态
+    const currentFormatState = formatStates.numberField || 0
+    const nextFormatState = (currentFormatState + 1) % 3
+
+    let formattedText = ''
+    let toastMessage = ''
+
+    if (nextFormatState === 0) {
+      // 分为两行
+      const sentencesPerLine = Math.ceil(sentenceCount / 2)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine).join(' ')
+      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '编号栏分为两行'
+    } else if (nextFormatState === 1) {
+      // 分为三行
+      const sentencesPerLine = Math.ceil(sentenceCount / 3)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '编号栏分为三行'
+    } else {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '编号栏分为一行'
+    }
+
+    // 更新对应字段的内容
+    updateLabelData({ numberField: formattedText })
+    
+    // 更新格式化状态
+    setFormatStates(prev => ({
+      ...prev,
+      numberField: nextFormatState
+    }))
+
+    showToast(toastMessage, 'success')
+  }
+
+  // 基于原始状态的格式化功能 - 药品名称
+  const handleFormatDrugName = () => {
+    // 解析原始状态JSON
+    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    
+    if (!originalData) {
+      showToast('未找到原始状态，请先点击初始化', 'info')
+      return
+    }
+
+    // 获取对应字段的原始内容
+    const originalText = originalData.drugName
+    if (!originalText || !originalText.trim()) {
+      showToast('药品名称字段的原始状态为空', 'info')
+      return
+    }
+
+    // 应用变量控制（在分行之前）
+    const startIndex = calculateRomanStartIndex('drugName')
+    const { processedText: variableControlledText } = applyVariableControl(originalText, 'drugName', startIndex)
+
+    // 将处理后的文本按行分割为数组
+    const sentences = variableControlledText.split('\n').filter((line: string) => line.trim() !== '')
+    const sentenceCount = sentences.length
+
+    if (sentenceCount === 0) {
+      showToast('药品名称字段的原始状态为空', 'info')
+      return
+    }
+
+    // 获取当前格式化状态并计算下一个状态
+    const currentFormatState = formatStates.drugName || 0
+    const nextFormatState = (currentFormatState + 1) % 3
+
+    let formattedText = ''
+    let toastMessage = ''
+
+    if (nextFormatState === 0) {
+      // 分为两行
+      const sentencesPerLine = Math.ceil(sentenceCount / 2)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine).join(' ')
+      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '药品名称分为两行（已替换XX为罗马数字）'
+    } else if (nextFormatState === 1) {
+      // 分为三行
+      const sentencesPerLine = Math.ceil(sentenceCount / 3)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '药品名称分为三行（已替换XX为罗马数字）'
+    } else {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '药品名称分为一行（已替换XX为罗马数字）'
+    }
+
+    // 更新对应字段的内容
+    updateLabelData({ drugName: formattedText })
+    
+    // 更新格式化状态
+    setFormatStates(prev => ({
+      ...prev,
+      drugName: nextFormatState
+    }))
+
+    showToast(toastMessage, 'success')
+  }
+
+  // 基于原始状态的格式化功能 - 片数
+  const handleFormatNumberOfSheets = () => {
+    // 解析原始状态JSON
+    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    
+    if (!originalData) {
+      showToast('未找到原始状态，请先点击初始化', 'info')
+      return
+    }
+
+    // 获取对应字段的原始内容
+    const originalText = originalData.numberOfSheets
+    if (!originalText || !originalText.trim()) {
+      showToast('片数字段的原始状态为空', 'info')
+      return
+    }
+
+    // 应用变量控制（在分行之前）
+    const startIndex = calculateRomanStartIndex('numberOfSheets')
+    const { processedText: variableControlledText } = applyVariableControl(originalText, 'numberOfSheets', startIndex)
+
+    // 将处理后的文本按行分割为数组
+    const sentences = variableControlledText.split('\n').filter((line: string) => line.trim() !== '')
+    const sentenceCount = sentences.length
+
+    if (sentenceCount === 0) {
+      showToast('片数字段的原始状态为空', 'info')
+      return
+    }
+
+    // 获取当前格式化状态并计算下一个状态
+    const currentFormatState = formatStates.numberOfSheets || 0
+    const nextFormatState = (currentFormatState + 1) % 3
+
+    let formattedText = ''
+    let toastMessage = ''
+
+    if (nextFormatState === 0) {
+      // 分为两行
+      const sentencesPerLine = Math.ceil(sentenceCount / 2)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine).join(' ')
+      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '片数分为两行（已替换XX为罗马数字）'
+    } else if (nextFormatState === 1) {
+      // 分为三行
+      const sentencesPerLine = Math.ceil(sentenceCount / 3)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '片数分为三行（已替换XX为罗马数字）'
+    } else {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '片数分为一行（已替换XX为罗马数字）'
+    }
+
+    // 更新对应字段的内容
+    updateLabelData({ numberOfSheets: formattedText })
+    
+    // 更新格式化状态
+    setFormatStates(prev => ({
+      ...prev,
+      numberOfSheets: nextFormatState
+    }))
+
+    showToast(toastMessage, 'success')
+  }
+
+  // 基于原始状态的格式化功能 - 药品说明
+  const handleFormatDrugDescription = () => {
+    // 解析原始状态JSON
+    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    
+    if (!originalData) {
+      showToast('未找到原始状态，请先点击初始化', 'info')
+      return
+    }
+
+    // 获取对应字段的原始内容
+    const originalText = originalData.drugDescription
+    if (!originalText || !originalText.trim()) {
+      showToast('药品说明字段的原始状态为空', 'info')
+      return
+    }
+
+    // 将原始状态按行分割为数组
+    const sentences = originalText.split('\n').filter((line: string) => line.trim() !== '')
+    const sentenceCount = sentences.length
+
+    if (sentenceCount === 0) {
+      showToast('药品说明字段的原始状态为空', 'info')
+      return
+    }
+
+    // 获取当前格式化状态并计算下一个状态
+    const currentFormatState = formatStates.drugDescription || 0
+    const nextFormatState = (currentFormatState + 1) % 3
+
+    let formattedText = ''
+    let toastMessage = ''
+
+    if (nextFormatState === 0) {
+      // 分为两行
+      const sentencesPerLine = Math.ceil(sentenceCount / 2)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine).join(' ')
+      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '药品说明分为两行'
+    } else if (nextFormatState === 1) {
+      // 分为三行
+      const sentencesPerLine = Math.ceil(sentenceCount / 3)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '药品说明分为三行'
+    } else {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '药品说明分为一行'
+    }
+
+    // 更新对应字段的内容
+    updateLabelData({ drugDescription: formattedText })
+    
+    // 更新格式化状态
+    setFormatStates(prev => ({
+      ...prev,
+      drugDescription: nextFormatState
+    }))
+
+    showToast(toastMessage, 'success')
+  }
+
+  // 基于原始状态的格式化功能 - 公司名称
+  const handleFormatCompanyName = () => {
+    // 解析原始状态JSON
+    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    
+    if (!originalData) {
+      showToast('未找到原始状态，请先点击初始化', 'info')
+      return
+    }
+
+    // 获取对应字段的原始内容
+    const originalText = originalData.companyName
+    if (!originalText || !originalText.trim()) {
+      showToast('公司名称字段的原始状态为空', 'info')
+      return
+    }
+
+    // 将原始状态按行分割为数组
+    const sentences = originalText.split('\n').filter((line: string) => line.trim() !== '')
+    const sentenceCount = sentences.length
+
+    if (sentenceCount === 0) {
+      showToast('公司名称字段的原始状态为空', 'info')
+      return
+    }
+
+    // 获取当前格式化状态并计算下一个状态
+    const currentFormatState = formatStates.companyName || 0
+    const nextFormatState = (currentFormatState + 1) % 3
+
+    let formattedText = ''
+    let toastMessage = ''
+
+    if (nextFormatState === 0) {
+      // 分为两行
+      const sentencesPerLine = Math.ceil(sentenceCount / 2)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine).join(' ')
+      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '公司名称分为两行'
+    } else if (nextFormatState === 1) {
+      // 分为三行
+      const sentencesPerLine = Math.ceil(sentenceCount / 3)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '公司名称分为三行'
+    } else {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '公司名称分为一行'
+    }
+
+    // 更新对应字段的内容
+    updateLabelData({ companyName: formattedText })
+    
+    // 更新格式化状态
+    setFormatStates(prev => ({
+      ...prev,
+      companyName: nextFormatState
     }))
 
     showToast(toastMessage, 'success')
@@ -1346,7 +1777,7 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                onClick={() => handleFormatField('basicInfo')}
+                onClick={handleFormatBasicInfo}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -1387,7 +1818,7 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                onClick={() => handleFormatField('numberField')}
+                onClick={handleFormatNumberField}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -1428,7 +1859,7 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                onClick={() => handleFormatField('drugName')}
+                onClick={handleFormatDrugName}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -1469,7 +1900,7 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                onClick={() => handleFormatField('numberOfSheets')}
+                onClick={handleFormatNumberOfSheets}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -1510,7 +1941,7 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                onClick={() => handleFormatField('drugDescription')}
+                onClick={handleFormatDrugDescription}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -1551,7 +1982,7 @@ export default function LabelEditor() {
               />
               {/* 闪电图标 */}
               <button
-                onClick={() => handleFormatField('companyName')}
+                onClick={handleFormatCompanyName}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
