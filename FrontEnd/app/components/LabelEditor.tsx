@@ -60,7 +60,6 @@ export default function LabelEditor() {
   const [isFormatting, setIsFormatting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isInitializing, setIsInitializing] = useState(false)
-  const [showResetMenu, setShowResetMenu] = useState(false)
   const [formatStates, setFormatStates] = useState<{[key: string]: number}>({
     basicInfo: 0,
     numberField: 0,
@@ -1026,19 +1025,6 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     setSelectedNumberState(Number(selectedNumber))
   }, [selectedNumber])
   
-  // 点击外部关闭重置菜单
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (showResetMenu && !(event.target as Element).closest('.relative')) {
-        setShowResetMenu(false)
-      }
-    }
-    
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showResetMenu])
 
 
   // 自动调整textarea高度的函数
@@ -1414,10 +1400,6 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     }
   }
 
-  // 重置 - 显示重置菜单
-  const handleReset = () => {
-    setShowResetMenu(!showResetMenu)
-  }
 
   // 导入翻译内容
   const handleImport = async () => {
@@ -2010,96 +1992,61 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                   <Download size={14} />
                   {isImporting ? '导入中...' : '导入'}
                 </button>
-                <button
-                  onClick={handleInitialize}
-                  disabled={!selectedProject || isInitializing}
-                  className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                  style={{
-                    backgroundColor: '#8B5CF6', // 紫色表示初始化
-                    color: 'white',
-                  }}
-                >
-                  <Settings size={14} />
-                  {isInitializing ? '初始化中...' : '初始化'}
-                </button>
-                <button
-                  onClick={handleFormat}
-                  disabled={isFormatting}
-                  className="flex-1 px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                  style={{
-                    backgroundColor: theme.accent,
-                    color: theme.buttonText,
-                  }}
-                >
-                  <Sparkles size={14} />
-                  {isFormatting ? '格式化中...' : '格式化'}
-                </button>
                 <div className="relative flex-1">
-                  <button
-                    onClick={handleReset}
-                    disabled={!selectedProject || isResetting}
-                    className="w-full px-4 py-2 rounded text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                    style={{
-                      backgroundColor: theme.primary,
-                      color: theme.buttonText,
-                    }}
-                  >
-                    <RotateCcw size={14} />
-                    {isResetting ? '重置中...' : '重置'}
-                    <ChevronDown size={12} className="ml-1" />
-                  </button>
-                  
-                  {showResetMenu && (
-                    <div 
-                      className="absolute top-full right-0 mt-1 bg-white shadow-xl rounded-md z-10 w-40 border border-gray-200 overflow-hidden"
-                      style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                  <div className="flex w-full">
+                    <button
+                      onClick={handleInitialize}
+                      disabled={!selectedProject || isInitializing}
+                      className="flex-1 px-4 py-2 rounded-l text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      style={{
+                        backgroundColor: '#8B5CF6',
+                        color: 'white',
+                      }}
                     >
-                      <div className="py-1">
-                        <button 
-                          onClick={() => { handleResetToFormatted(); setShowResetMenu(false); }}
-                          className="w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 border-b border-gray-100 flex items-center"
-                          style={{
-                            backgroundColor: "white",
-                            color: theme.text,
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = theme.primary;
-                            e.currentTarget.style.color = 'white';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = "white";
-                            e.currentTarget.style.color = theme.text;
-                          }}
-                        >
-                          <div className="flex items-center w-full">
-                            <span className="mr-2 text-lg">↻</span> 
-                            <span>重置到格式化</span>
-                          </div>
-                        </button>
-                        <button 
-                          onClick={() => { handleResetToOriginal(); setShowResetMenu(false); }}
-                          className="w-full text-left px-4 py-2.5 text-sm font-medium transition-colors duration-150 flex items-center"
-                          style={{
-                            backgroundColor: "white",
-                            color: theme.text,
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = theme.accent;
-                            e.currentTarget.style.color = 'white';
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = "white";
-                            e.currentTarget.style.color = theme.text;
-                          }}
-                        >
-                          <div className="flex items-center w-full">
-                            <span className="mr-2 text-lg">⟲</span> 
-                            <span>重置到初始化</span>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                      <Settings size={14} />
+                      {isInitializing ? '初始化中...' : '初始化'}
+                    </button>
+                    <button
+                      onClick={handleResetToOriginal}
+                      disabled={!selectedProject || isResetting}
+                      className="px-2 py-2 rounded-r text-sm transition-opacity disabled:opacity-50 disabled:cursor-not-allowed border-l border-white/20"
+                      style={{
+                        backgroundColor: '#8B5CF6',
+                        color: 'white',
+                      }}
+                      title="重置到初始化"
+                    >
+                      <RotateCcw size={12} />
+                    </button>
+                  </div>
+                </div>
+                <div className="relative flex-1">
+                  <div className="flex w-full">
+                    <button
+                      onClick={handleFormat}
+                      disabled={isFormatting}
+                      className="flex-1 px-4 py-2 rounded-l text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      style={{
+                        backgroundColor: theme.accent,
+                        color: theme.buttonText,
+                      }}
+                    >
+                      <Sparkles size={14} />
+                      {isFormatting ? '格式化中...' : '格式化'}
+                    </button>
+                    <button
+                      onClick={handleResetToFormatted}
+                      disabled={!selectedProject || isResetting}
+                      className="px-2 py-2 rounded-r text-sm transition-opacity disabled:opacity-50 disabled:cursor-not-allowed border-l border-white/20"
+                      style={{
+                        backgroundColor: theme.accent,
+                        color: theme.buttonText,
+                      }}
+                      title="重置到格式化"
+                    >
+                      <RotateCcw size={12} />
+                    </button>
+                  </div>
                 </div>
                 <button
                   onClick={handleSave}
