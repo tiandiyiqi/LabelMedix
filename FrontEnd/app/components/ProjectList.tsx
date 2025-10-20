@@ -107,6 +107,7 @@ export default function ProjectList() {
         updateLabelData({
           fontFamily: countryDetail.font_family || 'Arial',
           secondaryFontFamily: countryDetail.secondary_font_family || 'Arial',
+          textAlign: countryDetail.text_align || 'left',
           fontSize: countryDetail.font_size || 10,
           spacing: countryDetail.spacing || 1,
           lineHeight: countryDetail.line_height || 1.2

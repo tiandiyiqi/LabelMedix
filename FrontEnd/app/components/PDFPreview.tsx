@@ -410,7 +410,7 @@ export default function PDFPreview() {
 
   // ===== Context hooks =====
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, textAlign } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -535,8 +535,8 @@ export default function PDFPreview() {
     fontSize: mmToPt(fontSize),
     fontFamily: fontFamily,
     lineHeight: lineHeight,
-    textAlign: isRTL() ? 'right' : 'left',  // RTL语言右对齐
-    direction: isRTL() ? 'rtl' : 'ltr',     // RTL语言从右到左
+    textAlign: (textAlign as 'left' | 'right' | 'center' | 'justify') || 'left',  // 使用用户设置的对齐方式
+    direction: textAlign === 'right' ? 'rtl' : 'ltr',  // 右对齐时使用rtl方向
   };
 
   // // ============================================
@@ -589,38 +589,41 @@ export default function PDFPreview() {
     marginBottom: mmToPt(spacing * 0.5),
     flexDirection: 'row',
     flexWrap: 'wrap',
+    direction: textAlign === 'right' ? 'rtl' : 'ltr',
+    justifyContent: textAlign === 'right' ? 'flex-end' : 'flex-start',
   },
   fieldLine: {
     fontSize: fontSize, // fontSize已经是pt单位，不需要再转换
     lineHeight: lineHeight,
+    textAlign: (textAlign as 'left' | 'right' | 'center' | 'justify') || 'left',
   },
     firstParagraphRow: {
       ...styles.firstParagraphRow,
       marginBottom: mmToPt(spacing),
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
-      justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',
+      direction: textAlign === 'right' ? 'rtl' : 'ltr',
+      justifyContent: textAlign === 'right' ? 'flex-end' : 'flex-start',
     },
     firstParagraphItem: {
       ...styles.firstParagraphItem,
       fontFamily: fontFamily,
       fontSize: fontSize,
       lineHeight: lineHeight,
-      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+      textAlign: (textAlign as 'left' | 'right' | 'center' | 'justify') || 'left',
+      direction: textAlign === 'right' ? 'rtl' : 'ltr',
     },
     secondParagraphRow: {
       ...styles.secondParagraphRow,
       marginBottom: mmToPt(spacing),
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
-      justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',
+      direction: textAlign === 'right' ? 'rtl' : 'ltr',
+      justifyContent: textAlign === 'right' ? 'flex-end' : 'flex-start',
     },
     secondParagraphItem: {
       ...styles.secondParagraphItem,
       fontFamily: fontFamily,
       fontSize: fontSize,
       lineHeight: lineHeight,
-      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+      textAlign: (textAlign as 'left' | 'right' | 'center' | 'justify') || 'left',
+      direction: textAlign === 'right' ? 'rtl' : 'ltr',
     },
     underline: {
       ...styles.underline,
@@ -630,8 +633,8 @@ export default function PDFPreview() {
     remainingContentRow: {
       ...styles.remainingContentRow,
       marginBottom: mmToPt(spacing),  // 在动态样式中使用 spacing 参数
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
-      justifyContent: selectedLanguage === 'AE' ? 'flex-end' : 'flex-start',
+      direction: textAlign === 'right' ? 'rtl' : 'ltr',
+      justifyContent: textAlign === 'right' ? 'flex-end' : 'flex-start',
     },
     remainingContentItem: {
       ...styles.remainingContentItem,
@@ -639,8 +642,8 @@ export default function PDFPreview() {
       fontSize: fontSize,
       lineHeight: lineHeight,
       marginBottom: 0,
-      textAlign: selectedLanguage === 'AE' ? 'right' : 'left',
-      direction: selectedLanguage === 'AE' ? 'rtl' : 'ltr',
+      textAlign: (textAlign as 'left' | 'right' | 'center' | 'justify') || 'left',
+      direction: textAlign === 'right' ? 'rtl' : 'ltr',
     },
   });
 

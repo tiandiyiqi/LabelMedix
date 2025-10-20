@@ -1692,6 +1692,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               selectedLanguage: newLanguage,
               fontFamily: countryDetail.font_family || autoFonts.fontFamily,
               secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
+              textAlign: countryDetail.text_align || 'left',
               fontSize: countryDetail.font_size || labelData.fontSize,
               spacing: countryDetail.spacing || labelData.spacing,
               lineHeight: countryDetail.line_height || labelData.lineHeight,
@@ -1718,6 +1719,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 selectedLanguage: newLanguage,
                 fontFamily: countryDetail.font_family || autoFonts.fontFamily,
                 secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
+                textAlign: countryDetail.text_align || 'left',
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
                 lineHeight: countryDetail.line_height || labelData.lineHeight,
@@ -1737,6 +1739,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 selectedLanguage: newLanguage,
                 fontFamily: countryDetail.font_family || autoFonts.fontFamily,
                 secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
+                textAlign: countryDetail.text_align || 'left',
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
                 lineHeight: countryDetail.line_height || labelData.lineHeight,
@@ -2388,29 +2391,51 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             </div>
 
             {/* 文本对齐方式 */}
-            <div className="flex items-center gap-1 border rounded px-2 py-1 relative group" style={{ borderColor: theme.border }}>
+            <div className="flex items-center gap-1 border rounded px-2 py-1" style={{ borderColor: theme.border }}>
               <div className="flex items-center gap-1 w-full">
-                <button
-                  onClick={() => updateLabelData({ textAlign: 'left' })}
-                  className={`flex-1 flex items-center justify-center p-1 rounded transition-colors ${
-                    labelData.textAlign === 'left' ? 'bg-[#30B8D6] text-white' : 'hover:bg-gray-100'
-                  }`}
-                  title="左对齐"
-                >
-                  <AlignLeft className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => updateLabelData({ textAlign: 'right' })}
-                  className={`flex-1 flex items-center justify-center p-1 rounded transition-colors ${
-                    labelData.textAlign === 'right' ? 'bg-[#30B8D6] text-white' : 'hover:bg-gray-100'
-                  }`}
-                  title="右对齐"
-                >
-                  <AlignRight className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                文本对齐
+                {/* 左对齐按钮 */}
+                <div className="flex-1 relative group">
+                  <button
+                    onClick={() => updateLabelData({ textAlign: 'left' })}
+                    className={`w-full flex items-center justify-center p-1 rounded transition-colors ${
+                      labelData.textAlign === 'left' 
+                        ? 'bg-[#30B8D6]' 
+                        : 'bg-gray-200'
+                    }`}
+                  >
+                    <AlignLeft 
+                      className="h-4 w-4" 
+                      style={{ 
+                        color: labelData.textAlign === 'left' ? 'white' : 'rgba(0, 0, 0, 0.7)' 
+                      }} 
+                    />
+                  </button>
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                    左对齐
+                  </div>
+                </div>
+                
+                {/* 右对齐按钮 */}
+                <div className="flex-1 relative group">
+                  <button
+                    onClick={() => updateLabelData({ textAlign: 'right' })}
+                    className={`w-full flex items-center justify-center p-1 rounded transition-colors ${
+                      labelData.textAlign === 'right' 
+                        ? 'bg-[#30B8D6]' 
+                        : 'bg-gray-200'
+                    }`}
+                  >
+                    <AlignRight 
+                      className="h-4 w-4" 
+                      style={{ 
+                        color: labelData.textAlign === 'right' ? 'white' : 'rgba(0, 0, 0, 0.7)' 
+                      }} 
+                    />
+                  </button>
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                    右对齐
+                  </div>
+                </div>
               </div>
             </div>
           </div>
