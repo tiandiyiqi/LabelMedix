@@ -855,44 +855,104 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       return
     }
 
-    // 获取当前格式化状态并计算下一个状态
-    const currentFormatState = formatStates.drugDescription || 0
-    const nextFormatState = (currentFormatState + 1) % 3
+    // 计算容器宽度
+    const baseWidth = labelData.labelWidth
+    const margins = calculatePageMargins(Number(labelData.selectedNumber))
+    const effectiveWidth = baseWidth - margins.left - margins.right
+    const safetyMargin = 2
+    const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95))
 
-    let formattedText = ''
-    let toastMessage = ''
+    // 计算每句话的宽度
+    const sentencesWithWidth = sentences.map((sentence: string) => ({
+      text: sentence,
+      width: measureTextWidth(sentence, labelData.fontSize, labelData.fontFamily)
+    }))
 
-    if (nextFormatState === 0) {
-      // 分为两行
-      const sentencesPerLine = Math.ceil(sentenceCount / 2)
-      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
-      const secondLine = sentences.slice(sentencesPerLine).join(' ')
-      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = '药品说明分为两行'
-    } else if (nextFormatState === 1) {
-      // 分为三行
-      const sentencesPerLine = Math.ceil(sentenceCount / 3)
-      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
-      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
-      const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
-      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = '药品说明分为三行'
-    } else {
-      // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '药品说明分为一行'
+    // 空格宽度
+    const spaceWidth = measureTextWidth(' ', labelData.fontSize, labelData.fontFamily)
+
+    // 智能组合算法：最大化每行利用率
+    const optimizeCombination = (items: Array<{text: string, width: number}>): string[] => {
+      const result: string[] = []
+      const used = new Array(items.length).fill(false)
+
+      while (used.some(u => !u)) {
+        let bestCombination: number[] = []
+        let bestUtilization = 0
+
+        // 找到第一个未使用的句子作为起点
+        const startIndex = used.findIndex(u => !u)
+        if (startIndex === -1) break
+
+        const startWidth = items[startIndex].width
+        const startRequiredMultiplier = Math.ceil(startWidth / containerWidth)
+        
+        // 根据起始句子的长度确定该行的目标宽度
+        // 如果起始句子超过100%，目标宽度是它所需的倍数
+        // 如果起始句子不超过100%，目标宽度就是100%（1倍容器宽度）
+        const targetMultiplier = startRequiredMultiplier
+        const maxTargetWidth = containerWidth * targetMultiplier
+        
+        // 从起始句子开始，尝试添加其他句子，但总宽度不能超过目标宽度
+        let currentCombination = [startIndex]
+        let currentWidth = startWidth
+        let currentUtilization = currentWidth / maxTargetWidth
+        
+        // 尝试添加其他未使用的句子
+        for (let i = 0; i < items.length; i++) {
+          if (!used[i] && i !== startIndex) {
+            const newWidth = currentWidth + spaceWidth + items[i].width
+            
+            // 检查：添加后不能超过目标宽度
+            if (newWidth <= maxTargetWidth) {
+              const newUtilization = newWidth / maxTargetWidth
+              
+              // 如果利用率提高，则添加这个句子
+              if (newUtilization > currentUtilization) {
+                currentCombination.push(i)
+                currentWidth = newWidth
+                currentUtilization = newUtilization
+              }
+            }
+          }
+        }
+        
+        // 使用找到的组合
+        bestCombination = currentCombination
+
+        // 标记为已使用并添加到结果
+        if (bestCombination.length > 0) {
+          const combinedText = bestCombination.map(idx => items[idx].text).join(' ')
+          result.push(combinedText)
+          bestCombination.forEach(idx => {
+            used[idx] = true
+          })
+        } else {
+          // 如果没有找到合适的组合（理论上不应该发生），直接使用当前句子
+          result.push(items[startIndex].text)
+          used[startIndex] = true
+        }
+      }
+
+      return result
     }
 
+    // 执行智能组合
+    const optimizedLines = optimizeCombination(sentencesWithWidth)
+    
+    // 生成格式化文本
+    const formattedText = optimizedLines.join('\n')
+    
     // 更新对应字段的内容
     updateLabelData({ drugDescription: formattedText })
     
-    // 更新格式化状态
+    // 更新格式化状态（始终设为1，因为这是智能优化的结果）
     setFormatStates(prev => ({
       ...prev,
-      drugDescription: nextFormatState
+      drugDescription: 1
     }))
 
-    showToast(toastMessage, 'success')
+    showToast(`药品说明已智能优化为${optimizedLines.length}行（最大化利用率）`, 'success')
   }
 
   // 基于原始状态的格式化功能 - 公司名称
