@@ -510,7 +510,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     const safetyMargin = 2 // 预留2mm的安全边距
     const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95)) // 使用95%的有效宽度
 
-    if (nextFormatState === 0) {
+    if (nextFormatState === 1) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
       const firstLineSentences = sentences.slice(0, sentencesPerLine)
@@ -531,7 +531,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `基本信息分为两行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}空格）`
-    } else if (nextFormatState === 1) {
+    } else if (nextFormatState === 2) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLineSentences = sentences.slice(0, sentencesPerLine)
@@ -608,6 +608,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     // 获取当前格式化状态并计算下一个状态
     const currentFormatState = formatStates.numberField || 0
     const nextFormatState = (currentFormatState + 1) % 3
+    console.log('nextFormatState', nextFormatState);
 
     let formattedText = ''
     let toastMessage = ''
@@ -619,7 +620,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     const safetyMargin = 2 // 预留2mm的安全边距
     const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95)) // 使用95%的有效宽度
 
-    if (nextFormatState === 0) {
+    if (nextFormatState === 1) {
+      console.log('分两行，nextFormatState', nextFormatState);
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
       const firstLineSentences = sentences.slice(0, sentencesPerLine)
@@ -639,7 +641,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `编号栏分为两行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}下划线）`
-    } else if (nextFormatState === 1) {
+    } else if (nextFormatState === 2) {
+      console.log('分三行，nextFormatState', nextFormatState);
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLineSentences = sentences.slice(0, sentencesPerLine)
@@ -664,6 +667,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `编号栏分为三行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}/${thirdLineUnderscores}下划线）`
     } else {
+      console.log('分一行，nextFormatState', nextFormatState);
       // 分为一行
       const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
       const lineUnderscores = spacingToUnderscores(lineSpacing, labelData.fontSize, labelData.fontFamily, sentences.length)
@@ -1404,6 +1408,16 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         numberOfSheets: fieldTypeGroups.number_of_sheets.join('\n'),
         drugDescription: fieldTypeGroups.drug_description.join('\n'),
         companyName: fieldTypeGroups.company_name.join('\n')
+      })
+      
+      // 重置所有格式化状态为0
+      setFormatStates({
+        basicInfo: 0,
+        numberField: 0,
+        drugName: 0,
+        numberOfSheets: 0,
+        drugDescription: 0,
+        companyName: 0
       })
       
       showToast('翻译内容已按字段类型分类导入', 'success')
