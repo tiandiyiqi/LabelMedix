@@ -712,7 +712,7 @@ export default function PDFPreview() {
             marginRight: mmToPt(margins.right),
             width: mmToPt(currentWidth - margins.left - margins.right),
             minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
-            justifyContent: 'flex-start',
+            justifyContent: 'center',  // 垂直居中
           }}>
             <View style={{ width: '100%' }}>
               {/* 使用新的简单排列方式渲染6个字段 */}
@@ -759,7 +759,7 @@ export default function PDFPreview() {
             marginRight: mmToPt(margins.right),
             width: mmToPt(currentWidth - margins.left - margins.right),
             minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
-            justifyContent: 'flex-start',
+            justifyContent: 'center',  // 垂直居中
           }}>
             <View style={{ width: '100%' }}>
               {/* 使用新的简单排列方式渲染6个字段 */}
@@ -1002,7 +1002,7 @@ export default function PDFPreview() {
                 marginRight: mmToPt(margins.right),
                 width: mmToPt(currentWidth - margins.left - margins.right),
                 minHeight: mmToPt(labelHeight - margins.top - margins.bottom),
-                justifyContent: 'flex-start',
+                justifyContent: 'center',  // 垂直居中
               }}>
                 <View style={{ width: '100%' }}>
                   {/* 使用新的简单排列方式渲染6个字段 */}
