@@ -726,14 +726,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     let formattedText = ''
     let toastMessage = ''
 
-    if (nextFormatState === 0) {
+    if (nextFormatState === 1) {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '药品名称分为一行（已替换XX为罗马数字）'
+    } else if (nextFormatState === 2) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '药品名称分为两行（已替换XX为罗马数字）'
-    } else if (nextFormatState === 1) {
+    } else {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -741,10 +745,6 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '药品名称分为三行（已替换XX为罗马数字）'
-    } else {
-      // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '药品名称分为一行（已替换XX为罗马数字）'
     }
 
     // 更新对应字段的内容
@@ -796,14 +796,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     let formattedText = ''
     let toastMessage = ''
 
-    if (nextFormatState === 0) {
+    if (nextFormatState === 1) {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '片数分为一行（已替换XX为罗马数字）'
+    } else if (nextFormatState === 2) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '片数分为两行（已替换XX为罗马数字）'
-    } else if (nextFormatState === 1) {
+    } else {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -811,10 +815,6 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '片数分为三行（已替换XX为罗马数字）'
-    } else {
-      // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '片数分为一行（已替换XX为罗马数字）'
     }
 
     // 更新对应字段的内容
@@ -928,14 +928,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     let formattedText = ''
     let toastMessage = ''
 
-    if (nextFormatState === 0) {
+    if (nextFormatState === 1) {
+      // 分为一行
+      formattedText = sentences.join(' ')
+      toastMessage = '公司名称分为一行'
+    } else if (nextFormatState === 2) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '公司名称分为两行'
-    } else if (nextFormatState === 1) {
+    } else {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -943,10 +947,6 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '公司名称分为三行'
-    } else {
-      // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '公司名称分为一行'
     }
 
     // 更新对应字段的内容
