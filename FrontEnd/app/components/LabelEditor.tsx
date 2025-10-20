@@ -1,7 +1,7 @@
 "use client"
 
 import { useContext, useState, useEffect } from "react"
-import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck, Zap, Settings } from "lucide-react"
+import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck, Zap, Settings, AlignLeft, AlignRight } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
@@ -1257,7 +1257,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     { name: "Arial", value: "Arial" },
     { name: "Arial Bold", value: "Arial Bold" },
     { name: "Arial Italic", value: "Arial Italic" },
-    { name: "Arial Unicode", value: "Arial Unicode" },
+    { name: "Arial Unicode MS", value: "Arial Unicode MS" },
     { name: "Arial Bold Italic", value: "Arial Bold Italic" }
   ]
 
@@ -1442,14 +1442,24 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         }
       })
       
-      // 更新到对应的字段类型区域
+      // 根据当前语言自动选择字体
+      const autoFonts = getAutoFontsByLanguage(selectedLanguage)
+      console.log('🔤 导入时自动选择字体:', {
+        语言: selectedLanguage,
+        主字体: autoFonts.fontFamily,
+        次字体: autoFonts.secondaryFontFamily
+      })
+      
+      // 更新到对应的字段类型区域，同时更新字体
       updateLabelData({
         basicInfo: fieldTypeGroups.basic_info.join('\n'),
         numberField: fieldTypeGroups.number_field.join('\n'),
         drugName: fieldTypeGroups.drug_name.join('\n'),
         numberOfSheets: fieldTypeGroups.number_of_sheets.join('\n'),
         drugDescription: fieldTypeGroups.drug_description.join('\n'),
-        companyName: fieldTypeGroups.company_name.join('\n')
+        companyName: fieldTypeGroups.company_name.join('\n'),
+        fontFamily: autoFonts.fontFamily,
+        secondaryFontFamily: autoFonts.secondaryFontFamily
       })
       
       // 重置所有格式化状态为0
@@ -1543,6 +1553,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       await updateFormattedSummary(selectedProject.id, selectedLanguage, formattedSummaryJson, {
         fontFamily: labelData.fontFamily,
         secondaryFontFamily: labelData.secondaryFontFamily,
+        textAlign: labelData.textAlign,
         fontSize: labelData.fontSize,
         spacing: labelData.spacing,
         lineHeight: labelData.lineHeight
@@ -1597,41 +1608,61 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     }
   }
 
-  // 处理语言选择变化
-  const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newLanguage = e.target.value
-    let newFontFamily = 'Arial'  // 默认主语言字体
-    let newSecondaryFontFamily = 'Arial'  // 默认次语言字体
+  // 根据语言自动选择字体（提取为独立函数，供多处使用）
+  const getAutoFontsByLanguage = (language: string): { fontFamily: string; secondaryFontFamily: string } => {
+    console.log('🔍 getAutoFontsByLanguage 被调用，语言:', language)
     
     // 检查是否为从右到左的语言
     const isRTL = () => {
-      if (!newLanguage) return false;
+      if (!language) return false;
       const rtlKeywords = ['Arabic', 'Hebrew', 'Persian', 'Farsi', 'Urdu', 'Punjabi', 'Somali'];
-      return rtlKeywords.some(keyword => newLanguage.includes(keyword));
+      return rtlKeywords.some(keyword => language.includes(keyword));
     };
     
     // 检查是否为需要特殊字体的语言
     const needsUnicodeFont = () => {
-      if (!newLanguage) return false;
+      if (!language) return false;
       const unicodeFontLanguages = ['Korean', 'Thai', 'Vietnamese', 'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
-      return unicodeFontLanguages.some(lang => newLanguage.includes(lang)) || 
-             newLanguage.includes('KR') || newLanguage.includes('TH') || newLanguage.includes('VN');
+      const result = unicodeFontLanguages.some(lang => language.includes(lang)) || 
+             language.includes('KR') || language.includes('TH') || language.includes('VN');
+      console.log('  📝 needsUnicodeFont 检查结果:', result)
+      return result;
     };
     
     // 根据语言设置对应的字体
-    if (newLanguage === 'CN' || newLanguage.includes('Chinese')) {
-      newFontFamily = 'STHeiti'
-      newSecondaryFontFamily = 'Arial'
-    } else if (newLanguage === 'JP' || newLanguage.includes('Japanese')) {
-      newFontFamily = 'STHeiti'  // 日文也可以使用STHeiti
-      newSecondaryFontFamily = 'Arial'
+    if (language === 'CN' || language.includes('Chinese')) {
+      console.log('  ✅ 匹配到中文，返回 STHeiti')
+      return {
+        fontFamily: 'STHeiti',
+        secondaryFontFamily: 'Arial'
+      };
+    } else if (language === 'JP' || language.includes('Japanese')) {
+      console.log('  ✅ 匹配到日文，返回 STHeiti')
+      return {
+        fontFamily: 'STHeiti',  // 日文也可以使用STHeiti
+        secondaryFontFamily: 'Arial'
+      };
     } else if (isRTL() || needsUnicodeFont()) {
-      newFontFamily = 'Arial Unicode MS'
-      newSecondaryFontFamily = 'Arial Unicode MS'
+      console.log('  ✅ 匹配到特殊语言，返回 Arial Unicode MS')
+      return {
+        fontFamily: 'Arial Unicode MS',
+        secondaryFontFamily: 'Arial Unicode MS'
+      };
     } else {
-      newFontFamily = 'Arial'
-      newSecondaryFontFamily = 'Arial'
+      console.log('  ✅ 默认情况，返回 Arial')
+      return {
+        fontFamily: 'Arial',
+        secondaryFontFamily: 'Arial'
+      };
     }
+  };
+
+  // 处理语言选择变化
+  const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLanguage = e.target.value
+    
+    // 使用统一的字体选择函数
+    const autoFonts = getAutoFontsByLanguage(newLanguage)
     
     // 如果有选中的项目，需要查找对应的序号和加载数据
     if (selectedProject) {
@@ -1659,8 +1690,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
             updateLabelData({
               selectedLanguage: newLanguage,
-              fontFamily: countryDetail.font_family || newFontFamily,
-              secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
+              fontFamily: countryDetail.font_family || autoFonts.fontFamily,
+              secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
               fontSize: countryDetail.font_size || labelData.fontSize,
               spacing: countryDetail.spacing || labelData.spacing,
               lineHeight: countryDetail.line_height || labelData.lineHeight,
@@ -1685,8 +1716,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               // 如果有JSON格式的原始状态，恢复6个字段
               updateLabelData({
                 selectedLanguage: newLanguage,
-                fontFamily: countryDetail.font_family || newFontFamily,
-                secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
+                fontFamily: countryDetail.font_family || autoFonts.fontFamily,
+                secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
                 lineHeight: countryDetail.line_height || labelData.lineHeight,
@@ -1704,8 +1735,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               // 如果没有JSON格式数据，使用旧逻辑
               updateLabelData({
                 selectedLanguage: newLanguage,
-                fontFamily: countryDetail.font_family || newFontFamily,
-                secondaryFontFamily: countryDetail.secondary_font_family || newSecondaryFontFamily,
+                fontFamily: countryDetail.font_family || autoFonts.fontFamily,
+                secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
                 lineHeight: countryDetail.line_height || labelData.lineHeight,
@@ -1730,8 +1761,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           // 如果该国别码不存在于当前项目，只更新语言和字体
           updateLabelData({
             selectedLanguage: newLanguage,
-            fontFamily: newFontFamily,
-            secondaryFontFamily: newSecondaryFontFamily,
+            fontFamily: autoFonts.fontFamily,
+            secondaryFontFamily: autoFonts.secondaryFontFamily,
             basicInfo: '该国别在当前项目中不存在'
           })
         }
@@ -1739,16 +1770,16 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         console.error('加载国别数据失败:', error)
         updateLabelData({
           selectedLanguage: newLanguage,
-          fontFamily: newFontFamily,
-          secondaryFontFamily: newSecondaryFontFamily
+          fontFamily: autoFonts.fontFamily,
+          secondaryFontFamily: autoFonts.secondaryFontFamily
         })
       }
     } else {
       // 没有选中项目时，只更新语言和字体
       updateLabelData({
         selectedLanguage: newLanguage,
-        fontFamily: newFontFamily,
-        secondaryFontFamily: newSecondaryFontFamily
+        fontFamily: autoFonts.fontFamily,
+        secondaryFontFamily: autoFonts.secondaryFontFamily
       })
     }
   }
@@ -2314,15 +2345,15 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
         {/* 字体相关参数 - 紧凑设计 */}
         <div className="space-y-2 mt-4">
-          {/* 第一行：主语言字体和次语言字体 */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* 第一行：主语言字体、次语言字体、对齐方式 */}
+          <div className="grid grid-cols-3 gap-2">
             {/* 主语言字体 */}
-            <div className="flex items-center gap-2 border rounded px-3 py-1 transition-opacity relative group" style={{ borderColor: theme.border }}>
+            <div className="flex items-center gap-1 border rounded px-2 py-1 transition-opacity relative group" style={{ borderColor: theme.border }}>
               <Type className="h-4 w-4 text-[#30B8D6] flex-shrink-0" />
               <select
                 value={fontFamily}
                 onChange={(e) => updateLabelData({ fontFamily: e.target.value })}
-                className="flex-1 bg-transparent focus:outline-none appearance-none cursor-pointer text-sm"
+                className="flex-1 bg-transparent focus:outline-none appearance-none cursor-pointer text-xs"
                 style={{ color: theme.text }}
                 title="主语言字体：用于中文、日文、韩文等CJK字符"
               >
@@ -2337,12 +2368,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             </div>
 
             {/* 次语言字体 */}
-            <div className="flex items-center gap-2 border rounded px-3 py-1 transition-opacity relative group" style={{ borderColor: theme.border }}>
+            <div className="flex items-center gap-1 border rounded px-2 py-1 transition-opacity relative group" style={{ borderColor: theme.border }}>
               <Languages className="h-4 w-4 text-[#30B8D6] flex-shrink-0" />
               <select
                 value={labelData.secondaryFontFamily}
                 onChange={(e) => updateLabelData({ secondaryFontFamily: e.target.value })}
-                className="flex-1 bg-transparent focus:outline-none appearance-none cursor-pointer text-sm"
+                className="flex-1 bg-transparent focus:outline-none appearance-none cursor-pointer text-xs"
                 style={{ color: theme.text }}
                 title="次语言字体：用于英文、数字等拉丁字符"
               >
@@ -2353,6 +2384,33 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               <ChevronDown className="h-3 w-3 text-gray-400 flex-shrink-0 pointer-events-none" />
               <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
                 次语言字体
+              </div>
+            </div>
+
+            {/* 文本对齐方式 */}
+            <div className="flex items-center gap-1 border rounded px-2 py-1 relative group" style={{ borderColor: theme.border }}>
+              <div className="flex items-center gap-1 w-full">
+                <button
+                  onClick={() => updateLabelData({ textAlign: 'left' })}
+                  className={`flex-1 flex items-center justify-center p-1 rounded transition-colors ${
+                    labelData.textAlign === 'left' ? 'bg-[#30B8D6] text-white' : 'hover:bg-gray-100'
+                  }`}
+                  title="左对齐"
+                >
+                  <AlignLeft className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => updateLabelData({ textAlign: 'right' })}
+                  className={`flex-1 flex items-center justify-center p-1 rounded transition-colors ${
+                    labelData.textAlign === 'right' ? 'bg-[#30B8D6] text-white' : 'hover:bg-gray-100'
+                  }`}
+                  title="右对齐"
+                >
+                  <AlignRight className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                文本对齐
               </div>
             </div>
           </div>

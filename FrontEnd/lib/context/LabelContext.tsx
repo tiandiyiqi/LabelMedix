@@ -20,6 +20,7 @@ interface LabelData {
   labelHeight: number
   fontFamily: string // 主语言字体（如：中文字体）
   secondaryFontFamily: string // 次语言字体（如：英文字体）
+  textAlign: string // 文本对齐方式：left（左对齐）、right（右对齐）、center（居中）
   spacing: number
   lineHeight: number
   currentWidth: number // 当前页面宽度
@@ -87,6 +88,7 @@ const defaultLabelData: LabelData = {
   labelHeight: 60,  // 80mm - PDF实际高度
   fontFamily: 'STHeiti', // 主语言字体（中文/日文/韩文等）
   secondaryFontFamily: 'Arial', // 次语言字体（通常为英文/数字）
+  textAlign: 'left', // 文本对齐方式，默认左对齐
   spacing: 1,
   lineHeight: 1.2,
   currentWidth: 120,  // 初始值与labelWidth相同

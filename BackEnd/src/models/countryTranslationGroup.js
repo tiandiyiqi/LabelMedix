@@ -167,6 +167,13 @@ module.exports = (sequelize) => {
         defaultValue: "Arial",
         comment: "次语言字体（用于英文、数字等拉丁字符）",
       },
+      text_align: {
+        type: DataTypes.STRING(10),
+        allowNull: true,
+        defaultValue: "left",
+        comment:
+          "文本对齐方式：left（左对齐）、right（右对齐）、center（居中）",
+      },
       font_size: {
         type: DataTypes.DECIMAL(4, 1),
         allowNull: true,

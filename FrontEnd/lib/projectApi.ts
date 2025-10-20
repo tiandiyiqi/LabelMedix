@@ -44,6 +44,7 @@ interface CountryTranslationGroup {
   pdf_file_path?: string;
   font_family?: string;
   secondary_font_family?: string;
+  text_align?: string;
   font_size?: number;
   spacing?: number;
   line_height?: number;
@@ -392,6 +393,7 @@ export const updateFormattedSummary = async (
   fontSettings?: {
     fontFamily?: string;
     secondaryFontFamily?: string;
+    textAlign?: string;
     fontSize?: number;
     spacing?: number;
     lineHeight?: number;
@@ -403,6 +405,7 @@ export const updateFormattedSummary = async (
   original_summary?: string;
   font_family?: string;
   secondary_font_family?: string;
+  text_align?: string;
   font_size?: number;
   spacing?: number;
   line_height?: number;
@@ -420,6 +423,7 @@ export const updateFormattedSummary = async (
     if (fontSettings) {
       if (fontSettings.fontFamily !== undefined) requestBody.font_family = fontSettings.fontFamily;
       if (fontSettings.secondaryFontFamily !== undefined) requestBody.secondary_font_family = fontSettings.secondaryFontFamily;
+      if (fontSettings.textAlign !== undefined) requestBody.text_align = fontSettings.textAlign;
       if (fontSettings.fontSize !== undefined) requestBody.font_size = fontSettings.fontSize;
       if (fontSettings.spacing !== undefined) requestBody.spacing = fontSettings.spacing;
       if (fontSettings.lineHeight !== undefined) requestBody.line_height = fontSettings.lineHeight;

@@ -21,7 +21,7 @@ export default function ProjectList() {
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
   const { theme } = themeContext
 
-  const { setSelectedProject } = useLabelContext()
+  const { setSelectedProject, updateLabelData } = useLabelContext()
 
   const [projects, setProjects] = useState<Project[]>([])
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -92,7 +92,7 @@ export default function ProjectList() {
         // 找到序号为1的国别（可能不存在，则选择第一个）
         const firstGroup = sortedGroups.find(g => g.sequence_number === 1) || sortedGroups[0]
         
-        // 获取该国别的详细信息，包括 formatted_summary
+        // 获取该国别的详细信息，包括 formatted_summary 和字体设置
         const countryDetail = await getCountryDetails(project.id, firstGroup.country_code)
         
         setSelectedProject({
@@ -101,6 +101,15 @@ export default function ProjectList() {
           currentSequence: firstGroup.sequence_number,
           countryCode: firstGroup.country_code,
           formattedSummary: countryDetail.formatted_summary || undefined
+        })
+        
+        // 同步字体设置到LabelContext
+        updateLabelData({
+          fontFamily: countryDetail.font_family || 'Arial',
+          secondaryFontFamily: countryDetail.secondary_font_family || 'Arial',
+          fontSize: countryDetail.font_size || 10,
+          spacing: countryDetail.spacing || 1,
+          lineHeight: countryDetail.line_height || 1.2
         })
       }
     } catch (error) {

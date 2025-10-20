@@ -539,23 +539,23 @@ export default function PDFPreview() {
     direction: isRTL() ? 'rtl' : 'ltr',     // RTL语言从右到左
   };
 
-  // ============================================
-  // 旧的处理方式：合成为三段落处理（保留作为参考）
-  // ============================================
-  const combinedContent = [
-    basicInfo,
-    numberField,
-    drugName,
-    numberOfSheets,
-    drugDescription,
-    companyName
-  ].filter(content => content && content.trim() !== '').join('\n\n\n');
+  // // ============================================
+  // // 旧的处理方式：合成为三段落处理（保留作为参考）
+  // // ============================================
+  // const combinedContent = [
+  //   basicInfo,
+  //   numberField,
+  //   drugName,
+  //   numberOfSheets,
+  //   drugDescription,
+  //   companyName
+  // ].filter(content => content && content.trim() !== '').join('\n\n\n');
   
-  // 处理文本（旧方式）
-  const paragraphs = splitIntoParagraphs(combinedContent);
-  const processedFirstParagraph = paragraphs.length > 0 ? processFirstParagraph(paragraphs[0]) : [];
-  const processedSecondParagraph = paragraphs.length > 1 ? processOtherParagraph(paragraphs[1]) : [];
-  const processedRemainingParagraphs = paragraphs.slice(2).map(para => processRemainingParagraphs(para));
+  // // 处理文本（旧方式）
+  // const paragraphs = splitIntoParagraphs(combinedContent);
+  // const processedFirstParagraph = paragraphs.length > 0 ? processFirstParagraph(paragraphs[0]) : [];
+  // const processedSecondParagraph = paragraphs.length > 1 ? processOtherParagraph(paragraphs[1]) : [];
+  // const processedRemainingParagraphs = paragraphs.slice(2).map(para => processRemainingParagraphs(para));
 
   // ============================================
   // 新的处理方式：6个字段独立处理，简单排列
