@@ -1622,7 +1622,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     // 检查是否为需要特殊字体的语言
     const needsUnicodeFont = () => {
       if (!language) return false;
-      const unicodeFontLanguages = ['Korean', 'Thai', 'Vietnamese', 'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
+      const unicodeFontLanguages = ['Georgian','Hebrew','Korean', 'Thai','Thailand', 'Vietnamese', 'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
       const result = unicodeFontLanguages.some(lang => language.includes(lang)) || 
              language.includes('KR') || language.includes('TH') || language.includes('VN');
       console.log('  📝 needsUnicodeFont 检查结果:', result)
@@ -1639,8 +1639,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     } else if (language === 'JP' || language.includes('Japanese')) {
       console.log('  ✅ 匹配到日文，返回 STHeiti')
       return {
-        fontFamily: 'STHeiti',  // 日文也可以使用STHeiti
-        secondaryFontFamily: 'Arial'
+        fontFamily: 'Arial Unicode MS',  // 日文也可以使用STHeiti
+        secondaryFontFamily: 'Arial Unicode MS'
       };
     } else if (isRTL() || needsUnicodeFont()) {
       console.log('  ✅ 匹配到特殊语言，返回 Arial Unicode MS')

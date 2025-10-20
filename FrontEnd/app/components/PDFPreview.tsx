@@ -691,6 +691,59 @@ export default function PDFPreview() {
     );
   };
 
+  // 渲染序号
+  const renderSequenceNumber = () => {
+    if (!labelData.showSequenceNumber) return null;
+
+    const sequenceNum = selectedNumber || '1';
+    
+    // 将数字转换为带圆圈的数字（使用 Unicode 字符）
+    // ① = U+2460 (1), ② = U+2461 (2), ... ⑳ = U+2473 (20)
+    const getCircledNumber = (num: string) => {
+      const n = parseInt(num);
+      if (n >= 1 && n <= 20) {
+        // Unicode 字符：①-⑳ (U+2460 到 U+2473)
+        return String.fromCharCode(0x245F + n);
+      }
+      // 如果超过20，返回原数字加括号
+      return `(${num})`;
+    };
+    
+    const sequenceText = getCircledNumber(sequenceNum);
+    
+    // 计算序号位置
+    let left = mmToPt(margins.left);
+    const bottom = mmToPt(margins.bottom + labelData.sequenceOffsetY);
+    const width = mmToPt(currentWidth - margins.left - margins.right);
+    
+    // 根据对齐方式调整位置
+    let textAlign: 'left' | 'center' | 'right' = 'left';
+    if (labelData.sequencePosition === 'center') {
+      textAlign = 'center';
+    } else if (labelData.sequencePosition === 'right') {
+      textAlign = 'right';
+    }
+
+    return (
+      <View style={{
+        position: 'absolute',
+        bottom: bottom,
+        left: left + mmToPt(labelData.sequenceOffsetX),
+        width: width,
+        flexDirection: 'row',
+        justifyContent: labelData.sequencePosition === 'center' ? 'center' : (labelData.sequencePosition === 'right' ? 'flex-end' : 'flex-start'),
+      }}>
+        <Text style={{
+          fontSize: labelData.sequenceFontSize,  // 使用用户设置的字体大小
+          fontFamily: 'Arial Unicode',  // 使用 Arial Unicode MS 以支持圆圈数字
+          textAlign: textAlign,
+        }}>
+          {sequenceText}
+        </Text>
+      </View>
+    );
+  };
+
   // 导出PDF功能
   // 生成并保存PDF到服务器
   const generateAndSavePdfToServer = async (projectId: number, countryCode: string, sequenceNumber: string) => {
@@ -722,6 +775,9 @@ export default function PDFPreview() {
               {renderSixFields()}
             </View>
           </View>
+          
+          {/* 渲染序号 */}
+          {renderSequenceNumber()}
         </Page>
       </Document>
     ).toBlob();
@@ -769,6 +825,9 @@ export default function PDFPreview() {
               {renderSixFields()}
             </View>
           </View>
+          
+          {/* 渲染序号 */}
+          {renderSequenceNumber()}
         </Page>
       </Document>
     ).toBlob();
@@ -980,6 +1039,142 @@ export default function PDFPreview() {
             </div>
           </div>
         </div>
+
+        {/* 序号设置 */}
+        <div className="flex space-x-3">
+          <div className="flex-1">
+            <div className="flex items-center rounded-md">
+              <div className="flex items-center gap-3 px-3 py-1">
+                {/* 是否显示序号 */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={labelData.showSequenceNumber}
+                    onChange={(e) => updateLabelData({ showSequenceNumber: e.target.checked })}
+                    className="w-4 h-4 cursor-pointer"
+                  />
+                  <span className="text-base whitespace-nowrap">显示序号</span>
+                </div>
+
+                {/* 序号位置 */}
+                <div className="flex items-center gap-1 border rounded px-2 py-1" style={{ borderColor: theme.border }}>
+                  {/* 左对齐 */}
+                  <div className="relative group">
+                    <button
+                      onClick={() => updateLabelData({ sequencePosition: 'left' })}
+                      className={`flex items-center justify-center p-1 rounded transition-colors ${
+                        labelData.sequencePosition === 'left' 
+                          ? 'bg-[#30B8D6]' 
+                          : 'bg-gray-200'
+                      }`}
+                      disabled={!labelData.showSequenceNumber}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'left' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8M4 18h16" />
+                      </svg>
+                    </button>
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      左对齐
+                    </div>
+                  </div>
+
+                  {/* 居中对齐 */}
+                  <div className="relative group">
+                    <button
+                      onClick={() => updateLabelData({ sequencePosition: 'center' })}
+                      className={`flex items-center justify-center p-1 rounded transition-colors ${
+                        labelData.sequencePosition === 'center' 
+                          ? 'bg-[#30B8D6]' 
+                          : 'bg-gray-200'
+                      }`}
+                      disabled={!labelData.showSequenceNumber}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'center' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M8 12h8M4 18h16" />
+                      </svg>
+                    </button>
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      居中对齐
+                    </div>
+                  </div>
+
+                  {/* 右对齐 */}
+                  <div className="relative group">
+                    <button
+                      onClick={() => updateLabelData({ sequencePosition: 'right' })}
+                      className={`flex items-center justify-center p-1 rounded transition-colors ${
+                        labelData.sequencePosition === 'right' 
+                          ? 'bg-[#30B8D6]' 
+                          : 'bg-gray-200'
+                      }`}
+                      disabled={!labelData.showSequenceNumber}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'right' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M12 12h8M4 18h16" />
+                      </svg>
+                    </button>
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      右对齐
+                    </div>
+                  </div>
+                </div>
+
+                {/* 字符大小和位置偏移 */}
+                <div className="flex items-center gap-2">
+                  {/* 字符大小 - T 图标 */}
+                  <div className="relative group flex items-center gap-1">
+                    <span className="text-base font-bold" style={{ fontSize: '16px' }}>T</span>
+                    <input
+                      type="number"
+                      value={labelData.sequenceFontSize}
+                      onChange={(e) => updateLabelData({ sequenceFontSize: Number(e.target.value) })}
+                      disabled={!labelData.showSequenceNumber}
+                      className="w-12 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                      step="0.5"
+                      min="1"
+                      max="20"
+                    />
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      字符大小
+                    </div>
+                  </div>
+                  
+                  {/* 水平位移 - x 图标 */}
+                  <div className="relative group flex items-center gap-1">
+                    <span className="text-base font-bold" style={{ fontSize: '16px' }}>x</span>
+                    <input
+                      type="number"
+                      value={labelData.sequenceOffsetX}
+                      onChange={(e) => updateLabelData({ sequenceOffsetX: Number(e.target.value) })}
+                      disabled={!labelData.showSequenceNumber}
+                      className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                      step="0.5"
+                    />
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      水平位移
+                    </div>
+                  </div>
+                  
+                  {/* 垂直位移 - y 图标 */}
+                  <div className="relative group flex items-center gap-1">
+                    <span className="text-base font-bold" style={{ fontSize: '16px' }}>y</span>
+                    <input
+                      type="number"
+                      value={labelData.sequenceOffsetY}
+                      onChange={(e) => updateLabelData({ sequenceOffsetY: Number(e.target.value) })}
+                      disabled={!labelData.showSequenceNumber}
+                      className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                      step="0.5"
+                    />
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      垂直位移
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="flex-grow">
@@ -1012,6 +1207,9 @@ export default function PDFPreview() {
                   {renderSixFields()}
                 </View>
               </View>
+              
+              {/* 渲染序号 */}
+              {renderSequenceNumber()}
             </Page>
           </Document>
         </PDFViewer>
