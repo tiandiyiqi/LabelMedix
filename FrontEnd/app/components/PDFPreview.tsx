@@ -860,19 +860,20 @@ export default function PDFPreview() {
           导出PDF
         </button>
       </div>
-      <div className="mb-4 space-y-0.5">
+      <div className="mb-4 space-y-1">
         {/* 标签分类 */}
-        <div className="flex ">
+        <div className="flex">
           <div className="flex-1">
             <div className="flex items-center rounded-md">
-              <label className="text-base font-medium px-3 py-1 min-w-[120px]">
+              <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
                 标签分类：
               </label>
               <div className="flex-1">
                 <select
                   value={labelCategory}
                   onChange={(e) => updateLabelData({ labelCategory: e.target.value })}
-                  className="w-full px-3 py-1 focus:outline-none appearance-none bg-white border-b border-gray-300"
+                  className="w-full px-2 py-0.5 text-sm focus:outline-none appearance-none bg-white border-b border-gray-300"
+                  style={{ color: theme.text }}
                 >
                   <option value="缠绕标">缠绕标</option>
                   <option value="非缠绕标">非缠绕标</option>
@@ -883,10 +884,10 @@ export default function PDFPreview() {
           </div>
         </div>
         {/* 宽度和高度（外观与其它区域一致：无蓝色外框） */}
-        <div className="flex space-x-3 ">
+        <div className="flex space-x-3">
           <div className="flex-1">
-            <div className="flex items-center rounded-md">
-              <label className="text-base font-medium px-3 py-1 min-w-[120px]" style={{ color: theme.text }}>
+            <div className="flex items-center">
+              <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
                 标签宽度：
               </label>
               <div className="flex-1">
@@ -895,7 +896,7 @@ export default function PDFPreview() {
                   defaultValue={labelWidth}
                   placeholder="最小值: 40mm"
                   onKeyDown={(e) => handleDimensionInput(e, 'width')}
-                  className="w-full px-3 py-1 focus:outline-none border-b border-gray-300"
+                  className="w-full px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
                     color: theme.text,
                     backgroundColor: "white",
@@ -905,8 +906,8 @@ export default function PDFPreview() {
             </div>
           </div>
           <div className="flex-1">
-            <div className="flex items-center rounded-md">
-              <label className="text-base font-medium px-3 py-1 min-w-[120px]" style={{ color: theme.text }}>
+            <div className="flex items-center">
+              <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
                 标签高度：
               </label>
               <div className="flex-1">
@@ -915,7 +916,7 @@ export default function PDFPreview() {
                   defaultValue={labelHeight}
                   placeholder="最小值: 40mm"
                   onKeyDown={(e) => handleDimensionInput(e, 'height')}
-                  className="w-full px-3 py-1 focus:outline-none border-b border-gray-300"
+                  className="w-full px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
                     color: theme.text,
                     backgroundColor: "white",
@@ -928,23 +929,25 @@ export default function PDFPreview() {
         {/* 页面尺寸 */}
         <div className="flex space-x-3">
           <div className="flex-1">
-            <div className="flex items-center rounded-md">
-              <label className="text-base font-medium px-3 py-1 min-w-[120px]">
+            <div className="flex items-center">
+              <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
                 页面尺寸：
               </label>
-              <div className="flex items-center gap-2 px-2 py-1">
+              <div className="flex items-center gap-2 px-2 py-0.5">
                 <input
                   type="text"
                   value={currentWidth.toFixed(1)}
                   readOnly
-                  className="w-24 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                  className="w-16 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                  style={{ color: theme.text }}
                 />
-                <span className="text-base">×</span>
+                <span className="text-sm" style={{ color: theme.text }}>×</span>
                 <input
                   type="text"
                   value={labelHeight}
                   readOnly
-                  className="w-24 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                  className="w-16 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                  style={{ color: theme.text }}
                 />
               </div>
             </div>
@@ -953,15 +956,15 @@ export default function PDFPreview() {
         {/* 底页/粘胶区/排废区/打码区（四等分，紧凑单行） */}
         <div className="flex space-x-3">
           <div className="flex-1">
-            <div className="flex items-center rounded-md">
-              <div className="flex items-center px-3 py-1 whitespace-nowrap w-full justify-between">
+            <div className="flex items-center">
+              <div className="flex items-center px-2 py-0.5 whitespace-nowrap w-full justify-between">
                 <div className="flex items-center whitespace-nowrap">
-                  <span className="text-base font-medium" style={{ color: theme.text }}>底页：</span>
+                  <span className="text-sm font-medium" style={{ color: theme.text }}>底页：</span>
                   <input
                     type="number"
                     value={baseSheet}
                     onChange={(e) => updateLabelData({ baseSheet: Number(e.target.value) })}
-                    className="w-12 px-1 py-1 focus:outline-none text-base text-center border-b border-gray-300 ml-1"
+                    className="w-12 px-1 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300 ml-1"
                     style={{
                       color: theme.text,
                       backgroundColor: "white",
@@ -969,12 +972,12 @@ export default function PDFPreview() {
                   />
                 </div>
                 <div className="flex items-center whitespace-nowrap">
-                  <span className="text-base font-medium" style={{ color: theme.text }}>粘胶区：</span>
+                  <span className="text-sm font-medium" style={{ color: theme.text }}>粘胶区：</span>
                   <input
                     type="number"
                     value={adhesiveArea}
                     onChange={(e) => updateLabelData({ adhesiveArea: Number(e.target.value) })}
-                    className="w-12 px-1 py-1 focus:outline-none text-base text-center border-b border-gray-300 ml-1"
+                    className="w-12 px-1 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300 ml-1"
                     style={{
                       color: theme.text,
                       backgroundColor: "white",
@@ -982,12 +985,12 @@ export default function PDFPreview() {
                   />
                 </div>
                 <div className="flex items-center whitespace-nowrap">
-                  <span className="text-base font-medium" style={{ color: theme.text }}>排废区：</span>
+                  <span className="text-sm font-medium" style={{ color: theme.text }}>排废区：</span>
                   <input
                     type="number"
                     value={wasteArea}
                     onChange={(e) => updateLabelData({ wasteArea: Number(e.target.value) })}
-                    className="w-12 px-1 py-1 focus:outline-none text-base text-center border-b border-gray-300 ml-1"
+                    className="w-12 px-1 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300 ml-1"
                     style={{
                       color: theme.text,
                       backgroundColor: "white",
@@ -995,12 +998,12 @@ export default function PDFPreview() {
                   />
                 </div>
                 <div className="flex items-center whitespace-nowrap">
-                  <span className="text-base font-medium" style={{ color: theme.text }}>打码区：</span>
+                  <span className="text-sm font-medium" style={{ color: theme.text }}>打码区：</span>
                   <input
                     type="number"
                     value={codingArea}
                     onChange={(e) => updateLabelData({ codingArea: Number(e.target.value) })}
-                    className="w-12 px-1 py-1 focus:outline-none text-base text-center border-b border-gray-300 ml-1"
+                    className="w-12 px-1 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300 ml-1"
                     style={{
                       color: theme.text,
                       backgroundColor: "white",
@@ -1014,26 +1017,26 @@ export default function PDFPreview() {
         {/* 页面边距 */}
         <div className="flex space-x-3">
           <div className="flex-1">
-            <div className="flex items-center rounded-md">
-              <label className="text-base font-medium px-3 py-1 min-w-[120px]">
+            <div className="flex items-center">
+              <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
                 页面边距：
               </label>
-              <div className="flex items-center gap-2 px-2 py-1">
+              <div className="flex items-center gap-2 px-2 py-0.5">
                 <div className="flex items-center gap-1">
-                  <span className="text-base">上</span>
-                  <input type="text" value={margins.top} readOnly className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300" />
+                  <span className="text-sm" style={{ color: theme.text }}>上</span>
+                  <input type="text" value={margins.top} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-base">下</span>
-                  <input type="text" value={margins.bottom} readOnly className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300" />
+                  <span className="text-sm" style={{ color: theme.text }}>下</span>
+                  <input type="text" value={margins.bottom} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-base">左</span>
-                  <input type="text" value={margins.left} readOnly className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300" />
+                  <span className="text-sm" style={{ color: theme.text }}>左</span>
+                  <input type="text" value={margins.left} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
                 </div>
                 <div className="flex items-center gap-1">
-                  <span className="text-base">右</span>
-                  <input type="text" value={margins.right} readOnly className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300" />
+                  <span className="text-sm" style={{ color: theme.text }}>右</span>
+                  <input type="text" value={margins.right} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
                 </div>
               </div>
             </div>
@@ -1043,33 +1046,33 @@ export default function PDFPreview() {
         {/* 序号设置 */}
         <div className="flex space-x-3">
           <div className="flex-1">
-            <div className="flex items-center rounded-md">
-              <div className="flex items-center gap-3 px-3 py-1">
+            <div className="flex items-center">
+              <div className="flex items-center gap-2 px-2 py-0.5">
                 {/* 是否显示序号 */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <input
                     type="checkbox"
                     checked={labelData.showSequenceNumber}
                     onChange={(e) => updateLabelData({ showSequenceNumber: e.target.checked })}
-                    className="w-4 h-4 cursor-pointer"
+                    className="w-3.5 h-3.5 cursor-pointer"
                   />
-                  <span className="text-base whitespace-nowrap">显示序号</span>
+                  <span className="text-sm whitespace-nowrap" style={{ color: theme.text }}>显示序号</span>
                 </div>
 
                 {/* 序号位置 */}
-                <div className="flex items-center gap-1 border rounded px-2 py-1" style={{ borderColor: theme.border }}>
+                <div className="flex items-center gap-0.5 border rounded px-1.5 py-0.5" style={{ borderColor: theme.border }}>
                   {/* 左对齐 */}
                   <div className="relative group">
                     <button
                       onClick={() => updateLabelData({ sequencePosition: 'left' })}
-                      className={`flex items-center justify-center p-1 rounded transition-colors ${
+                      className={`flex items-center justify-center p-0.5 rounded transition-colors ${
                         labelData.sequencePosition === 'left' 
                           ? 'bg-[#30B8D6]' 
                           : 'bg-gray-200'
                       }`}
                       disabled={!labelData.showSequenceNumber}
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'left' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'left' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8M4 18h16" />
                       </svg>
                     </button>
@@ -1082,14 +1085,14 @@ export default function PDFPreview() {
                   <div className="relative group">
                     <button
                       onClick={() => updateLabelData({ sequencePosition: 'center' })}
-                      className={`flex items-center justify-center p-1 rounded transition-colors ${
+                      className={`flex items-center justify-center p-0.5 rounded transition-colors ${
                         labelData.sequencePosition === 'center' 
                           ? 'bg-[#30B8D6]' 
                           : 'bg-gray-200'
                       }`}
                       disabled={!labelData.showSequenceNumber}
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'center' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'center' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M8 12h8M4 18h16" />
                       </svg>
                     </button>
@@ -1102,14 +1105,14 @@ export default function PDFPreview() {
                   <div className="relative group">
                     <button
                       onClick={() => updateLabelData({ sequencePosition: 'right' })}
-                      className={`flex items-center justify-center p-1 rounded transition-colors ${
+                      className={`flex items-center justify-center p-0.5 rounded transition-colors ${
                         labelData.sequencePosition === 'right' 
                           ? 'bg-[#30B8D6]' 
                           : 'bg-gray-200'
                       }`}
                       disabled={!labelData.showSequenceNumber}
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'right' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'right' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M12 12h8M4 18h16" />
                       </svg>
                     </button>
@@ -1120,16 +1123,17 @@ export default function PDFPreview() {
                 </div>
 
                 {/* 字符大小和位置偏移 */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   {/* 字符大小 - T 图标 */}
                   <div className="relative group flex items-center gap-1">
-                    <span className="text-base font-bold" style={{ fontSize: '16px' }}>T</span>
+                    <span className="text-sm" style={{ fontSize: '14px', color: theme.text }}>T</span>
                     <input
                       type="number"
                       value={labelData.sequenceFontSize}
                       onChange={(e) => updateLabelData({ sequenceFontSize: Number(e.target.value) })}
                       disabled={!labelData.showSequenceNumber}
-                      className="w-12 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                      className="w-12 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                      style={{ color: theme.text }}
                       step="0.5"
                       min="1"
                       max="20"
@@ -1141,13 +1145,14 @@ export default function PDFPreview() {
                   
                   {/* 水平位移 - x 图标 */}
                   <div className="relative group flex items-center gap-1">
-                    <span className="text-base font-bold" style={{ fontSize: '16px' }}>x</span>
+                    <span className="text-sm" style={{ fontSize: '14px', color: theme.text }}>x</span>
                     <input
                       type="number"
                       value={labelData.sequenceOffsetX}
                       onChange={(e) => updateLabelData({ sequenceOffsetX: Number(e.target.value) })}
                       disabled={!labelData.showSequenceNumber}
-                      className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                      className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                      style={{ color: theme.text }}
                       step="0.5"
                     />
                     <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
@@ -1157,13 +1162,14 @@ export default function PDFPreview() {
                   
                   {/* 垂直位移 - y 图标 */}
                   <div className="relative group flex items-center gap-1">
-                    <span className="text-base font-bold" style={{ fontSize: '16px' }}>y</span>
+                    <span className="text-sm" style={{ fontSize: '14px', color: theme.text }}>y</span>
                     <input
                       type="number"
                       value={labelData.sequenceOffsetY}
                       onChange={(e) => updateLabelData({ sequenceOffsetY: Number(e.target.value) })}
                       disabled={!labelData.showSequenceNumber}
-                      className="w-14 px-2 py-1 focus:outline-none text-base text-center border-b border-gray-300"
+                      className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                      style={{ color: theme.text }}
                       step="0.5"
                     />
                     <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
