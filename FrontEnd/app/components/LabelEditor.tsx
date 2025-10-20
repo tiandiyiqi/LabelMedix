@@ -1495,23 +1495,26 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     try {
       setIsFormatting(true)
       
-      // 格式化各个字段的内容
-      const formattedBasicInfo = format_test(basicInfo)
-      const formattedNumberField = format_test(numberField)
-      const formattedDrugName = format_test(drugName)
-      const formattedNumberOfSheets = format_test(numberOfSheets)
-      const formattedDrugDescription = format_test(drugDescription)
-      const formattedCompanyName = format_test(companyName)
+      // 依次执行6个字段的"闪电"图标格式化功能
+      // 1. 基本信息
+      handleFormatBasicInfo()
       
-      // 更新各个字段
-      updateLabelData({
-        basicInfo: formattedBasicInfo,
-        numberField: formattedNumberField,
-        drugName: formattedDrugName,
-        numberOfSheets: formattedNumberOfSheets,
-        drugDescription: formattedDrugDescription,
-        companyName: formattedCompanyName
-      })
+      // 2. 编号栏
+      handleFormatNumberField()
+      
+      // 3. 药品名称
+      handleFormatDrugName()
+      
+      // 4. 片数
+      handleFormatNumberOfSheets()
+      
+      // 5. 药品说明
+      handleFormatDrugDescription()
+      
+      // 6. 公司名称
+      handleFormatCompanyName()
+      
+      showToast('所有字段已完成格式化', 'success')
       
     } catch (error) {
       console.error('格式化失败:', error)
