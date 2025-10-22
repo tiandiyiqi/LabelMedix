@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { batchProcessFiles } from '@/lib/cozeApi'
 import { getProjects, createProject, deleteProject as deleteProjectApi, getProjectById, updateProject, updateCountrySequence, getTranslationsByCountry, updateTranslation, getCountryDetails } from '@/lib/projectApi'
@@ -42,6 +43,7 @@ export default function ProjectList() {
   const [sortBy, setSortBy] = useState<'order' | 'field_type'>('order')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [projectName, setProjectName] = useState('')
+  const [projectType, setProjectType] = useState('')
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [workStatus, setWorkStatus] = useState<'idle' | 'preparing' | 'uploading' | 'uploaded' | 'parsing' | 'parsed' | 'success' | 'error'>('idle')
   const [parseResults, setParseResults] = useState<any[]>([])
@@ -490,6 +492,13 @@ export default function ProjectList() {
       return
     }
     
+    if (!projectType.trim()) {
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 请选择工单类型')
+      return
+    }
+    
     if (uploadedFiles.length === 0) {
       setHasError(true)
       setWorkStatus('error')
@@ -679,6 +688,7 @@ export default function ProjectList() {
 
   const resetForm = () => {
     setProjectName('')
+    setProjectType('')
     setUploadedFiles([])
     setWorkStatus('idle')
     setStatusMessage('')
@@ -695,6 +705,13 @@ export default function ProjectList() {
       setHasError(true)
       setWorkStatus('error')
       setStatusMessage('❌ 请输入工单名称')
+      return
+    }
+    
+    if (!projectType.trim()) {
+      setHasError(true)
+      setWorkStatus('error')
+      setStatusMessage('❌ 请选择工单类型')
       return
     }
     
@@ -960,24 +977,55 @@ export default function ProjectList() {
 
                 {/* 工单名输入 */}
                 <div className="space-y-2">
-                  <Label htmlFor="project-name" className="text-base font-semibold text-gray-800">工单名称 *</Label>
-                  <Input
-                    id="project-name"
-                    placeholder="请输入工单名称"
-                    value={projectName}
-                    onChange={(e) => {
-                      setProjectName(e.target.value)
+                  <div className="flex items-center space-x-3">
+                    <Label htmlFor="project-name" className="text-base font-semibold text-gray-800 whitespace-nowrap">工单名称 *</Label>
+                    <Input
+                      id="project-name"
+                      placeholder="请输入工单名称"
+                      value={projectName}
+                      onChange={(e) => {
+                        setProjectName(e.target.value)
+                        // 清除错误状态
+                        if (hasError && e.target.value.trim()) {
+                          setHasError(false)
+                          setWorkStatus('idle')
+                          setStatusMessage('')
+                        }
+                      }}
+                      className={`placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] ${
+                        hasError && !projectName.trim() ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* 工单类型选择 */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-3">
+                    <Label htmlFor="project-type" className="text-base font-semibold text-gray-800 whitespace-nowrap">工单类型 *</Label>
+                    <Select value={projectType} onValueChange={(value) => {
+                      setProjectType(value)
                       // 清除错误状态
-                      if (hasError && e.target.value.trim()) {
+                      if (hasError && value.trim()) {
                         setHasError(false)
                         setWorkStatus('idle')
                         setStatusMessage('')
                       }
-                    }}
-                    className={`placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${
-                      hasError && !projectName.trim() ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                    }`}
-                  />
+                    }}>
+                      <SelectTrigger className={`flex-1 bg-white focus:ring-2 focus:ring-blue-500 transition-all rounded-md px-3 py-2 !border-[1px] !border-solid ${
+                        hasError && !projectType.trim() ? '!border-red-500 bg-red-50' : '!border-gray-200'
+                      } ${projectType ? 'text-gray-900' : 'text-gray-400'}`}>
+                        <SelectValue placeholder="请选择工单类型" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
+                        <SelectItem value="阶梯型" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯型</SelectItem>
+                        <SelectItem value="单页左右1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右1</SelectItem>
+                        <SelectItem value="单页左右2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右2</SelectItem>
+                        <SelectItem value="单页上下1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下1</SelectItem>
+                        <SelectItem value="单页上下2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下2</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {/* 上传文件列表 */}
@@ -1056,7 +1104,7 @@ export default function ProjectList() {
                     
                     <Button
                       onClick={handleSubmit}
-                      disabled={!projectName.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
+                      disabled={!projectName.trim() || !projectType.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                     >
                       创建项目
@@ -1067,7 +1115,7 @@ export default function ProjectList() {
                   <div className="flex">
                     <Button
                       onClick={handleParseAndCreate}
-                      disabled={!projectName.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
+                      disabled={!projectName.trim() || !projectType.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium"
                     >
                       {workStatus === 'parsing' ? (
