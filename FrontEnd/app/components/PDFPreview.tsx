@@ -666,10 +666,11 @@ export default function PDFPreview() {
   };
 
   // ============================================
-  // 新的渲染函数：渲染6个字段（简单排列）
-  // 使用SmartMixedFontText组件处理中英文混排
+  // 布局渲染函数系统
   // ============================================
-  const renderSixFields = () => {
+  
+  // 1. 阶梯标布局（原有逻辑）
+  const renderStepLayout = () => {
     return (
       <>
         {processedFields.map((field, fieldIndex) => (
@@ -690,6 +691,111 @@ export default function PDFPreview() {
       </>
     );
   };
+
+  // 2. 单页左右1布局
+  const renderLeftRight1Layout = () => {
+    return (
+      <View style={{
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        <Text style={{
+          fontSize: mmToPt(fontSize * 2),
+          fontFamily: fontFamily,
+          color: '#30B8D6',
+          fontWeight: 'bold',
+        }}>
+          单页左右1
+        </Text>
+      </View>
+    );
+  };
+
+  // 3. 单页左右2布局
+  const renderLeftRight2Layout = () => {
+    return (
+      <View style={{
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        <Text style={{
+          fontSize: mmToPt(fontSize * 2),
+          fontFamily: fontFamily,
+          color: '#10B981',
+          fontWeight: 'bold',
+        }}>
+          单页左右2
+        </Text>
+      </View>
+    );
+  };
+
+  // 4. 单页上下1布局
+  const renderTopBottom1Layout = () => {
+    return (
+      <View style={{
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        <Text style={{
+          fontSize: mmToPt(fontSize * 2),
+          fontFamily: fontFamily,
+          color: '#F59E0B',
+          fontWeight: 'bold',
+        }}>
+          单页上下1
+        </Text>
+      </View>
+    );
+  };
+
+  // 5. 单页上下2布局
+  const renderTopBottom2Layout = () => {
+    return (
+      <View style={{
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        <Text style={{
+          fontSize: mmToPt(fontSize * 2),
+          fontFamily: fontFamily,
+          color: '#EF4444',
+          fontWeight: 'bold',
+        }}>
+          单页上下2
+        </Text>
+      </View>
+    );
+  };
+
+  // 根据标签分类选择布局渲染函数
+  const renderContentByCategory = () => {
+    switch (labelCategory) {
+      case '阶梯标':
+        return renderStepLayout();
+      case '单页左右1':
+        return renderLeftRight1Layout();
+      case '单页左右2':
+        return renderLeftRight2Layout();
+      case '单页上下1':
+        return renderTopBottom1Layout();
+      case '单页上下2':
+        return renderTopBottom2Layout();
+      default:
+        return renderStepLayout();
+    }
+  };
+
+  // 兼容旧代码：保留renderSixFields函数名
+  const renderSixFields = renderContentByCategory;
 
   // 渲染序号
   const renderSequenceNumber = () => {
