@@ -695,21 +695,30 @@ export default function PDFPreview() {
   const renderSequenceNumber = () => {
     if (!labelData.showSequenceNumber) return null;
 
-    const sequenceNum = selectedNumber || '1';
+    let sequenceText;
     
-    // 将数字转换为带圆圈的数字（使用 Unicode 字符）
-    // ① = U+2460 (1), ② = U+2461 (2), ... ⑳ = U+2473 (20)
-    const getCircledNumber = (num: string) => {
-      const n = parseInt(num);
-      if (n >= 1 && n <= 20) {
-        // Unicode 字符：①-⑳ (U+2460 到 U+2473)
-        return String.fromCharCode(0x245F + n);
-      }
-      // 如果超过20，返回原数字加括号
-      return `(${num})`;
-    };
-    
-    const sequenceText = getCircledNumber(sequenceNum);
+    // 判断是否使用自定义序号内容
+    if (labelData.customSequenceText) {
+      // 使用自定义序号内容
+      sequenceText = labelData.customSequenceText;
+    } else {
+      // 使用自动序号（原有逻辑）
+      const sequenceNum = selectedNumber || '1';
+      
+      // 将数字转换为带圆圈的数字（使用 Unicode 字符）
+      // ① = U+2460 (1), ② = U+2461 (2), ... ⑳ = U+2473 (20)
+      const getCircledNumber = (num: string) => {
+        const n = parseInt(num);
+        if (n >= 1 && n <= 20) {
+          // Unicode 字符：①-⑳ (U+2460 到 U+2473)
+          return String.fromCharCode(0x245F + n);
+        }
+        // 如果超过20，返回原数字加括号
+        return `(${num})`;
+      };
+      
+      sequenceText = getCircledNumber(sequenceNum);
+    }
     
     // 计算序号位置
     let left = mmToPt(margins.left);
@@ -875,9 +884,11 @@ export default function PDFPreview() {
                   className="w-full px-2 py-0.5 text-sm focus:outline-none appearance-none bg-white border-b border-gray-300"
                   style={{ color: theme.text }}
                 >
-                  <option value="缠绕标">缠绕标</option>
-                  <option value="非缠绕标">非缠绕标</option>
-                  <option value="单页标">单页标</option>
+                  <option value="阶梯标">阶梯标</option>
+                  <option value="单页左右1">单页左右1</option>
+                  <option value="单页左右2">单页左右2</option>
+                  <option value="单页上下1">单页上下1</option>
+                  <option value="单页上下2">单页上下2</option>
                 </select>
               </div>
             </div>
@@ -1057,6 +1068,19 @@ export default function PDFPreview() {
                     className="w-3.5 h-3.5 cursor-pointer"
                   />
                   <span className="text-sm whitespace-nowrap" style={{ color: theme.text }}>显示序号</span>
+                </div>
+                
+                {/* 自定义序号内容 */}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={labelData.customSequenceText || ''}
+                    onChange={(e) => updateLabelData({ customSequenceText: e.target.value })}
+                    disabled={!labelData.showSequenceNumber}
+                    placeholder="自定义序号内容"
+                    className="w-24 px-1.5 py-0.5 focus:outline-none text-sm border-b border-gray-300"
+                    style={{ color: theme.text }}
+                  />
                 </div>
 
                 {/* 序号位置 */}

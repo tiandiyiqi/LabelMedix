@@ -1002,7 +1002,7 @@ export default function ProjectList() {
                 {/* 工单类型选择 */}
                 <div className="space-y-2">
                   <div className="flex items-center space-x-3">
-                    <Label htmlFor="project-type" className="text-base font-semibold text-gray-800 whitespace-nowrap">工单类型 *</Label>
+                    <Label htmlFor="project-type" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签分类 *</Label>
                     <Select value={projectType} onValueChange={(value) => {
                       setProjectType(value)
                       // 清除错误状态
@@ -1015,7 +1015,7 @@ export default function ProjectList() {
                       <SelectTrigger className={`flex-1 bg-white focus:ring-2 focus:ring-blue-500 transition-all rounded-md px-3 py-2 !border-[1px] !border-solid ${
                         hasError && !projectType.trim() ? '!border-red-500 bg-red-50' : '!border-gray-200'
                       } ${projectType ? 'text-gray-900' : 'text-gray-400'}`}>
-                        <SelectValue placeholder="请选择工单类型" />
+                        <SelectValue placeholder="请选择标签类型" />
                       </SelectTrigger>
                       <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
                         <SelectItem value="阶梯型" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯型</SelectItem>

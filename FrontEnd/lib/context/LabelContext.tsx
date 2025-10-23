@@ -23,6 +23,7 @@ interface LabelData {
   textAlign: string // 文本对齐方式：left（左对齐）、right（右对齐）、center（居中）
   // 序号设置
   showSequenceNumber: boolean // 是否显示序号
+  customSequenceText?: string // 自定义序号内容
   sequencePosition: string // 序号位置：left（左对齐）、center（居中）、right（右对齐）
   sequenceFontSize: number // 序号字体大小（pt）
   sequenceOffsetX: number // 序号水平位移（mm）
@@ -97,6 +98,7 @@ const defaultLabelData: LabelData = {
   textAlign: 'left', // 文本对齐方式，默认左对齐
   // 序号设置默认值
   showSequenceNumber: true, // 默认显示序号
+  customSequenceText: '', // 默认无自定义序号内容
   sequencePosition: 'right', // 默认右对齐
   sequenceFontSize: 9, // 默认字体大小 9pt
   sequenceOffsetX: 0, // 默认无水平位移
