@@ -1067,7 +1067,7 @@ export default function PDFPreview() {
                     onChange={(e) => updateLabelData({ showSequenceNumber: e.target.checked })}
                     className="w-3.5 h-3.5 cursor-pointer"
                   />
-                  <span className="text-sm whitespace-nowrap" style={{ color: theme.text }}>显示序号</span>
+                  <span className="text-sm whitespace-nowrap" style={{ color: theme.text }}>序号</span>
                 </div>
                 
                 {/* 自定义序号内容 */}
@@ -1175,7 +1175,7 @@ export default function PDFPreview() {
                       value={labelData.sequenceOffsetX}
                       onChange={(e) => updateLabelData({ sequenceOffsetX: Number(e.target.value) })}
                       disabled={!labelData.showSequenceNumber}
-                      className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                      className="w-12 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
                       style={{ color: theme.text }}
                       step="0.5"
                     />
@@ -1192,7 +1192,7 @@ export default function PDFPreview() {
                       value={labelData.sequenceOffsetY}
                       onChange={(e) => updateLabelData({ sequenceOffsetY: Number(e.target.value) })}
                       disabled={!labelData.showSequenceNumber}
-                      className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                      className="w-12 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
                       style={{ color: theme.text }}
                       step="0.5"
                     />
