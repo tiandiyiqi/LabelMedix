@@ -1185,14 +1185,14 @@ export default function PDFPreview() {
                     value={labelData.customSequenceText || ''}
                     onChange={(e) => updateLabelData({ customSequenceText: e.target.value })}
                     disabled={!labelData.showSequenceNumber}
-                    placeholder="自定义序号内容"
-                    className="w-24 px-1.5 py-0.5 focus:outline-none text-sm border-b border-gray-300"
+                    placeholder="自定义"
+                    className="w-16 px-1.5 py-0.5 focus:outline-none text-sm border-b border-gray-300"
                     style={{ color: theme.text }}
                   />
                 </div>
 
                 {/* 序号位置 */}
-                <div className="flex items-center gap-0.5 border rounded px-1.5 py-0.5" style={{ borderColor: theme.border }}>
+                <div className="flex items-center gap-0.5 border rounded px-1 py-0.5" style={{ borderColor: theme.border }}>
                   {/* 左对齐 */}
                   <div className="relative group">
                     <button
@@ -1204,7 +1204,7 @@ export default function PDFPreview() {
                       }`}
                       disabled={!labelData.showSequenceNumber}
                     >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'left' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'left' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h8M4 18h16" />
                       </svg>
                     </button>
@@ -1224,7 +1224,7 @@ export default function PDFPreview() {
                       }`}
                       disabled={!labelData.showSequenceNumber}
                     >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'center' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'center' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M8 12h8M4 18h16" />
                       </svg>
                     </button>
@@ -1244,7 +1244,7 @@ export default function PDFPreview() {
                       }`}
                       disabled={!labelData.showSequenceNumber}
                     >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'right' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: labelData.sequencePosition === 'right' ? 'white' : 'rgba(0, 0, 0, 0.7)' }}>
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M12 12h8M4 18h16" />
                       </svg>
                     </button>
@@ -1254,17 +1254,69 @@ export default function PDFPreview() {
                   </div>
                 </div>
 
+                {/* 旋转控制 */}
+                <div className="flex items-center gap-0.5 border rounded px-1 py-0.5" style={{ borderColor: theme.border }}>
+                  {/* 逆时针旋转 */}
+                  <div className="relative group">
+                    <button
+                      onClick={() => updateLabelData({ sequenceRotation: (labelData.sequenceRotation - 90) % 360 })}
+                      className="flex items-center justify-center p-0.5 rounded transition-colors bg-gray-200 hover:bg-[#30B8D6] hover:text-white"
+                      disabled={!labelData.showSequenceNumber}
+                    >
+                      <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 512 512" style={{ color: 'rgba(0, 0, 0, 0.7)' }}>
+                        <path d="M125.7 160H176c17.7 0 32 14.3 32 32s-14.3 32-32 32H48c-17.7 0-32-14.3-32-32V64c0-17.7 14.3-32 32-32s32 14.3 32 32v51.2L97.6 97.6c87.5-87.5 229.3-87.5 316.8 0s87.5 229.3 0 316.8s-229.3 87.5-316.8 0c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0c62.5 62.5 163.8 62.5 226.3 0s62.5-163.8 0-226.3s-163.8-62.5-226.3 0L125.7 160z"/>
+                      </svg>
+                    </button>
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      逆时针旋转90°
+                    </div>
+                  </div>
+                  
+                  {/* 旋转角度输入 */}
+                  <input
+                    type="text"
+                    value={labelData.sequenceRotation || 0}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9-]/g, '');
+                      updateLabelData({ sequenceRotation: value === '' ? 0 : Number(value) });
+                    }}
+                    disabled={!labelData.showSequenceNumber}
+                    className="w-12 px-1.5 py-0.5 focus:outline-none text-xs text-center border rounded"
+                    style={{ 
+                      color: theme.text,
+                      borderColor: theme.border,
+                      backgroundColor: labelData.showSequenceNumber ? 'white' : '#f3f4f6'
+                    }}
+                  />
+                  
+                  {/* 顺时针旋转 */}
+                  <div className="relative group">
+                    <button
+                      onClick={() => updateLabelData({ sequenceRotation: (labelData.sequenceRotation + 90) % 360 })}
+                      className="flex items-center justify-center p-0.5 rounded transition-colors bg-gray-200 hover:bg-[#30B8D6] hover:text-white"
+                      disabled={!labelData.showSequenceNumber}
+                    >
+                      <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 512 512" style={{ color: 'rgba(0, 0, 0, 0.7)' }}>
+                        <path d="M386.3 160H336c-17.7 0-32 14.3-32 32s14.3 32 32 32H464c17.7 0 32-14.3 32-32V64c0-17.7-14.3-32-32-32s-32 14.3-32 32v51.2L414.4 97.6c-87.5-87.5-229.3-87.5-316.8 0s-87.5 229.3 0 316.8s229.3 87.5 316.8 0c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0c-62.5 62.5-163.8 62.5-226.3 0s-62.5-163.8 0-226.3s163.8-62.5 226.3 0L386.3 160z"/>
+                      </svg>
+                    </button>
+                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      顺时针旋转90°
+                    </div>
+                  </div>
+                </div>
+
                 {/* 字符大小和位置偏移 */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   {/* 字符大小 - T 图标 */}
-                  <div className="relative group flex items-center gap-1">
-                    <span className="text-sm" style={{ fontSize: '14px', color: theme.text }}>T</span>
+                  <div className="relative group flex items-center gap-0.5">
+                    <span className="text-xs" style={{ fontSize: '12px', color: theme.text }}>T</span>
                     <input
                       type="number"
                       value={labelData.sequenceFontSize}
                       onChange={(e) => updateLabelData({ sequenceFontSize: Number(e.target.value) })}
                       disabled={!labelData.showSequenceNumber}
-                      className="w-12 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                      className="w-10 px-1 py-0.5 focus:outline-none text-xs text-center border-b border-gray-300"
                       style={{ color: theme.text }}
                       step="0.5"
                       min="1"
@@ -1276,14 +1328,14 @@ export default function PDFPreview() {
                   </div>
                   
                   {/* 水平位移 - x 图标 */}
-                  <div className="relative group flex items-center gap-1">
-                    <span className="text-sm" style={{ fontSize: '14px', color: theme.text }}>x</span>
+                  <div className="relative group flex items-center gap-0.5">
+                    <span className="text-xs" style={{ fontSize: '12px', color: theme.text }}>x</span>
                     <input
                       type="number"
                       value={labelData.sequenceOffsetX}
                       onChange={(e) => updateLabelData({ sequenceOffsetX: Number(e.target.value) })}
                       disabled={!labelData.showSequenceNumber}
-                      className="w-12 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                      className="w-10 px-1 py-0.5 focus:outline-none text-xs text-center border-b border-gray-300"
                       style={{ color: theme.text }}
                       step="0.5"
                     />
@@ -1293,14 +1345,14 @@ export default function PDFPreview() {
                   </div>
                   
                   {/* 垂直位移 - y 图标 */}
-                  <div className="relative group flex items-center gap-1">
-                    <span className="text-sm" style={{ fontSize: '14px', color: theme.text }}>y</span>
+                  <div className="relative group flex items-center gap-0.5">
+                    <span className="text-xs" style={{ fontSize: '12px', color: theme.text }}>y</span>
                     <input
                       type="number"
                       value={labelData.sequenceOffsetY}
                       onChange={(e) => updateLabelData({ sequenceOffsetY: Number(e.target.value) })}
                       disabled={!labelData.showSequenceNumber}
-                      className="w-12 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
+                      className="w-10 px-1 py-0.5 focus:outline-none text-xs text-center border-b border-gray-300"
                       style={{ color: theme.text }}
                       step="0.5"
                     />

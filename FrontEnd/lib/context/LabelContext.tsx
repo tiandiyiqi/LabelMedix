@@ -28,6 +28,7 @@ interface LabelData {
   sequenceFontSize: number // 序号字体大小（pt）
   sequenceOffsetX: number // 序号水平位移（mm）
   sequenceOffsetY: number // 序号垂直位移（mm）
+  sequenceRotation: number // 序号旋转角度（度）
   spacing: number
   lineHeight: number
   currentWidth: number // 当前页面宽度
@@ -103,6 +104,7 @@ const defaultLabelData: LabelData = {
   sequenceFontSize: 9, // 默认字体大小 9pt
   sequenceOffsetX: 0, // 默认无水平位移
   sequenceOffsetY: 0, // 默认无垂直位移
+  sequenceRotation: 0, // 默认无旋转
   spacing: 1,
   lineHeight: 1.2,
   currentWidth: 120,  // 初始值与labelWidth相同
