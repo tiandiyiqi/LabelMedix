@@ -212,16 +212,6 @@ export default function ProjectList() {
     }
   }
 
-  //新增版本
-  const handleAddVersion = async () => {
-    try {
-      alert('新增版本测试，请开发')
-      // await addVersion(editingProject.id)
-    } catch (error) {
-      console.error('新增版本失败:', error)
-      alert('新增版本失败，请重试')
-    }
-  }
 
   // 拖放开始
   const handleCountryDragStart = (index: number) => {
@@ -1473,13 +1463,6 @@ export default function ProjectList() {
                 className="h-8 text-sm bg-blue-600 hover:bg-blue-700 text-white"
               >
                 保存项目
-              </Button>
-              <Button
-                onClick={handleAddVersion}
-                disabled={!editProjectName.trim()}
-                className="h-8 text-sm bg-green-600 hover:bg-green-700 text-white"
-              >
-                新增版本
               </Button>
             </div>
           </DialogContent>
