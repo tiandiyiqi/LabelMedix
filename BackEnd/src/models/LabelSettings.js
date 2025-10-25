@@ -148,6 +148,12 @@ module.exports = (sequelize) => {
         defaultValue: 0.0,
         comment: "序号垂直位移(mm)",
       },
+      sequence_rotation: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.0,
+        comment: "序号旋转角度(度)",
+      },
     },
     {
       tableName: "LabelSettings",

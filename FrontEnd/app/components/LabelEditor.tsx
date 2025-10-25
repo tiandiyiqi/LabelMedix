@@ -1581,11 +1581,15 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   const saveLabelSettingsToDatabase = async (projectId: number, fullCountryCode: string, sequenceNumber: number) => {
     try {
       const shortCountryCode = extractShortCountryCode(fullCountryCode)
+      console.log('💾💾💾 [保存] 当前labelData完整内容:', JSON.stringify(labelData, null, 2))
+      console.log('🔄🔄🔄 [保存] sequenceRotation原始值:', labelData.sequenceRotation)
       const settingsData = convertLabelDataToSettings(labelData)
+      console.log('💾💾💾 [保存] 转换后的settingsData:', JSON.stringify(settingsData, null, 2))
+      console.log('🎯🎯🎯 [保存] sequence_rotation转换后值:', settingsData.sequence_rotation)
       await saveLabelSettings(projectId, settingsData, shortCountryCode, sequenceNumber)
-      console.log('✅ 标签设置已保存到数据库')
+      console.log('✅✅✅ 标签设置已保存到数据库')
     } catch (error) {
-      console.error('❌ 保存标签设置失败:', error)
+      console.error('❌❌❌ 保存标签设置失败:', error)
     }
   }
 

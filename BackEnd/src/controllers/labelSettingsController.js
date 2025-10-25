@@ -50,6 +50,7 @@ const getLabelSettings = async (req, res) => {
         sequence_font_size: 9.0,
         sequence_offset_x: 0.0,
         sequence_offset_y: 0.0,
+        sequence_rotation: 0.0,
       };
 
       return res.json({

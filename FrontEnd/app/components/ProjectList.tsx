@@ -126,10 +126,12 @@ export default function ProjectList() {
             shortCountryCode,
             firstGroup.sequence_number
           )
-          console.log('📦 [ProjectList] 原始标签设置（数据库返回）:', labelSettings)
+          console.log('📦 [ProjectList] 原始标签设置（数据库返回）:', JSON.stringify(labelSettings, null, 2))
+          console.log('🔄🔄🔄 [ProjectList] sequence_rotation原始值:', labelSettings.sequence_rotation)
           
           const labelDataFromSettings = convertSettingsToLabelData(labelSettings)
-          console.log('🔄 [ProjectList] 转换后的标签数据:', labelDataFromSettings)
+          console.log('🔄 [ProjectList] 转换后的标签数据:', JSON.stringify(labelDataFromSettings, null, 2))
+          console.log('🎯🎯🎯 [ProjectList] sequenceRotation转换后值:', labelDataFromSettings.sequenceRotation)
           console.log('✅ [ProjectList] 标签预览区参数已从数据库加载')
           
           // 准备要合并的数据

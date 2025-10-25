@@ -29,6 +29,7 @@ export interface LabelSettings {
   sequence_font_size: number;
   sequence_offset_x: number;
   sequence_offset_y: number;
+  sequence_rotation: number;
   // 时间戳
   createdAt?: string;
   updatedAt?: string;
@@ -168,6 +169,7 @@ export function convertLabelDataToSettings(labelData: any): Partial<LabelSetting
     sequence_font_size: labelData.sequenceFontSize,
     sequence_offset_x: labelData.sequenceOffsetX,
     sequence_offset_y: labelData.sequenceOffsetY,
+    sequence_rotation: labelData.sequenceRotation,
   };
 }
 
@@ -194,5 +196,6 @@ export function convertSettingsToLabelData(settings: LabelSettings): any {
     sequenceFontSize: Number(settings.sequence_font_size) || 9,
     sequenceOffsetX: Number(settings.sequence_offset_x) || 0,
     sequenceOffsetY: Number(settings.sequence_offset_y) || 0,
+    sequenceRotation: Number(settings.sequence_rotation) || 0,
   };
 }
