@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { batchProcessFiles } from '@/lib/cozeApi'
 import { getProjects, createProject, deleteProject as deleteProjectApi, getProjectById, updateProject, updateCountrySequence, getTranslationsByCountry, updateTranslation, getCountryDetails } from '@/lib/projectApi'
+import { getLabelSettings, convertSettingsToLabelData } from '@/lib/labelSettingsApi'
 import type { Project } from '@/lib/projectApi'
 import ParseResultsDisplay from './ParseResultsDisplay'
 import { classifyFieldTypes, getFieldTypeStats, getFieldTypeName } from '@/lib/fieldClassification'
@@ -78,6 +79,11 @@ export default function ProjectList() {
     loadProjects()
   }, [])
 
+  // 从完整国别码中提取简短国别码（用于API调用）
+  const extractShortCountryCode = (fullCountryCode: string): string => {
+    return fullCountryCode.split(' ')[0]
+  }
+
   // 点击项目时选中
   const handleProjectClick = async (project: Project) => {
     try {
@@ -105,18 +111,60 @@ export default function ProjectList() {
           formattedSummary: countryDetail.formatted_summary || undefined
         })
         
-        // 同步字体设置到LabelContext
-        updateLabelData({
-          fontFamily: countryDetail.font_family || 'Arial',
-          secondaryFontFamily: countryDetail.secondary_font_family || 'Arial',
-          textAlign: countryDetail.text_align || 'left',
-          fontSize: countryDetail.font_size || 10,
-          spacing: countryDetail.spacing || 1,
-          lineHeight: countryDetail.line_height || 1.2
-        })
+        // 加载标签预览区参数设置
+        try {
+          const shortCountryCode = extractShortCountryCode(firstGroup.country_code)
+          console.log('🔍 [ProjectList] 准备加载标签设置:', {
+            projectId: project.id,
+            fullCountryCode: firstGroup.country_code,
+            shortCountryCode: shortCountryCode,
+            sequenceNumber: firstGroup.sequence_number
+          })
+          
+          const labelSettings = await getLabelSettings(
+            project.id,
+            shortCountryCode,
+            firstGroup.sequence_number
+          )
+          console.log('📦 [ProjectList] 原始标签设置（数据库返回）:', labelSettings)
+          
+          const labelDataFromSettings = convertSettingsToLabelData(labelSettings)
+          console.log('🔄 [ProjectList] 转换后的标签数据:', labelDataFromSettings)
+          console.log('✅ [ProjectList] 标签预览区参数已从数据库加载')
+          
+          // 准备要合并的数据
+          const mergedData = {
+            ...labelDataFromSettings,  // 先合并标签预览区参数
+            fontFamily: countryDetail.font_family || 'Arial',
+            secondaryFontFamily: countryDetail.secondary_font_family || 'Arial',
+            textAlign: countryDetail.text_align || 'left',
+            fontSize: countryDetail.font_size || 10,
+            spacing: countryDetail.spacing || 1,
+            lineHeight: countryDetail.line_height || 1.2
+          }
+          console.log('🎯 [ProjectList] 最终合并后的数据:', mergedData)
+          console.log('📏 [ProjectList] 标签高度检查:', {
+            从数据库加载: labelDataFromSettings.labelHeight,
+            最终合并值: mergedData.labelHeight
+          })
+          
+          // 同步字体设置和标签预览区参数到LabelContext
+          updateLabelData(mergedData)
+        } catch (labelError) {
+          console.warn('⚠️ 加载标签设置失败，使用默认字体设置:', labelError)
+          // 如果加载标签设置失败，只同步字体设置
+          updateLabelData({
+            fontFamily: countryDetail.font_family || 'Arial',
+            secondaryFontFamily: countryDetail.secondary_font_family || 'Arial',
+            textAlign: countryDetail.text_align || 'left',
+            fontSize: countryDetail.font_size || 10,
+            spacing: countryDetail.spacing || 1,
+            lineHeight: countryDetail.line_height || 1.2
+          })
+        }
       }
     } catch (error) {
-      console.error('加载项目详情失败:', error)
+      console.error('❌ 加载项目详情失败:', error)
     }
   }
 

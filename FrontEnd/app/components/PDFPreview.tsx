@@ -1010,8 +1010,9 @@ export default function PDFPreview() {
               <div className="flex-1">
                 <input
                   type="number"
-                  defaultValue={labelWidth}
+                  value={labelWidth}
                   placeholder="最小值: 40mm"
+                  onChange={(e) => updateLabelData({ labelWidth: Number(e.target.value) || 100 })}
                   onKeyDown={(e) => handleDimensionInput(e, 'width')}
                   className="w-full px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
@@ -1030,8 +1031,9 @@ export default function PDFPreview() {
               <div className="flex-1">
                 <input
                   type="number"
-                  defaultValue={labelHeight}
+                  value={labelHeight}
                   placeholder="最小值: 40mm"
+                  onChange={(e) => updateLabelData({ labelHeight: Number(e.target.value) || 60 })}
                   onKeyDown={(e) => handleDimensionInput(e, 'height')}
                   className="w-full px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{

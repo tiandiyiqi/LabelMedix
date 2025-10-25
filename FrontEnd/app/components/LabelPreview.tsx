@@ -22,13 +22,24 @@ export default function LabelPreview() {
 
   // 获取当前语言对应的字体
   const getFontFamily = useCallback(() => {
-    if (selectedLanguage === "TH" || selectedLanguage === "AE") {
-      return "Arial Unicode MS"
+    // 检查是否为需要特殊字体的语言
+    const needsUnicodeFont = () => {
+      if (!selectedLanguage) return false;
+      const unicodeFontLanguages = ['Georgian','Hebrew','Korean', 'Thai','Thailand', 'Vietnamese', 'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
+      return unicodeFontLanguages.some(lang => selectedLanguage.includes(lang)) || 
+             selectedLanguage.includes('KR') || selectedLanguage.includes('TH') || selectedLanguage.includes('VN');
+    };
+    
+    // 根据语言设置对应的字体
+    if (selectedLanguage === 'CN' || selectedLanguage.includes('Chinese')) {
+      return 'STHeiti';
+    } else if (selectedLanguage === 'JP' || selectedLanguage.includes('Japanese')) {
+      return 'Arial Unicode MS';
+    } else if (needsUnicodeFont()) {
+      return 'Arial Unicode MS';
+    } else {
+      return 'Arial';
     }
-    if (selectedLanguage === "CN") {
-      return "STHeiti"
-    }
-    return "Arial"
   }, [selectedLanguage])
 
   useEffect(() => {

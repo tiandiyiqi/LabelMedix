@@ -6,6 +6,7 @@ import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
 import { getProjectById, getCountryDetails, getTranslationsByCountry, updateFormattedSummary, savePdfFile } from '@/lib/projectApi'
+import { getLabelSettings, saveLabelSettings, convertSettingsToLabelData, convertLabelDataToSettings } from '@/lib/labelSettingsApi'
 import { pdf } from '@react-pdf/renderer'
 
 export default function LabelEditor() {
@@ -1138,12 +1139,40 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           // 获取该国别的详细信息
           const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
           
+          // 加载标签预览区参数设置
+          let labelDataFromSettings = null
+          try {
+            const shortCountryCode = extractShortCountryCode(selectedLanguage)
+            const sequence = selectedProject.currentSequence || 1
+            console.log('🔍 [useEffect-AutoLoad] 准备加载标签设置:', {
+              projectId: selectedProject.id,
+              fullCountryCode: selectedLanguage,
+              shortCountryCode: shortCountryCode,
+              sequence: sequence
+            })
+            
+            const labelSettings = await getLabelSettings(
+              selectedProject.id,
+              shortCountryCode,
+              sequence
+            )
+            console.log('📦 [useEffect-AutoLoad] 原始标签设置（数据库返回）:', labelSettings)
+            
+            labelDataFromSettings = convertSettingsToLabelData(labelSettings)
+            console.log('🔄 [useEffect-AutoLoad] 转换后的标签数据:', labelDataFromSettings)
+            console.log('📏 [useEffect-AutoLoad] 标签高度:', labelDataFromSettings.labelHeight)
+            console.log('✅ [useEffect-AutoLoad] 标签预览区参数已从数据库加载')
+          } catch (labelError) {
+            console.warn('⚠️ [useEffect-AutoLoad] 加载标签设置失败，使用默认设置:', labelError)
+          }
+          
           // 尝试解析JSON格式的格式化状态
           const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
           
           if (formattedData && formattedData.formatStates) {
             // 如果有JSON格式的格式化状态，加载6个字段和格式化状态
-            updateLabelData({ 
+            const mergedData = {
+              ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
               basicInfo: formattedData.basicInfo || '',
               numberField: formattedData.numberField || '',
               drugName: formattedData.drugName || '',
@@ -1152,7 +1181,15 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               companyName: formattedData.companyName || '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
+            }
+            console.log('🎯 [useEffect-AutoLoad] 最终合并数据:', mergedData)
+            console.log('📏 [useEffect-AutoLoad] 标签高度检查:', {
+              labelDataFromSettings有值: !!labelDataFromSettings,
+              从设置加载的高度: labelDataFromSettings?.labelHeight,
+              最终合并值: mergedData.labelHeight
             })
+            
+            updateLabelData(mergedData)
             
             // 恢复格式化状态
             setFormatStates(formattedData.formatStates)
@@ -1167,7 +1204,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             const originalData = parseOriginalSummary(countryDetail.original_summary)
             
             if (originalData) {
-              updateLabelData({ 
+              const mergedData = {
+                ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 basicInfo: originalData.basicInfo || '',
                 numberField: originalData.numberField || '',
                 drugName: originalData.drugName || '',
@@ -1176,7 +1214,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 companyName: originalData.companyName || '',
                 originalSummary: countryDetail.original_summary,
                 formatted_summary: countryDetail.formatted_summary
-              })
+              }
+              updateLabelData(mergedData)
               
               // 重置格式化状态为0
               setFormatStates({
@@ -1194,8 +1233,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 hasData: true
               })
             } else {
-              // 如果既没有格式化数据也没有原始数据，清空所有字段
-              updateLabelData({ 
+              // 如果既没有格式化数据也没有原始数据，清空所有字段（但保留标签设置）
+              const mergedData = {
+                ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 basicInfo: '',
                 numberField: '',
                 drugName: '',
@@ -1204,7 +1244,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 companyName: '',
                 originalSummary: undefined,
                 formatted_summary: undefined
-              })
+              }
+              updateLabelData(mergedData)
               
               // 重置格式化状态为0
               setFormatStates({
@@ -1529,6 +1570,25 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     })
   }
 
+  // 从完整国别码中提取简短国别码（用于API调用）
+  const extractShortCountryCode = (fullCountryCode: string): string => {
+    // 如果包含空格，取第一部分作为简短国别码
+    // 例如: "NZ New Zealand/English" -> "NZ"
+    return fullCountryCode.split(' ')[0]
+  }
+
+  // 保存标签设置到数据库
+  const saveLabelSettingsToDatabase = async (projectId: number, fullCountryCode: string, sequenceNumber: number) => {
+    try {
+      const shortCountryCode = extractShortCountryCode(fullCountryCode)
+      const settingsData = convertLabelDataToSettings(labelData)
+      await saveLabelSettings(projectId, settingsData, shortCountryCode, sequenceNumber)
+      console.log('✅ 标签设置已保存到数据库')
+    } catch (error) {
+      console.error('❌ 保存标签设置失败:', error)
+    }
+  }
+
   // 保存标签
   const handleSave = async () => {
     if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
@@ -1558,13 +1618,20 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         spacing: labelData.spacing,
         lineHeight: labelData.lineHeight
       })
+
+      // 2. 保存标签预览区参数设置到数据库
+      await saveLabelSettingsToDatabase(
+        selectedProject.id,
+        selectedLanguage,
+        parseInt(selectedNumber)
+      )
       
       // 立即更新本地状态，确保后续操作可以访问到最新的格式化状态
       updateLabelData({
         formatted_summary: formattedSummaryJson
       })
       
-      // 2. 触发PDF生成和保存（使用合并的文本内容）
+      // 3. 触发PDF生成和保存（使用合并的文本内容）
       window.dispatchEvent(new CustomEvent('generate-and-save-pdf', {
         detail: {
           projectId: selectedProject.id,
@@ -1574,7 +1641,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         }
       }));
       
-      showToast('6个字段的格式化状态已保存，PDF正在生成中...', 'success')
+      showToast('标签设置和格式化状态已保存，PDF正在生成中...', 'success')
       
     } catch (error) {
       console.error('保存标签失败:', error)
@@ -1683,12 +1750,39 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             formattedSummary: countryDetail.formatted_summary || undefined
           })
           
+          // 加载标签预览区参数设置
+          let labelDataFromSettings = null
+          try {
+            const shortCountryCode = extractShortCountryCode(newLanguage)
+            console.log('🔍 [LabelEditor-Language] 准备加载标签设置:', {
+              projectId: selectedProject.id,
+              fullCountryCode: newLanguage,
+              shortCountryCode: shortCountryCode,
+              sequence: sequence
+            })
+            
+            const labelSettings = await getLabelSettings(
+              selectedProject.id,
+              shortCountryCode,
+              sequence
+            )
+            console.log('📦 [LabelEditor-Language] 原始标签设置（数据库返回）:', labelSettings)
+            
+            labelDataFromSettings = convertSettingsToLabelData(labelSettings)
+            console.log('🔄 [LabelEditor-Language] 转换后的标签数据:', labelDataFromSettings)
+            console.log('📏 [LabelEditor-Language] 标签高度:', labelDataFromSettings.labelHeight)
+            console.log('✅ 标签预览区参数已从数据库加载（国别码切换）')
+          } catch (labelError) {
+            console.warn('⚠️ 加载标签设置失败，使用默认设置:', labelError)
+          }
+          
           // 优先尝试解析JSON格式的格式化状态
           const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
           
           if (formattedData && formattedData.formatStates) {
             // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
-            updateLabelData({
+            const mergedData = {
+              ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
               selectedLanguage: newLanguage,
               fontFamily: countryDetail.font_family || autoFonts.fontFamily,
               secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
@@ -1705,7 +1799,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               companyName: formattedData.companyName || '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
+            }
+            console.log('🎯 [LabelEditor-Language-Branch1] 最终合并数据（有格式化状态）:', mergedData)
+            console.log('📏 [LabelEditor-Language-Branch1] 标签高度检查:', {
+              labelDataFromSettings有值: !!labelDataFromSettings,
+              从设置加载的高度: labelDataFromSettings?.labelHeight,
+              最终合并值: mergedData.labelHeight
             })
+            updateLabelData(mergedData)
             
             // 恢复格式化状态
             setFormatStates(formattedData.formatStates)
@@ -1716,6 +1817,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             if (originalData) {
               // 如果有JSON格式的原始状态，恢复6个字段
               updateLabelData({
+                ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedLanguage: newLanguage,
                 fontFamily: countryDetail.font_family || autoFonts.fontFamily,
                 secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
@@ -1736,6 +1838,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             } else {
               // 如果没有JSON格式数据，使用旧逻辑
               updateLabelData({
+                ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedLanguage: newLanguage,
                 fontFamily: countryDetail.font_family || autoFonts.fontFamily,
                 secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
@@ -1792,14 +1895,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     const newNumber = Number(e.target.value)
     setSelectedNumberState(newNumber)
     
+    // 确保labelWidth是数字类型
+    const safeLabelWidth = typeof labelWidth === 'number' ? labelWidth : Number(labelWidth) || 100
+    
     // 计算当前页面宽度和边距
-    const currentWidth = calculatePageWidth(labelWidth, newNumber)
+    const currentWidth = calculatePageWidth(safeLabelWidth, newNumber)
     const margins = calculatePageMargins(newNumber)
     
     // 输出页面相关信息
     console.log('页面参数变化:', {
       序号: newNumber,
-      初始宽度: labelWidth,
+      初始宽度: safeLabelWidth,
       当前宽度: currentWidth.toFixed(1),
       高度: labelHeight,
       页边距: {
@@ -1829,12 +1935,39 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             formattedSummary: countryDetail.formatted_summary || undefined
           })
           
+          // 加载标签预览区参数设置
+          let labelDataFromSettings = null
+          try {
+            const shortCountryCode = extractShortCountryCode(countryCode)
+            console.log('🔍 [LabelEditor-Number] 准备加载标签设置:', {
+              projectId: selectedProject.id,
+              fullCountryCode: countryCode,
+              shortCountryCode: shortCountryCode,
+              newNumber: newNumber
+            })
+            
+            const labelSettings = await getLabelSettings(
+              selectedProject.id,
+              shortCountryCode,
+              newNumber
+            )
+            console.log('📦 [LabelEditor-Number] 原始标签设置（数据库返回）:', labelSettings)
+            
+            labelDataFromSettings = convertSettingsToLabelData(labelSettings)
+            console.log('🔄 [LabelEditor-Number] 转换后的标签数据:', labelDataFromSettings)
+            console.log('📏 [LabelEditor-Number] 标签高度:', labelDataFromSettings.labelHeight)
+            console.log('✅ 标签预览区参数已从数据库加载（序号切换）')
+          } catch (labelError) {
+            console.warn('⚠️ 加载标签设置失败，使用默认设置:', labelError)
+          }
+          
           // 优先尝试解析JSON格式的格式化状态
           const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
           
           if (formattedData && formattedData.formatStates) {
             // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
             updateLabelData({
+              ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
               selectedNumber: e.target.value,
               selectedLanguage: countryCode,
               currentWidth,
@@ -1861,7 +1994,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             
             if (originalData) {
               // 如果有JSON格式的原始状态，恢复6个字段
-              updateLabelData({
+              const mergedData = {
+                ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedNumber: e.target.value,
                 selectedLanguage: countryCode,
                 currentWidth,
@@ -1878,10 +2012,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 companyName: originalData.companyName || '',
                 originalSummary: countryDetail.original_summary,
                 formatted_summary: countryDetail.formatted_summary
+              }
+              console.log('🎯 [LabelEditor-Number-Branch2] 最终合并数据（有原始数据）:', mergedData)
+              console.log('📏 [LabelEditor-Number-Branch2] 标签高度检查:', {
+                labelDataFromSettings有值: !!labelDataFromSettings,
+                从设置加载的高度: labelDataFromSettings?.labelHeight,
+                最终合并值: mergedData.labelHeight
               })
+              updateLabelData(mergedData)
             } else {
               // 如果没有JSON格式数据，使用旧逻辑
-              updateLabelData({
+              const mergedData = {
+                ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedNumber: e.target.value,
                 selectedLanguage: countryCode,
                 currentWidth,
@@ -1893,7 +2035,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 basicInfo: countryDetail.formatted_summary || '未格式化',
                 originalSummary: countryDetail.original_summary,
                 formatted_summary: countryDetail.formatted_summary
+              }
+              console.log('🎯 [LabelEditor-Number-Branch3] 最终合并数据（无JSON数据）:', mergedData)
+              console.log('📏 [LabelEditor-Number-Branch3] 标签高度检查:', {
+                labelDataFromSettings有值: !!labelDataFromSettings,
+                从设置加载的高度: labelDataFromSettings?.labelHeight,
+                最终合并值: mergedData.labelHeight
               })
+              updateLabelData(mergedData)
             }
             
             // 重置格式化状态
