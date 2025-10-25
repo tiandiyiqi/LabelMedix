@@ -69,7 +69,11 @@ ENV/
 *.db
 
 # PDF文件（根据需要配置）
- *.pdf
+*.pdf
+
+# Excel文件
+*.xlsx
+*.xls
 
 # 日志文件
 logs/
@@ -85,7 +89,7 @@ logs/
 .turbo
 ref/
 客户要求/
-test.js
+test*.js
 
 /Backend/uploads/pdfs/
 /客户要求/
