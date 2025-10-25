@@ -117,7 +117,6 @@ export default function ProjectInfo() {
 
     try {
       setIsExporting(true);
-      console.log('🚀 开始批量导出PDF...');
 
       // 获取项目完整信息
       const projectDetail = await getProjectById(selectedProject.id);
@@ -127,7 +126,6 @@ export default function ProjectInfo() {
         return;
       }
 
-      console.log(`📊 找到 ${projectDetail.translationGroups.length} 个语言版本`);
 
       let successCount = 0;
       let failCount = 0;
@@ -136,11 +134,9 @@ export default function ProjectInfo() {
       // 遍历所有翻译组
       for (const group of projectDetail.translationGroups) {
         try {
-          console.log(`🔄 正在处理: ${group.country_code} (序号: ${group.sequence_number})`);
 
           // 检查是否有保存的PDF文件
           if (!group.pdf_file_path) {
-            console.warn(`⚠️ ${group.country_code} 没有保存的PDF文件，跳过`);
             notSavedCount++;
             continue;
           }
@@ -172,19 +168,16 @@ export default function ProjectInfo() {
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
 
-          console.log(`✅ ${group.country_code} PDF下载成功`);
           successCount++;
 
           // 添加短暂延迟，避免浏览器阻止多个下载
           await new Promise(resolve => setTimeout(resolve, 500));
 
         } catch (error) {
-          console.error(`❌ ${group.country_code} PDF下载失败:`, error);
           failCount++;
         }
       }
 
-      console.log(`🎉 批量导出完成: 成功 ${successCount} 个，失败 ${failCount} 个，未保存 ${notSavedCount} 个`);
       
       let message = `批量导出完成！\n成功下载: ${successCount} 个PDF`;
       if (failCount > 0) message += `\n失败: ${failCount} 个PDF`;
@@ -193,7 +186,6 @@ export default function ProjectInfo() {
       alert(message);
 
     } catch (error) {
-      console.error('❌ 批量导出失败:', error);
       alert('批量导出失败，请查看控制台了解详细信息');
     } finally {
       setIsExporting(false);

@@ -62,7 +62,7 @@ export default function ProjectList() {
       const { projects: projectList } = await getProjects(1, 100, undefined, search)
       setProjects(projectList)
     } catch (error) {
-      console.error('加载项目列表失败:', error)
+      // console.error('加载项目列表失败:', error)
     } finally {
       setIsLoading(false)
     }
@@ -114,25 +114,20 @@ export default function ProjectList() {
         // 加载标签预览区参数设置
         try {
           const shortCountryCode = extractShortCountryCode(firstGroup.country_code)
-          console.log('🔍 [ProjectList] 准备加载标签设置:', {
-            projectId: project.id,
-            fullCountryCode: firstGroup.country_code,
-            shortCountryCode: shortCountryCode,
-            sequenceNumber: firstGroup.sequence_number
-          })
+
           
           const labelSettings = await getLabelSettings(
             project.id,
             shortCountryCode,
             firstGroup.sequence_number
           )
-          console.log('📦 [ProjectList] 原始标签设置（数据库返回）:', JSON.stringify(labelSettings, null, 2))
-          console.log('🔄🔄🔄 [ProjectList] sequence_rotation原始值:', labelSettings.sequence_rotation)
+          // console.log('📦 [ProjectList] 原始标签设置（数据库返回）:', JSON.stringify(labelSettings, null, 2))
+          // console.log('🔄🔄🔄 [ProjectList] sequence_rotation原始值:', labelSettings.sequence_rotation)
           
           const labelDataFromSettings = convertSettingsToLabelData(labelSettings)
-          console.log('🔄 [ProjectList] 转换后的标签数据:', JSON.stringify(labelDataFromSettings, null, 2))
-          console.log('🎯🎯🎯 [ProjectList] sequenceRotation转换后值:', labelDataFromSettings.sequenceRotation)
-          console.log('✅ [ProjectList] 标签预览区参数已从数据库加载')
+          // console.log('🔄 [ProjectList] 转换后的标签数据:', JSON.stringify(labelDataFromSettings, null, 2))
+          // console.log('🎯🎯🎯 [ProjectList] sequenceRotation转换后值:', labelDataFromSettings.sequenceRotation)
+          // console.log('✅ [ProjectList] 标签预览区参数已从数据库加载')
           
           // 准备要合并的数据
           const mergedData = {
@@ -144,16 +139,13 @@ export default function ProjectList() {
             spacing: countryDetail.spacing || 1,
             lineHeight: countryDetail.line_height || 1.2
           }
-          console.log('🎯 [ProjectList] 最终合并后的数据:', mergedData)
-          console.log('📏 [ProjectList] 标签高度检查:', {
-            从数据库加载: labelDataFromSettings.labelHeight,
-            最终合并值: mergedData.labelHeight
-          })
+
+
           
           // 同步字体设置和标签预览区参数到LabelContext
           updateLabelData(mergedData)
         } catch (labelError) {
-          console.warn('⚠️ 加载标签设置失败，使用默认字体设置:', labelError)
+          // console.warn('⚠️ 加载标签设置失败，使用默认字体设置:', labelError)
           // 如果加载标签设置失败，只同步字体设置
           updateLabelData({
             fontFamily: countryDetail.font_family || 'Arial',
@@ -166,7 +158,7 @@ export default function ProjectList() {
         }
       }
     } catch (error) {
-      console.error('❌ 加载项目详情失败:', error)
+      // console.error('❌ 加载项目详情失败:', error)
     }
   }
 
@@ -197,7 +189,7 @@ export default function ProjectList() {
       
       setIsEditDialogOpen(true)
     } catch (error) {
-      console.error('加载项目详情失败:', error)
+      // console.error('加载项目详情失败:', error)
       alert('加载项目详情失败，请重试')
     }
   }
@@ -223,7 +215,7 @@ export default function ProjectList() {
       
       setCountryTranslations(sortedItems)
     } catch (error) {
-      console.error('加载翻译内容失败:', error)
+      // console.error('加载翻译内容失败:', error)
       alert('加载翻译内容失败，请重试')
       setCountryTranslations([])
     } finally {
@@ -257,7 +249,7 @@ export default function ProjectList() {
       setEditingProject(null)
       setCountryGroups([])
     } catch (error) {
-      console.error('保存项目失败:', error)
+      // console.error('保存项目失败:', error)
       alert('保存项目失败，请重试')
     }
   }
@@ -311,7 +303,7 @@ export default function ProjectList() {
       setEditingTranslationId(null)
       setEditingTranslationText("")
     } catch (error) {
-      console.error('保存翻译失败:', error)
+      // console.error('保存翻译失败:', error)
       alert('保存翻译失败，请重试')
     }
   }
@@ -347,7 +339,7 @@ export default function ProjectList() {
       setEditingFieldTypeId(null)
       setEditingFieldType("")
     } catch (error) {
-      console.error('保存字段类型失败:', error)
+      // console.error('保存字段类型失败:', error)
       alert('保存字段类型失败，请重试')
     }
   }
@@ -417,7 +409,7 @@ export default function ProjectList() {
       setProjects(projects.map((p) => (p.id === id ? { ...p, job_name: editingName } : p)))
       setEditingId(null)
     } catch (error) {
-      console.error('更新项目失败:', error)
+      // console.error('更新项目失败:', error)
     }
   }
 
@@ -426,7 +418,7 @@ export default function ProjectList() {
       await deleteProjectApi(id)
       setProjects(projects.filter((p) => p.id !== id))
     } catch (error) {
-      console.error('删除项目失败:', error)
+      // console.error('删除项目失败:', error)
     }
   }
 
@@ -526,7 +518,7 @@ export default function ProjectList() {
       // 保存解析结果
       setParseResults([result] as any[])
     } catch (error) {
-      console.error('AI解析错误:', error)
+      // console.error('AI解析错误:', error)
       setWorkStatus('error')
       setStatusMessage(`❌ 解析失败: ${error instanceof Error ? error.message : '未知错误'}`)
     }
@@ -569,9 +561,9 @@ export default function ProjectList() {
       })
       
       // 添加调试日志
-      console.log('🔍 Coze API 返回结果:', result)
-      console.log('🔍 result.data:', result.data)
-      console.log('🔍 result.output:', result.output)
+      // console.log('🔍 Coze API 返回结果:', result)
+      // console.log('🔍 result.data:', result.data)
+      // console.log('🔍 result.output:', result.output)
       
       // 3. 解析完成后进行字段分类
       setWorkStatus('parsed')
@@ -579,11 +571,11 @@ export default function ProjectList() {
       
       // 获取关键词清单
       const keywordList = await getFormattedKeywordList()
-      console.log('📋 获取到的关键词清单:', keywordList)
+      // console.log('📋 获取到的关键词清单:', keywordList)
       
       // 对解析结果进行字段分类
       const classifiedResult = await classifyCozeResult(result, keywordList)
-      console.log('🏷️ 字段分类结果:', classifiedResult)
+      // console.log('🏷️ 字段分类结果:', classifiedResult)
       
       // 4. 创建项目
       setStatusMessage('💾 正在保存项目到数据库...')
@@ -595,7 +587,7 @@ export default function ProjectList() {
         coze_result: classifiedResult as any,
       })
       
-      console.log('✅ 项目创建响应:', createdProject)
+      // console.log('✅ 项目创建响应:', createdProject)
       
       // 保存解析结果
       setParseResults([classifiedResult] as any[])
@@ -612,7 +604,7 @@ export default function ProjectList() {
         resetForm()
       }, 2000)
     } catch (error) {
-      console.error('解析并创建项目错误:', error)
+      // console.error('解析并创建项目错误:', error)
       setWorkStatus('error')
       setStatusMessage(`❌ 解析并创建项目失败: ${error instanceof Error ? error.message : '未知错误'}`)
     }
@@ -626,12 +618,7 @@ export default function ProjectList() {
    */
   const classifyCozeResult = async (cozeResult: any, keywordList: any) => {
     try {
-      console.log('🔍 开始字段分类，输入数据:', {
-        cozeResult: cozeResult,
-        keywordList: keywordList,
-        hasOutput: !!cozeResult.output,
-        hasData: !!cozeResult.data
-      })
+
       
       // 解析Coze数据结构 - 数据在data字段中
       let output
@@ -639,56 +626,52 @@ export default function ProjectList() {
         try {
           const parsedData = JSON.parse(cozeResult.data)
           output = parsedData.output
-          console.log('🔧 从data字段解析出output:', output)
+          // console.log('🔧 从data字段解析出output:', output)
         } catch (error) {
-          console.error('❌ 解析Coze data字段失败:', error)
+          // console.error('❌ 解析Coze data字段失败:', error)
           return cozeResult
         }
       } else if (cozeResult.output) {
         output = cozeResult.output
-        console.log('🔧 直接使用output字段:', output)
+        // console.log('🔧 直接使用output字段:', output)
       } else {
-        console.warn('⚠️ Coze结果中没有output或data数据，跳过字段分类')
+        // console.warn('⚠️ Coze结果中没有output或data数据，跳过字段分类')
         return cozeResult
       }
 
       const classifiedOutput: any = {}
       
-      console.log('🔍 Output数据:', output)
-      console.log('🔍 Output键:', Object.keys(output))
+      // console.log('🔍 Output数据:', output)
+      // console.log('🔍 Output键:', Object.keys(output))
 
       // 遍历每个国家/地区的翻译数据
       for (const [countryKey, countryData] of Object.entries(output)) {
-        console.log(`🔍 处理国家: "${countryKey}"`, countryData)
+        // console.log(`🔍 处理国家: "${countryKey}"`, countryData)
         
         // 处理空国别码的情况
         let processedCountryKey = countryKey
         if (!countryKey || countryKey.trim() === '') {
           processedCountryKey = 'CN China/Chinese' // 默认使用中文
-          console.log(`⚠️ 国别码为空，使用默认值: ${processedCountryKey}`)
+          // console.log(`⚠️ 国别码为空，使用默认值: ${processedCountryKey}`)
         }
         
         if (countryData && typeof countryData === 'object' && !Array.isArray(countryData)) {
           const data = countryData as any
           
-          console.log(`🔍 ${countryKey} 数据结构:`, {
-            hasOriginal: !!data.original,
-            originalLength: data.original?.length,
-            originalSample: data.original?.slice(0, 2)
-          })
+
           
           // 确保有original数组
           if (data.original && Array.isArray(data.original)) {
-            console.log(`🏷️ 开始对 ${countryKey} 进行字段分类，文本数量: ${data.original.length}`)
+            // console.log(`🏷️ 开始对 ${countryKey} 进行字段分类，文本数量: ${data.original.length}`)
             
             // 对original文本进行字段分类
             const fieldTypes = classifyFieldTypes(data.original, keywordList)
             
-            console.log(`🏷️ ${countryKey} 分类结果:`, fieldTypes)
+            // console.log(`🏷️ ${countryKey} 分类结果:`, fieldTypes)
             
             // 统计字段类型分布
             const stats = getFieldTypeStats(fieldTypes)
-            console.log(`📊 ${countryKey} 字段分类统计:`, stats)
+            // console.log(`📊 ${countryKey} 字段分类统计:`, stats)
             
             // 将分类结果添加到数据中
             classifiedOutput[processedCountryKey] = {
@@ -697,14 +680,14 @@ export default function ProjectList() {
               field_type_stats: stats  // 添加统计信息
             }
             
-            console.log(`✅ ${processedCountryKey} 分类完成，包含字段类型:`, classifiedOutput[processedCountryKey].field_types)
+            // console.log(`✅ ${processedCountryKey} 分类完成，包含字段类型:`, classifiedOutput[processedCountryKey].field_types)
           } else {
-            console.warn(`⚠️ ${processedCountryKey} 没有original数组，保持原数据`)
+            // console.warn(`⚠️ ${processedCountryKey} 没有original数组，保持原数据`)
             // 如果没有original数组，保持原数据
             classifiedOutput[processedCountryKey] = data
           }
         } else {
-          console.warn(`⚠️ ${processedCountryKey} 不是对象格式，保持原数据`)
+          // console.warn(`⚠️ ${processedCountryKey} 不是对象格式，保持原数据`)
           // 如果不是对象格式，保持原数据
           classifiedOutput[processedCountryKey] = countryData
         }
@@ -725,13 +708,13 @@ export default function ProjectList() {
         classification_timestamp: new Date().toISOString()
       }
       
-      console.log('🎉 字段分类完成，最终结果:', result)
+      // console.log('🎉 字段分类完成，最终结果:', result)
       
       // 返回包含字段分类的结果
       return result
     } catch (error) {
-      console.error('❌ 字段分类失败:', error)
-      console.error('❌ 错误堆栈:', error instanceof Error ? error.stack : error)
+      // console.error('❌ 字段分类失败:', error)
+      // console.error('❌ 错误堆栈:', error instanceof Error ? error.stack : error)
       // 如果分类失败，返回原始结果
       return cozeResult
     }
@@ -785,11 +768,11 @@ export default function ProjectList() {
         
         // 获取关键词清单
         const keywordList = await getFormattedKeywordList()
-        console.log('📋 获取到的关键词清单:', keywordList)
+        // console.log('📋 获取到的关键词清单:', keywordList)
         
         // 对解析结果进行字段分类
         cozeResult = await classifyCozeResult(cozeResult, keywordList)
-        console.log('🏷️ 字段分类结果:', cozeResult)
+        // console.log('🏷️ 字段分类结果:', cozeResult)
       }
       
       const createdProject = await createProject({
@@ -812,7 +795,7 @@ export default function ProjectList() {
         resetForm()
       }, 2000)
     } catch (error) {
-      console.error('创建项目失败:', error)
+      // console.error('创建项目失败:', error)
       setWorkStatus('error')
       setStatusMessage(`❌ 创建项目失败: ${error instanceof Error ? error.message : '未知错误'}`)
     }

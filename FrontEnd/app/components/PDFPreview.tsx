@@ -429,7 +429,6 @@ export default function PDFPreview() {
     const handleGenerateAndSavePdf = (event: Event) => {
       const customEvent = event as CustomEvent;
       const { projectId, countryCode, sequenceNumber } = customEvent.detail;
-      console.log('📥 收到PDF生成请求:', { projectId, countryCode, sequenceNumber });
       setPdfSaveRequest({ projectId, countryCode, sequenceNumber });
     };
 
@@ -452,9 +451,7 @@ export default function PDFPreview() {
       try {
         setIsGeneratingPdf(true);
         await pdfGeneratorRef.current!(projectId, countryCode, sequenceNumber);
-        console.log('✅ PDF生成并保存成功');
       } catch (error) {
-        console.error('❌ PDF生成保存失败:', error);
       } finally {
         setIsGeneratingPdf(false);
         setPdfSaveRequest(null);
@@ -852,6 +849,8 @@ export default function PDFPreview() {
           fontSize: labelData.sequenceFontSize,  // 使用用户设置的字体大小
           fontFamily: 'Arial Unicode',  // 使用 Arial Unicode MS 以支持圆圈数字
           textAlign: textAlign,
+          transform: `rotate(${labelData.sequenceRotation || 0}deg)`,  // 将旋转应用到Text组件本身
+          transformOrigin: 'center',  // 以文本中心为旋转中心
         }}>
           {sequenceText}
         </Text>
@@ -905,7 +904,6 @@ export default function PDFPreview() {
 
     // 保存到服务器
     await savePdfFile(projectId, countryCode, blob, fileName);
-    console.log(`✅ PDF已保存: ${fileName}`);
   };
 
   // 将PDF生成函数保存到ref中，供useEffect使用

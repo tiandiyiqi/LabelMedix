@@ -104,9 +104,7 @@ export default function LabelPreview() {
               });
             }
             
-            console.log('中文字体加载成功');
           } catch (error) {
-            console.error('字体加载失败:', error);
             // 降级到默认字体
             doc.setFont('helvetica');
             
@@ -182,7 +180,6 @@ export default function LabelPreview() {
         // 清理资源
         URL.revokeObjectURL(url);
       } catch (error) {
-        console.error('预览生成失败:', error);
       }
     };
 
