@@ -33,6 +33,7 @@ const getLabelSettings = async (req, res) => {
         label_width: 100.0,
         label_height: 60.0,
         label_category: "阶梯标",
+        is_wrapped: false,
         current_width: 120.0,
         base_sheet: 0,
         adhesive_area: 0,

@@ -44,6 +44,12 @@ module.exports = (sequelize) => {
         defaultValue: "阶梯标",
         comment: "标签分类：阶梯标/单页左右1/单页左右2/单页上下1/单页上下2",
       },
+      is_wrapped: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: "是否缠绕标",
+      },
       current_width: {
         type: DataTypes.DECIMAL(6, 2),
         allowNull: false,

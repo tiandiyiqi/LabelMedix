@@ -9,6 +9,7 @@ export interface LabelSettings {
   label_width: number;
   label_height: number;
   label_category: string;
+  is_wrapped: boolean;
   current_width: number;
   // 页面区域设置
   base_sheet: number;
@@ -152,6 +153,7 @@ export function convertLabelDataToSettings(labelData: any): Partial<LabelSetting
     label_width: labelData.labelWidth,
     label_height: labelData.labelHeight,
     label_category: labelData.labelCategory,
+    is_wrapped: labelData.isWrapped,
     current_width: labelData.currentWidth,
     base_sheet: labelData.baseSheet,
     adhesive_area: labelData.adhesiveArea,
@@ -179,6 +181,7 @@ export function convertSettingsToLabelData(settings: LabelSettings): any {
     labelWidth: Number(settings.label_width) || 100,
     labelHeight: Number(settings.label_height) || 60,
     labelCategory: settings.label_category || '阶梯标',
+    isWrapped: Boolean(settings.is_wrapped),
     currentWidth: Number(settings.current_width) || 120,
     baseSheet: Number(settings.base_sheet) || 0,
     adhesiveArea: Number(settings.adhesive_area) || 0,
