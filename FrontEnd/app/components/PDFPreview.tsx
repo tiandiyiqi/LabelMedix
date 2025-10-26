@@ -410,7 +410,7 @@ export default function PDFPreview() {
 
   // ===== Context hooks =====
   const { labelData, updateLabelData } = useLabelContext()
-  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, textAlign } = labelData
+  const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, isWrapped, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, textAlign } = labelData
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -974,19 +974,19 @@ export default function PDFPreview() {
         </button>
       </div>
       <div className="mb-4 space-y-1">
-        {/* 标签分类 */}
-        <div className="flex">
-          <div className="flex-1">
-            <div className="flex items-center rounded-md">
+        {/* 标签分类和缠绕标 */}
+        <div className="flex space-x-3">
+          <div>
+            <div className="flex items-center">
               <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
                 标签分类：
               </label>
-              <div className="flex-1">
+              <div>
                 <select
                   value={labelCategory}
                   onChange={(e) => updateLabelData({ labelCategory: e.target.value })}
-                  className="w-full px-2 py-0.5 text-sm focus:outline-none appearance-none bg-white border-b border-gray-300"
-                  style={{ color: theme.text }}
+                  className="px-2 py-0.5 text-sm focus:outline-none appearance-none bg-white border-b border-gray-300"
+                  style={{ color: theme.text, width: "100px" }}
                 >
                   <option value="阶梯标">阶梯标</option>
                   <option value="单页左右1">单页左右1</option>
@@ -997,46 +997,59 @@ export default function PDFPreview() {
               </div>
             </div>
           </div>
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              checked={isWrapped}
+              onChange={(e) => updateLabelData({ isWrapped: e.target.checked })}
+              className="mr-4"
+            />
+            <label className="text-sm font-medium" style={{ color: theme.text }}>
+              缠绕标
+            </label>
+          </div>
         </div>
         {/* 宽度和高度（外观与其它区域一致：无蓝色外框） */}
         <div className="flex space-x-3">
-          <div className="flex-1">
+          <div>
             <div className="flex items-center">
               <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
                 标签宽度：
               </label>
-              <div className="flex-1">
+              <div>
                 <input
                   type="number"
                   value={labelWidth}
                   placeholder="最小值: 40mm"
                   onChange={(e) => updateLabelData({ labelWidth: Number(e.target.value) || 100 })}
                   onKeyDown={(e) => handleDimensionInput(e, 'width')}
-                  className="w-full px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
+                  className="px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
                     color: theme.text,
                     backgroundColor: "white",
+                    width: "100px",
                   }}
                 />
               </div>
             </div>
           </div>
-          <div className="flex-1">
+          <div>
             <div className="flex items-center">
               <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
                 标签高度：
               </label>
-              <div className="flex-1">
+              <div>
                 <input
                   type="number"
                   value={labelHeight}
                   placeholder="最小值: 40mm"
                   onChange={(e) => updateLabelData({ labelHeight: Number(e.target.value) || 60 })}
                   onKeyDown={(e) => handleDimensionInput(e, 'height')}
-                  className="w-full px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
+                  className="px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
                     color: theme.text,
                     backgroundColor: "white",
+                    width: "100px",
                   }}
                 />
               </div>
@@ -1070,6 +1083,35 @@ export default function PDFPreview() {
             </div>
           </div>
         </div>
+               {/* 页面边距 */}
+        <div className="flex space-x-3">
+          <div className="flex-1">
+            <div className="flex items-center">
+              <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
+                页面边距：
+              </label>
+              <div className="flex items-center gap-2 px-2 py-0.5">
+                <div className="flex items-center gap-1">
+                  <span className="text-sm" style={{ color: theme.text }}>上</span>
+                  <input type="text" value={margins.top} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm" style={{ color: theme.text }}>下</span>
+                  <input type="text" value={margins.bottom} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm" style={{ color: theme.text }}>左</span>
+                  <input type="text" value={margins.left} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm" style={{ color: theme.text }}>右</span>
+                  <input type="text" value={margins.right} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* 底页/粘胶区/排废区/打码区（四等分，紧凑单行） */}
         <div className="flex space-x-3">
           <div className="flex-1">
@@ -1131,35 +1173,7 @@ export default function PDFPreview() {
             </div>
           </div>
         </div>
-        {/* 页面边距 */}
-        <div className="flex space-x-3">
-          <div className="flex-1">
-            <div className="flex items-center">
-              <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
-                页面边距：
-              </label>
-              <div className="flex items-center gap-2 px-2 py-0.5">
-                <div className="flex items-center gap-1">
-                  <span className="text-sm" style={{ color: theme.text }}>上</span>
-                  <input type="text" value={margins.top} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm" style={{ color: theme.text }}>下</span>
-                  <input type="text" value={margins.bottom} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm" style={{ color: theme.text }}>左</span>
-                  <input type="text" value={margins.left} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm" style={{ color: theme.text }}>右</span>
-                  <input type="text" value={margins.right} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
+ 
         {/* 序号设置 */}
         <div className="flex space-x-3">
           <div className="flex-1">

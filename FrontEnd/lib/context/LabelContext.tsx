@@ -33,6 +33,7 @@ interface LabelData {
   lineHeight: number
   currentWidth: number // 当前页面宽度
   labelCategory: string // 标签分类：缠绕标/非缠绕标/单页标
+  isWrapped: boolean // 是否缠绕标
   baseSheet: number // 底页
   adhesiveArea: number // 粘胶区
   wasteArea: number // 排废区
@@ -108,8 +109,8 @@ const defaultLabelData: LabelData = {
   spacing: 1,
   lineHeight: 1.2,
   currentWidth: 120,  // 初始值与labelWidth相同
-  labelCategory: '非缠绕标'
-  ,
+  labelCategory: '阶梯标',
+  isWrapped: false,
   baseSheet: 0,
   adhesiveArea: 0,
   wasteArea: 0,
