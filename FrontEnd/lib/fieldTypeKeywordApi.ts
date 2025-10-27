@@ -3,6 +3,8 @@
  * 用于获取和管理字段类型判断的关键词清单
  */
 
+import { API_BASE_URL } from './apiConfig';
+
 export interface FieldTypeKeyword {
   id: number
   keyword: string
@@ -32,7 +34,6 @@ export interface KeywordListResponse {
  * @returns 关键词列表
  */
 export async function getFieldTypeKeywords(field_type?: string): Promise<KeywordListResponse> {
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001'
   const url = field_type 
     ? `${API_BASE_URL}/api/field-type-keywords?field_type=${encodeURIComponent(field_type)}`
     : `${API_BASE_URL}/api/field-type-keywords`

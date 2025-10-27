@@ -1,5 +1,5 @@
 // 项目 API 接口
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+import { API_BASE_URL } from './apiConfig';
 
 interface Project {
   id: number;

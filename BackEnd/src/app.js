@@ -5,8 +5,40 @@ const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 中间件
-app.use(cors());
+// 中间件 - CORS 配置支持多环境
+const corsOptions = {
+  origin: function (origin, callback) {
+    // 允许无源请求（如移动应用、Postman等）
+    if (!origin) return callback(null, true);
+
+    // 允许的来源列表
+    const allowedOrigins = [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      /^http:\/\/192\.168\.\d+\.\d+:3000$/, // 允许局域网访问
+      /^http:\/\/10\.\d+\.\d+\.\d+:3000$/, // 允许10.x.x.x网段
+    ];
+
+    // 检查是否允许
+    const isAllowed = allowedOrigins.some((allowed) => {
+      if (typeof allowed === "string") {
+        return origin === allowed;
+      }
+      if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return false;
+    });
+
+    callback(null, isAllowed);
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  credentials: true,
+  maxAge: 86400, // 预检请求缓存24小时
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "50mb" })); // 增加JSON大小限制以支持PDF Base64
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
@@ -55,10 +87,11 @@ app.use("*", (req, res) => {
   });
 });
 
-// 启动服务器
-app.listen(PORT, () => {
+// 启动服务器 - 监听所有网络接口以支持局域网访问
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 LabelMedix Backend server is running on port ${PORT}`);
-  console.log(`📍 Server URL: http://localhost:${PORT}`);
+  console.log(`📍 Local URL: http://localhost:${PORT}`);
+  console.log(`🌐 Network access enabled: http://0.0.0.0:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/health`);
 });
 
