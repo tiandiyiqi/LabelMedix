@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Edit, Check, X, Search } from 'lucide-react'
+import { getApiBaseUrl } from '@/lib/apiConfig'
 
 interface Keyword {
   id: number
@@ -60,7 +61,8 @@ export default function KeywordListManager({ theme }: KeywordListManagerProps) {
   // 加载关键词数据
   const fetchKeywords = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/field-type-keywords')
+      const apiUrl = getApiBaseUrl()
+      const response = await fetch(`${apiUrl}/api/field-type-keywords`)
       const data = await response.json()
       if (data.success) {
         setKeywords(data.data.grouped)
@@ -81,7 +83,8 @@ export default function KeywordListManager({ theme }: KeywordListManagerProps) {
     if (!newKeyword.trim()) return
 
     try {
-      const response = await fetch('http://localhost:3001/api/field-type-keywords', {
+      const apiUrl = getApiBaseUrl()
+      const response = await fetch(`${apiUrl}/api/field-type-keywords`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,7 +111,8 @@ export default function KeywordListManager({ theme }: KeywordListManagerProps) {
     if (!editingText.trim()) return
 
     try {
-      const response = await fetch(`http://localhost:3001/api/field-type-keywords/${id}`, {
+      const apiUrl = getApiBaseUrl()
+      const response = await fetch(`${apiUrl}/api/field-type-keywords/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -135,7 +139,8 @@ export default function KeywordListManager({ theme }: KeywordListManagerProps) {
     if (!confirm(`确定要删除关键词"${keyword}"吗？`)) return
 
     try {
-      const response = await fetch(`http://localhost:3001/api/field-type-keywords/${id}`, {
+      const apiUrl = getApiBaseUrl()
+      const response = await fetch(`${apiUrl}/api/field-type-keywords/${id}`, {
         method: 'DELETE'
       })
 

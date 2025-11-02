@@ -13,6 +13,10 @@
  */
 export function getApiBaseUrl(): string {
   // 1. 优先级：手动指定的环境变量
+  if (typeof window !== 'undefined' && (window as any).__API_BASE_URL__) {
+    return (window as any).__API_BASE_URL__;
+  }
+  
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
@@ -25,9 +29,14 @@ export function getApiBaseUrl(): string {
   // 3. 浏览器环境下自动检测
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+    const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
     
-    // 如果在服务器IP上访问，自动使用该IP
+    // 如果在服务器IP或域名上访问，自动使用该地址
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      // 如果是 HTTPS，使用相同协议，否则默认 HTTP 3001端口
+      if (protocol === 'https:') {
+        return `${protocol}//${hostname}`;
+      }
       return `http://${hostname}:3001`;
     }
   }
@@ -36,6 +45,11 @@ export function getApiBaseUrl(): string {
   return 'http://localhost:3001';
 }
 
-// 导出常量供其他模块使用
-export const API_BASE_URL = getApiBaseUrl();
+// 导出函数，在客户端运行时动态获取
+export function getApiBaseUrlDynamic(): string {
+  return getApiBaseUrl();
+}
+
+// 导出常量供其他模块使用（客户端会重新计算）
+export const API_BASE_URL = typeof window !== 'undefined' ? getApiBaseUrl() : 'http://localhost:3001';
 

@@ -7,6 +7,7 @@ import { useLabelContext } from "../../lib/context/LabelContext"
 import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/renderer'
 import { SmartMixedFontText } from './SmartMixedFontText'
 import { getProjectById, getTranslationsByCountry } from "../../lib/projectApi"
+import { getApiBaseUrl } from '@/lib/apiConfig'
 
 // 字体文件路径
 const ArialFont = '/fonts/Arial.ttf'
@@ -142,7 +143,8 @@ export default function ProjectInfo() {
           }
 
           // 从服务器下载PDF文件
-          const pdfUrl = `http://localhost:3001${group.pdf_file_path}`;
+          const apiUrl = getApiBaseUrl()
+          const pdfUrl = `${apiUrl}${group.pdf_file_path}`;
           const response = await fetch(pdfUrl);
           
           if (!response.ok) {

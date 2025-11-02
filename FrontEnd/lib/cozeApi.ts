@@ -28,35 +28,51 @@ interface CozeWorkflowResponse {
  * @returns 文件上传结果
  */
 export const uploadFileToCoze = async (file: File): Promise<CozeFileUploadResponse> => {
+  // 验证环境变量
+  if (!process.env.NEXT_PUBLIC_COZE_BASE_URL) {
+    throw new Error('Coze API 基础URL未配置，请设置 NEXT_PUBLIC_COZE_BASE_URL 环境变量');
+  }
+  
+  if (!process.env.NEXT_PUBLIC_COZE_API_TOKEN) {
+    throw new Error('Coze API Token未配置，请设置 NEXT_PUBLIC_COZE_API_TOKEN 环境变量');
+  }
+  
   const formData = new FormData();
   formData.append('file', file);
   
   const uploadUrl = `${process.env.NEXT_PUBLIC_COZE_BASE_URL}/v1/files/upload`;
   
-  const response = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.NEXT_PUBLIC_COZE_API_TOKEN}`,
-    },
-    body: formData
-  });
-  
-  if (!response.ok) {
-    throw new Error(`文件上传失败: ${response.status} ${response.statusText}`);
-  }
-  
-  const result = await response.json();
-  
-  // 处理Coze API的返回格式：{code: 0, data: {...}, msg: ""}
-  if (result.code === 0 && result.data) {
-    const fileData = {
-      ...result.data,
-      file_id: result.data.id // 添加file_id字段，值等于id
-    };
-    console.log(`✅ 文件上传成功: ${fileData.file_name}`);
-    return fileData;
-  } else {
-    throw new Error(`文件上传失败: ${result.msg || '未知错误'}`);
+  try {
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_COZE_API_TOKEN}`,
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`文件上传失败: ${response.status} ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    
+    // 处理Coze API的返回格式：{code: 0, data: {...}, msg: ""}
+    if (result.code === 0 && result.data) {
+      const fileData = {
+        ...result.data,
+        file_id: result.data.id // 添加file_id字段，值等于id
+      };
+      console.log(`✅ 文件上传成功: ${fileData.file_name}`);
+      return fileData;
+    } else {
+      throw new Error(`文件上传失败: ${result.msg || '未知错误'}`);
+    }
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error('无法连接到 Coze API 服务器，请检查网络连接和 API 配置');
+    }
+    throw error;
   }
 };
 
