@@ -1,7 +1,7 @@
 "use client"
 
 import { useContext, useState, useEffect } from "react"
-import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck, Zap, Settings, AlignLeft, AlignRight } from "lucide-react"
+import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck, Zap, Settings, AlignLeft, AlignRight, RefreshCw } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
@@ -21,6 +21,8 @@ export default function LabelEditor() {
   
   // 字体默认值管理
   const FONT_DEFAULTS_KEY = 'labelmedix_font_defaults'
+  const PROJECT_FONT_SYNC_KEY = 'labelmedix_project_font_sync'
+  const PROJECT_APPLIED_KEY = 'labelmedix_project_applied' // 记录已应用的语言
   
   // 保存字体参数为默认值
   const saveFontDefaults = () => {
@@ -56,6 +58,41 @@ export default function LabelEditor() {
       showToast('未找到保存的默认值', 'error')
     }
   }
+
+  // 设置并应用：将当前字体设置应用到整个工单的所有语言
+  const setAndApplyFontSettings = () => {
+    if (!selectedProject?.id) {
+      showToast('请先选择一个工单', 'error')
+      return
+    }
+
+    // 只同步字体大小、间距、行高，不包括字体类型
+    const currentSettings = {
+      fontSize: labelData.fontSize,
+      spacing: labelData.spacing,
+      lineHeight: labelData.lineHeight,
+      sequenceFontSize: labelData.fontSize // 序号字符大小根据主字体大小同步
+    }
+
+    // 保存到项目级别的同步设置中
+    const projectKey = `${PROJECT_FONT_SYNC_KEY}_${selectedProject.id}`
+    localStorage.setItem(projectKey, JSON.stringify(currentSettings))
+    
+    // 清除所有语言的已应用标记，让新设置能够应用到所有语言
+    const appliedKeyPrefix = `${PROJECT_APPLIED_KEY}_${selectedProject.id}_`
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(appliedKeyPrefix)) {
+        localStorage.removeItem(key)
+      }
+    })
+    
+    // 立即更新当前语言的序号字体大小
+    updateLabelData({
+      sequenceFontSize: labelData.fontSize
+    })
+    
+    showToast('字体大小、间距、行高已应用到当前工单的所有语言', 'success')
+  }
   const [isImporting, setIsImporting] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [isFormatting, setIsFormatting] = useState(false)
@@ -75,6 +112,7 @@ export default function LabelEditor() {
   )
   const [availableSequences, setAvailableSequences] = useState<number[]>([])
   const [availableCountries, setAvailableCountries] = useState<string[]>([])
+  const [dataLoadCompleted, setDataLoadCompleted] = useState<boolean>(false)
   
 
   // 显示自动消失的提示
@@ -1021,6 +1059,39 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   useEffect(() => {
     setSelectedNumberState(Number(selectedNumber))
   }, [selectedNumber])
+
+  // 检查并应用项目级别的字体同步设置（在数据加载完成后执行）
+  useEffect(() => {
+    if (selectedProject?.id && selectedLanguage && dataLoadCompleted) {
+      const projectKey = `${PROJECT_FONT_SYNC_KEY}_${selectedProject.id}`
+      const appliedKey = `${PROJECT_APPLIED_KEY}_${selectedProject.id}_${selectedLanguage}`
+      const syncedSettings = localStorage.getItem(projectKey)
+      const hasApplied = localStorage.getItem(appliedKey)
+      
+      // 只有存在同步设置且该语言未应用过时才应用
+      if (syncedSettings && !hasApplied) {
+        try {
+          const settings = JSON.parse(syncedSettings)
+          
+          // 只应用字体大小、间距、行高，不包括字体类型
+          updateLabelData({
+            fontSize: settings.fontSize,
+            spacing: settings.spacing,
+            lineHeight: settings.lineHeight,
+            sequenceFontSize: settings.sequenceFontSize // 同步序号字符大小
+          })
+          
+          // 标记该语言已应用过同步设置
+          localStorage.setItem(appliedKey, 'true')
+        } catch (error) {
+          console.error('解析项目字体同步设置失败:', error)
+        }
+      }
+      
+      // 重置数据加载完成标记，为下次切换做准备
+      setDataLoadCompleted(false)
+    }
+  }, [selectedProject?.id, selectedLanguage, dataLoadCompleted, updateLabelData]) // 监听数据加载完成状态
   
 
 
@@ -1160,6 +1231,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             // 恢复格式化状态
             setFormatStates(formattedData.formatStates)
             
+            // 标记数据加载完成
+            setDataLoadCompleted(true)
+            
           } else {
             // 如果没有格式化状态，尝试加载原始状态
             const originalData = parseOriginalSummary(countryDetail.original_summary)
@@ -1188,6 +1262,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 companyName: 0
               })
               
+              // 标记数据加载完成
+              setDataLoadCompleted(true)
+              
             } else {
               // 如果既没有格式化数据也没有原始数据，清空所有字段（但保留标签设置）
               const mergedData = {
@@ -1212,6 +1289,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 drugDescription: 0,
                 companyName: 0
               })
+              
+              // 标记数据加载完成
+              setDataLoadCompleted(true)
               
             }
           }
@@ -2535,32 +2615,45 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             </div>
           </div>
 
-          {/* 第三行：默认值操作按钮 - 参考其他按钮样式 */}
+          {/* 第三行：默认值操作按钮 - 三个按钮平均分布 */}
           <div className="flex items-center gap-2">
             <button
               onClick={saveFontDefaults}
-              className="flex-1 px-3 py-1 rounded text-sm flex items-center justify-center gap-1 transition-opacity"
+              className="flex-1 px-2 py-1 rounded text-xs flex items-center justify-center gap-1 transition-opacity"
               style={{
                 backgroundColor: theme.primary,
                 color: theme.buttonText,
               }}
               title="将当前字体参数保存为默认值"
             >
-              <BookmarkPlus size={14} />
+              <BookmarkPlus size={12} />
               设为默认值
             </button>
             
             <button
               onClick={applyFontDefaults}
-              className="flex-1 px-3 py-1 rounded text-sm flex items-center justify-center gap-1 transition-opacity"
+              className="flex-1 px-2 py-1 rounded text-xs flex items-center justify-center gap-1 transition-opacity"
               style={{
                 backgroundColor: theme.secondary,
                 color: theme.buttonText,
               }}
               title="应用已保存的字体默认值"
             >
-              <BookmarkCheck size={14} />
+              <BookmarkCheck size={12} />
               应用默认值
+            </button>
+
+            <button
+              onClick={setAndApplyFontSettings}
+              className="flex-1 px-2 py-1 rounded text-xs flex items-center justify-center gap-1 transition-opacity"
+              style={{
+                backgroundColor: theme.accent,
+                color: theme.buttonText,
+              }}
+              title="将当前字体大小、间距、行高应用到整个工单的所有语言（序号字符大小会根据字体大小同步）"
+            >
+              <RefreshCw size={12} />
+              设置并应用
             </button>
           </div>
         </div>
