@@ -1,6 +1,6 @@
 "use client"
 
-import { useContext, useState, useEffect } from "react"
+import { useContext, useState, useEffect, useRef } from "react"
 import { ChevronDown, Edit3, Download, Sparkles, RotateCcw, Save, Type, Languages, Maximize2, Space, AlignJustify, BookmarkPlus, BookmarkCheck, Zap, Settings, AlignLeft, AlignRight, RefreshCw } from "lucide-react"
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
@@ -18,6 +18,9 @@ export default function LabelEditor() {
   const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName } = labelData
 
   const [selectedNumberState, setSelectedNumberState] = useState<number>(Number(selectedNumber))
+  
+  // 使用 ref 存储 originalSummary，避免闭包问题
+  const originalSummaryRef = useRef<string | undefined>(labelData.originalSummary)
   
   // 字体默认值管理
   const FONT_DEFAULTS_KEY = 'labelmedix_font_defaults'
@@ -106,6 +109,29 @@ export default function LabelEditor() {
     drugDescription: 0,
     companyName: 0
   })
+  
+  // 使用 ref 存储 formatStates，避免闭包问题
+  const formatStatesRef = useRef<{[key: string]: number}>(formatStates)
+  
+  // 使用 ref 存储格式化后的字段内容，避免闭包问题
+  const formattedFieldsRef = useRef<{
+    basicInfo?: string
+    numberField?: string
+    drugName?: string
+    numberOfSheets?: string
+    drugDescription?: string
+    companyName?: string
+  }>({})
+  
+  // 当 labelData.originalSummary 更新时，同步更新 ref
+  useEffect(() => {
+    originalSummaryRef.current = labelData.originalSummary
+  }, [labelData.originalSummary])
+  
+  // 当 formatStates 更新时，同步更新 ref
+  useEffect(() => {
+    formatStatesRef.current = formatStates
+  }, [formatStates])
   // 轻量提示（非阻断式）
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>(
     { visible: false, message: '', type: 'info' }
@@ -121,15 +147,22 @@ export default function LabelEditor() {
     window.setTimeout(() => setToast({ visible: false, message: '', type }), duration)
   }
 
-  // 创建原始状态JSON
-  const createOriginalSummary = () => {
+  // 创建原始状态JSON（可以接受参数以避免状态更新延迟问题）
+  const createOriginalSummary = (data?: {
+    basicInfo?: string
+    numberField?: string
+    drugName?: string
+    numberOfSheets?: string
+    drugDescription?: string
+    companyName?: string
+  }) => {
     return JSON.stringify({
-      basicInfo: basicInfo || '',
-      numberField: numberField || '',
-      drugName: drugName || '',
-      numberOfSheets: numberOfSheets || '',
-      drugDescription: drugDescription || '',
-      companyName: companyName || ''
+      basicInfo: (data?.basicInfo ?? labelData.basicInfo) || '',
+      numberField: (data?.numberField ?? labelData.numberField) || '',
+      drugName: (data?.drugName ?? labelData.drugName) || '',
+      numberOfSheets: (data?.numberOfSheets ?? labelData.numberOfSheets) || '',
+      drugDescription: (data?.drugDescription ?? labelData.drugDescription) || '',
+      companyName: (data?.companyName ?? labelData.companyName) || ''
     })
   }
 
@@ -368,6 +401,94 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   return Math.max(0, Math.min(underscoresPerSentence, 20)); // 最少0个下划线，最多20个下划线
 };
 
+  // ===== 数据库状态检查辅助函数 =====
+  
+  // 检查数据库状态：是否已初始化
+  const checkIfInitialized = async (projectId: number, countryCode: string): Promise<boolean> => {
+    try {
+      const countryDetail = await getCountryDetails(projectId, countryCode)
+      return !!countryDetail.original_summary && countryDetail.original_summary.trim() !== ''
+    } catch (error) {
+      return false
+    }
+  }
+
+  // 检查数据库状态：是否已格式化
+  const checkIfFormatted = async (projectId: number, countryCode: string): Promise<boolean> => {
+    try {
+      const countryDetail = await getCountryDetails(projectId, countryCode)
+      if (!countryDetail.formatted_summary) return false
+      
+      // 检查 formatted_summary 是否包含 formatStates
+      const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
+      return !!(formattedData && formattedData.formatStates)
+    } catch (error) {
+      return false
+    }
+  }
+
+  // 检查数据库状态：是否已保存PDF
+  const checkIfPdfSaved = async (projectId: number, countryCode: string): Promise<boolean> => {
+    try {
+      const countryDetail = await getCountryDetails(projectId, countryCode)
+      return !!countryDetail.pdf_file_path && countryDetail.pdf_file_path.trim() !== ''
+    } catch (error) {
+      return false
+    }
+  }
+
+  // ===== 链式自动工作流函数 =====
+  
+  // 链式初始化函数（在导入后自动调用，接受导入的数据以避免状态更新延迟）
+  const handleInitializeWithChain = async (importedData?: {
+    basicInfo?: string
+    numberField?: string
+    drugName?: string
+    numberOfSheets?: string
+    drugDescription?: string
+    companyName?: string
+  }) => {
+    if (!selectedProject || !selectedLanguage) return
+    
+    try {
+      await handleInitializeInternal(importedData) // 传递导入的数据
+      
+      // 等待状态更新完成
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // 初始化完成后，执行格式化（格式化函数会检查并加载 originalSummary）
+      handleFormatWithChain() // 调用链式格式化函数
+    } catch (error) {
+      console.error('链式初始化失败:', error)
+    }
+  }
+
+  // 链式格式化函数（在初始化后自动调用）
+  const handleFormatWithChain = async () => {
+    if (!selectedProject || !selectedLanguage) return
+    
+    try {
+      // 从数据库加载 originalSummary（确保获取最新值）
+      const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
+      if (!countryDetail.original_summary) {
+        console.error('无法从数据库获取原始状态，格式化失败')
+        showToast('无法获取原始状态，请先初始化', 'error')
+        return
+      }
+      
+      // 直接传递 originalSummary 给 handleFormat，避免状态更新延迟问题
+      await handleFormat(countryDetail.original_summary)
+      
+      // 格式化完成后，等待状态更新完成，然后保存
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // 调用保存函数
+      await handleSave()
+    } catch (error) {
+      console.error('链式格式化失败:', error)
+    }
+  }
+
 
   // 罗马数字序号映射
   const getRomanNumber = (num: number): string => {
@@ -435,7 +556,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     let startIndex = 1
 
     // 获取原始数据以计算行数/占位符
-    const originalData = parseOriginalSummary(labelData.originalSummary)
+    const originalData = parseOriginalSummary(originalSummaryRef.current || labelData.originalSummary)
     if (!originalData) {
       // 如果没有原始数据（例如未初始化），则从1开始
       return 1
@@ -458,8 +579,15 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     return startIndex
   }
 
-  // 初始化 - 保存当前状态为原始状态到数据库
-  const handleInitialize = async () => {
+  // 初始化 - 保存当前状态为原始状态到数据库（内部实现，可以接受数据参数）
+  const handleInitializeInternal = async (importedData?: {
+    basicInfo?: string
+    numberField?: string
+    drugName?: string
+    numberOfSheets?: string
+    drugDescription?: string
+    companyName?: string
+  }) => {
     if (!selectedProject || !selectedLanguage) { 
       showToast('请先选择项目和国别', 'info')
       return 
@@ -468,17 +596,32 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     try {
       setIsInitializing(true)
       
-      // 检查是否有内容
-      const hasContent = [basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName]
-        .some(content => content && content.trim() !== '')
+      // 检查是否有内容（如果有传入数据则使用传入数据，否则使用 labelData 中的值）
+      const dataToCheck = importedData ? [
+        importedData.basicInfo,
+        importedData.numberField,
+        importedData.drugName,
+        importedData.numberOfSheets,
+        importedData.drugDescription,
+        importedData.companyName
+      ] : [
+        labelData.basicInfo,
+        labelData.numberField,
+        labelData.drugName,
+        labelData.numberOfSheets,
+        labelData.drugDescription,
+        labelData.companyName
+      ]
+      
+      const hasContent = dataToCheck.some(content => content && content.trim() !== '')
       
       if (!hasContent) {
         showToast('当前内容为空，无法初始化', 'info')
         return
       }
       
-      // 创建包含6个字段的JSON格式原始状态
-      const originalSummaryJson = createOriginalSummary()
+      // 创建包含6个字段的JSON格式原始状态（传递导入的数据）
+      const originalSummaryJson = createOriginalSummary(importedData)
       
       // 保存原始状态到数据库
       await updateFormattedSummary(
@@ -489,7 +632,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         originalSummaryJson // 保存JSON格式的原始状态
       )
       
-      // 立即更新本地状态，确保格式化功能可以访问到原始状态
+      // 立即更新 ref 和状态，确保格式化功能可以访问到原始状态
+      originalSummaryRef.current = originalSummaryJson
       updateLabelData({
         originalSummary: originalSummaryJson
       })
@@ -504,10 +648,15 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     }
   }
 
+  // 初始化按钮处理器（供UI按钮使用）
+  const handleInitialize = async () => {
+    await handleInitializeInternal()
+  }
+
   // 基于原始状态的格式化功能 - 基本信息
   const handleFormatBasicInfo = () => {
-    // 解析原始状态JSON
-    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    // 解析原始状态JSON（优先使用 ref，避免闭包问题）
+    const originalData: any = parseOriginalSummary(originalSummaryRef.current || labelData.originalSummary)
     
     if (!originalData) {
       showToast('未找到原始状态，请先点击初始化', 'info')
@@ -605,14 +754,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       toastMessage = `基本信息分为一行（已添加罗马数字序号和间距：${lineSpaces}空格）`
     }
 
-    // 更新对应字段的内容
+    // 更新对应字段的内容（同时更新 ref 和 state）
+    formattedFieldsRef.current.basicInfo = formattedText // 立即更新 ref
     updateLabelData({ basicInfo: formattedText })
     
-    // 更新格式化状态
-    setFormatStates(prev => ({
-      ...prev,
+    // 更新格式化状态（先直接更新 ref，然后更新 state）
+    const newStates = {
+      ...formatStatesRef.current, // 使用 ref 中的最新值，而不是闭包中的 formatStates
       basicInfo: nextFormatState
-    }))
+    }
+    formatStatesRef.current = newStates // 立即更新 ref
+    setFormatStates(newStates) // 更新 state
 
     showToast(toastMessage, 'success')
   }
@@ -620,7 +772,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 基于原始状态的格式化功能 - 编号栏
   const handleFormatNumberField = () => {
     // 解析原始状态JSON
-    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    const originalData: any = parseOriginalSummary(originalSummaryRef.current || labelData.originalSummary)
     
     if (!originalData) {
       showToast('未找到原始状态，请先点击初始化', 'info')
@@ -711,14 +863,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       toastMessage = `编号栏分为一行（每个字段后添加${lineUnderscores}下划线）`
     }
 
-    // 更新对应字段的内容
+    // 更新对应字段的内容（同时更新 ref 和 state）
+    formattedFieldsRef.current.numberField = formattedText // 立即更新 ref
     updateLabelData({ numberField: formattedText })
     
-    // 更新格式化状态
-    setFormatStates(prev => ({
-      ...prev,
+    // 更新格式化状态（先直接更新 ref，然后更新 state）
+    const newStates = {
+      ...formatStatesRef.current, // 使用 ref 中的最新值
       numberField: nextFormatState
-    }))
+    }
+    formatStatesRef.current = newStates // 立即更新 ref
+    setFormatStates(newStates) // 更新 state
 
     showToast(toastMessage, 'success')
   }
@@ -726,7 +881,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 基于原始状态的格式化功能 - 药品名称
   const handleFormatDrugName = () => {
     // 解析原始状态JSON
-    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    const originalData: any = parseOriginalSummary(originalSummaryRef.current || labelData.originalSummary)
     
     if (!originalData) {
       showToast('未找到原始状态，请先点击初始化', 'info')
@@ -781,14 +936,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       toastMessage = '药品名称分为三行（已替换XX为罗马数字）'
     }
 
-    // 更新对应字段的内容
+    // 更新对应字段的内容（同时更新 ref 和 state）
+    formattedFieldsRef.current.drugName = formattedText // 立即更新 ref
     updateLabelData({ drugName: formattedText })
     
-    // 更新格式化状态
-    setFormatStates(prev => ({
-      ...prev,
+    // 更新格式化状态（先直接更新 ref，然后更新 state）
+    const newStates = {
+      ...formatStatesRef.current, // 使用 ref 中的最新值
       drugName: nextFormatState
-    }))
+    }
+    formatStatesRef.current = newStates // 立即更新 ref
+    setFormatStates(newStates) // 更新 state
 
     showToast(toastMessage, 'success')
   }
@@ -796,7 +954,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 基于原始状态的格式化功能 - 片数
   const handleFormatNumberOfSheets = () => {
     // 解析原始状态JSON
-    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    const originalData: any = parseOriginalSummary(originalSummaryRef.current || labelData.originalSummary)
     
     if (!originalData) {
       showToast('未找到原始状态，请先点击初始化', 'info')
@@ -851,14 +1009,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       toastMessage = '片数分为三行（已替换XX为罗马数字）'
     }
 
-    // 更新对应字段的内容
+    // 更新对应字段的内容（同时更新 ref 和 state）
+    formattedFieldsRef.current.numberOfSheets = formattedText // 立即更新 ref
     updateLabelData({ numberOfSheets: formattedText })
     
-    // 更新格式化状态
-    setFormatStates(prev => ({
-      ...prev,
+    // 更新格式化状态（先直接更新 ref，然后更新 state）
+    const newStates = {
+      ...formatStatesRef.current, // 使用 ref 中的最新值
       numberOfSheets: nextFormatState
-    }))
+    }
+    formatStatesRef.current = newStates // 立即更新 ref
+    setFormatStates(newStates) // 更新 state
 
     showToast(toastMessage, 'success')
   }
@@ -866,7 +1027,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 基于原始状态的格式化功能 - 药品说明
   const handleFormatDrugDescription = () => {
     // 解析原始状态JSON
-    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    const originalData: any = parseOriginalSummary(originalSummaryRef.current || labelData.originalSummary)
     
     if (!originalData) {
       showToast('未找到原始状态，请先点击初始化', 'info')
@@ -977,14 +1138,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     // 生成格式化文本
     const formattedText = optimizedLines.join('\n')
     
-    // 更新对应字段的内容
+    // 更新对应字段的内容（同时更新 ref 和 state）
+    formattedFieldsRef.current.drugDescription = formattedText // 立即更新 ref
     updateLabelData({ drugDescription: formattedText })
     
-    // 更新格式化状态（始终设为1，因为这是智能优化的结果）
-    setFormatStates(prev => ({
-      ...prev,
+    // 更新格式化状态（先直接更新 ref，然后更新 state）
+    const newStates = {
+      ...formatStatesRef.current, // 使用 ref 中的最新值
       drugDescription: 1
-    }))
+    }
+    formatStatesRef.current = newStates // 立即更新 ref
+    setFormatStates(newStates) // 更新 state
 
     showToast(`药品说明已智能优化为${optimizedLines.length}行（最大化利用率）`, 'success')
   }
@@ -992,7 +1156,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 基于原始状态的格式化功能 - 公司名称
   const handleFormatCompanyName = () => {
     // 解析原始状态JSON
-    const originalData: any = parseOriginalSummary(labelData.originalSummary)
+    const originalData: any = parseOriginalSummary(originalSummaryRef.current || labelData.originalSummary)
     
     if (!originalData) {
       showToast('未找到原始状态，请先点击初始化', 'info')
@@ -1043,14 +1207,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       toastMessage = '公司名称分为三行'
     }
 
-    // 更新对应字段的内容
+    // 更新对应字段的内容（同时更新 ref 和 state）
+    formattedFieldsRef.current.companyName = formattedText // 立即更新 ref
     updateLabelData({ companyName: formattedText })
     
-    // 更新格式化状态
-    setFormatStates(prev => ({
-      ...prev,
+    // 更新格式化状态（先直接更新 ref，然后更新 state）
+    const newStates = {
+      ...formatStatesRef.current, // 使用 ref 中的最新值
       companyName: nextFormatState
-    }))
+    }
+    formatStatesRef.current = newStates // 立即更新 ref
+    setFormatStates(newStates) // 更新 state
 
     showToast(toastMessage, 'success')
   }
@@ -1145,7 +1312,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   useEffect(() => {
     const textareas = document.querySelectorAll('textarea[data-auto-height="true"]') as NodeListOf<HTMLTextAreaElement>
     textareas.forEach(adjustTextareaHeight)
-  }, [basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName])
+  }, [labelData.basicInfo, labelData.numberField, labelData.drugName, labelData.numberOfSheets, labelData.drugDescription, labelData.companyName])
 
   // 加载当前项目的可用序号和国别码
   useEffect(() => {
@@ -1292,6 +1459,29 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               
               // 标记数据加载完成
               setDataLoadCompleted(true)
+              
+              // 检查字段是否为空，如果为空则自动触发导入
+              // 延迟执行，确保数据加载完成
+              setTimeout(async () => {
+                const allFieldsEmpty = [
+                  labelData.basicInfo,
+                  labelData.numberField,
+                  labelData.drugName,
+                  labelData.numberOfSheets,
+                  labelData.drugDescription,
+                  labelData.companyName
+                ].every(content => !content || content.trim() === '')
+                
+                // 检查数据库是否已初始化（双重检查）
+                const isInitialized = await checkIfInitialized(selectedProject.id, selectedLanguage)
+                const isFormatted = await checkIfFormatted(selectedProject.id, selectedLanguage)
+                
+                // 如果字段为空且数据库也没有初始化和格式化数据，则自动导入
+                if (allFieldsEmpty && !isInitialized && !isFormatted) {
+                  showToast('检测到空白内容，开始自动导入...', 'info')
+                  await handleImport() // 这会自动触发后续的链式调用
+                }
+              }, 500)
               
             }
           }
@@ -1517,14 +1707,19 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // 根据当前语言自动选择字体
       const autoFonts = getAutoFontsByLanguage(selectedLanguage)
       
-      // 更新到对应的字段类型区域，同时更新字体
-      updateLabelData({
+      // 准备导入的数据（直接使用，不依赖状态更新）
+      const importedData = {
         basicInfo: fieldTypeGroups.basic_info.join('\n'),
         numberField: fieldTypeGroups.number_field.join('\n'),
         drugName: fieldTypeGroups.drug_name.join('\n'),
         numberOfSheets: fieldTypeGroups.number_of_sheets.join('\n'),
         drugDescription: fieldTypeGroups.drug_description.join('\n'),
-        companyName: fieldTypeGroups.company_name.join('\n'),
+        companyName: fieldTypeGroups.company_name.join('\n')
+      }
+      
+      // 更新到对应的字段类型区域，同时更新字体
+      updateLabelData({
+        ...importedData,
         fontFamily: autoFonts.fontFamily,
         secondaryFontFamily: autoFonts.secondaryFontFamily
       })
@@ -1541,6 +1736,19 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       showToast('翻译内容已按字段类型分类导入', 'success')
       
+      // 导入完成后，检查是否需要初始化
+      if (selectedProject && selectedLanguage) {
+        // 检查数据库是否已初始化
+        const isInitialized = await checkIfInitialized(selectedProject.id, selectedLanguage)
+        
+        if (!isInitialized) {
+          // 直接传递导入的数据，不依赖状态更新
+          setTimeout(() => {
+            handleInitializeWithChain(importedData) // 传递导入的实际数据
+          }, 300)
+        }
+      }
+      
     } catch (error) {
       // console.error('导入失败:', error)
       showToast('导入失败，请重试', 'error')
@@ -1549,10 +1757,41 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     }
   }
 
-  // 格式化
-  const handleFormat = async () => {
+  // 格式化（可以接受 originalSummary 参数以避免状态更新延迟问题）
+  const handleFormat = async (originalSummaryOverride?: string) => {
     try {
       setIsFormatting(true)
+      
+      // 如果提供了 originalSummary 参数，临时设置到 labelData
+      let originalSummaryToUse = originalSummaryOverride || labelData.originalSummary
+      
+      // 如果仍然没有，从数据库加载
+      if (!originalSummaryToUse && selectedProject && selectedLanguage) {
+        const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
+        if (countryDetail.original_summary) {
+          originalSummaryToUse = countryDetail.original_summary
+          // 更新状态
+          updateLabelData({
+            originalSummary: originalSummaryToUse
+          })
+        }
+      }
+      
+      // 如果最终还是没有，无法格式化
+      if (!originalSummaryToUse) {
+        showToast('未找到原始状态，请先初始化', 'error')
+        return
+      }
+      
+      // 直接更新 ref，这样格式化函数可以立即使用（不依赖状态更新）
+      originalSummaryRef.current = originalSummaryToUse
+      
+      // 同时更新状态（用于其他地方）
+      if (!labelData.originalSummary || originalSummaryToUse !== labelData.originalSummary) {
+        updateLabelData({
+          originalSummary: originalSummaryToUse
+        })
+      }
       
       // 依次执行6个字段的"闪电"图标格式化功能
       // 1. 基本信息
@@ -1573,6 +1812,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // 6. 公司名称
       handleFormatCompanyName()
       
+      // 格式化函数已经直接更新了 ref，所以不需要等待
       showToast('所有字段已完成格式化', 'success')
       
     } catch (error) {
@@ -1583,17 +1823,24 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     }
   }
 
-  // 创建格式化状态JSON
+  // 格式化按钮处理器（供UI按钮使用，不接受参数）
+  const handleFormatButton = async () => {
+    await handleFormat()
+  }
+
+  // 创建格式化状态JSON（使用 ref 中的最新值，避免闭包问题）
   const createFormattedSummary = () => {
-    return JSON.stringify({
-      basicInfo: basicInfo || '',
-      numberField: numberField || '',
-      drugName: drugName || '',
-      numberOfSheets: numberOfSheets || '',
-      drugDescription: drugDescription || '',
-      companyName: companyName || '',
-      formatStates: formatStates // 保存格式化状态
-    })
+    // 优先使用 ref 中的值（格式化函数已更新），如果没有则使用 labelData
+    const summary = {
+      basicInfo: (formattedFieldsRef.current.basicInfo ?? labelData.basicInfo) || '',
+      numberField: (formattedFieldsRef.current.numberField ?? labelData.numberField) || '',
+      drugName: (formattedFieldsRef.current.drugName ?? labelData.drugName) || '',
+      numberOfSheets: (formattedFieldsRef.current.numberOfSheets ?? labelData.numberOfSheets) || '',
+      drugDescription: (formattedFieldsRef.current.drugDescription ?? labelData.drugDescription) || '',
+      companyName: (formattedFieldsRef.current.companyName ?? labelData.companyName) || '',
+      formatStates: formatStatesRef.current // 使用 ref 中的最新值，避免状态更新延迟问题
+    }
+    return JSON.stringify(summary)
   }
 
   // 从完整国别码中提取简短国别码（用于API调用）
@@ -1615,22 +1862,34 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
   // 保存标签
   const handleSave = async () => {
-    if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
+    if (!selectedProject) { 
+      showToast('请先选择一个项目', 'info'); 
+      return 
+    }
 
     try {
       setIsSaving(true)
       
+      // 注意：不要用旧的 formatStates (state) 覆盖 formatStatesRef.current！
+      // formatStatesRef.current 已经在格式化函数中更新了，直接使用即可
+      
       // 创建包含6个字段和格式化状态的JSON
       const formattedSummaryJson = createFormattedSummary()
       
-      // 同时保存合并的文本内容（用于PDF生成）和JSON格式的详细状态
+      // 调试：检查格式化状态是否为空
+      if (!formatStatesRef.current || Object.keys(formatStatesRef.current).length === 0) {
+        showToast('格式化状态为空，请先格式化', 'error')
+        return
+      }
+      
+      // 同时保存合并的文本内容（用于PDF生成）和JSON格式的详细状态（使用 labelData 中的最新值）
       const combinedContent = [
-        basicInfo,
-        numberField,
-        drugName,
-        numberOfSheets,
-        drugDescription,
-        companyName
+        labelData.basicInfo,
+        labelData.numberField,
+        labelData.drugName,
+        labelData.numberOfSheets,
+        labelData.drugDescription,
+        labelData.companyName
       ].filter(content => content && content.trim() !== '').join('\n')
       
       // 1. 保存格式化翻译汇总和字体设置
@@ -1668,7 +1927,6 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       showToast('标签设置和格式化状态已保存，PDF正在生成中...', 'success')
       
     } catch (error) {
-      // console.error('保存标签失败:', error)
       showToast('保存标签失败，请重试', 'error')
     } finally {
       setIsSaving(false)
@@ -2174,7 +2432,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 <div className="relative flex-1">
                   <div className="flex w-full">
                     <button
-                      onClick={handleFormat}
+                      onClick={handleFormatButton}
                       disabled={isFormatting}
                       className="flex-1 px-4 py-2 rounded-l text-sm flex items-center justify-center gap-1 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                       style={{
