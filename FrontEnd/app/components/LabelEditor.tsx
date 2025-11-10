@@ -683,7 +683,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
     // 获取当前格式化状态并计算下一个状态
     const currentFormatState = formatStates.basicInfo || 0
-    const nextFormatState = (currentFormatState + 1) % 3
+    const nextFormatState = (currentFormatState + 1) % 5
 
     let formattedText = ''
     let toastMessage = ''
@@ -740,6 +740,69 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `基本信息分为三行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}/${thirdLineSpaces}空格）`
+    } else if (nextFormatState === 3) {
+      // 分为四行
+      const sentencesPerLine = Math.ceil(sentenceCount / 4)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
+      const fourthLineSentences = sentences.slice(sentencesPerLine * 3)
+      
+      // 计算各行的间距
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineSpaces = spacingToSpaces(firstLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
+      const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
+      const thirdLineSpaces = spacingToSpaces(thirdLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const fourthLineSpacing = calculateSpacing(containerWidth, fourthLineSentences, labelData.fontSize, labelData.fontFamily)
+      const fourthLineSpaces = spacingToSpaces(fourthLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      // 添加计算出的空格
+      const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
+      const secondLine = secondLineSentences.join(safeRepeat(' ', secondLineSpaces))
+      const thirdLine = thirdLineSentences.join(safeRepeat(' ', thirdLineSpaces))
+      const fourthLine = fourthLineSentences.join(safeRepeat(' ', fourthLineSpaces))
+      
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = `基本信息分为四行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}/${thirdLineSpaces}/${fourthLineSpaces}空格）`
+    } else if (nextFormatState === 4) {
+      // 分为五行
+      const sentencesPerLine = Math.ceil(sentenceCount / 5)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
+      const fourthLineSentences = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4)
+      const fifthLineSentences = sentences.slice(sentencesPerLine * 4)
+      
+      // 计算各行的间距
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineSpaces = spacingToSpaces(firstLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
+      const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
+      const thirdLineSpaces = spacingToSpaces(thirdLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const fourthLineSpacing = calculateSpacing(containerWidth, fourthLineSentences, labelData.fontSize, labelData.fontFamily)
+      const fourthLineSpaces = spacingToSpaces(fourthLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      const fifthLineSpacing = calculateSpacing(containerWidth, fifthLineSentences, labelData.fontSize, labelData.fontFamily)
+      const fifthLineSpaces = spacingToSpaces(fifthLineSpacing, labelData.fontSize, labelData.fontFamily)
+      
+      // 添加计算出的空格
+      const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
+      const secondLine = secondLineSentences.join(safeRepeat(' ', secondLineSpaces))
+      const thirdLine = thirdLineSentences.join(safeRepeat(' ', thirdLineSpaces))
+      const fourthLine = fourthLineSentences.join(safeRepeat(' ', fourthLineSpaces))
+      const fifthLine = fifthLineSentences.join(safeRepeat(' ', fifthLineSpaces))
+      
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = `基本信息分为五行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}/${thirdLineSpaces}/${fourthLineSpaces}/${fifthLineSpaces}空格）`
     } else {
       // 分为一行
       // 计算整行的间距
@@ -795,7 +858,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
     // 获取当前格式化状态并计算下一个状态
     const currentFormatState = formatStates.numberField || 0
-    const nextFormatState = (currentFormatState + 1) % 3
+    const nextFormatState = (currentFormatState + 1) % 5
 
     let formattedText = ''
     let toastMessage = ''
@@ -851,6 +914,69 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `编号栏分为三行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}/${thirdLineUnderscores}下划线）`
+    } else if (nextFormatState === 3) {
+      // 分为四行
+      const sentencesPerLine = Math.ceil(sentenceCount / 4)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
+      const fourthLineSentences = sentences.slice(sentencesPerLine * 3)
+      
+      // 计算各行的间距和下划线数量
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
+      const secondLineUnderscores = spacingToUnderscores(secondLineSpacing, labelData.fontSize, labelData.fontFamily, secondLineSentences.length)
+      
+      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
+      const thirdLineUnderscores = spacingToUnderscores(thirdLineSpacing, labelData.fontSize, labelData.fontFamily, thirdLineSentences.length)
+      
+      const fourthLineSpacing = calculateSpacing(containerWidth, fourthLineSentences, labelData.fontSize, labelData.fontFamily)
+      const fourthLineUnderscores = spacingToUnderscores(fourthLineSpacing, labelData.fontSize, labelData.fontFamily, fourthLineSentences.length)
+      
+      // 为每个元素后面添加下划线
+      const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      const secondLine = secondLineSentences.map((text: string) => text + safeRepeat('_', secondLineUnderscores)).join('')
+      const thirdLine = thirdLineSentences.map((text: string) => text + safeRepeat('_', thirdLineUnderscores)).join('')
+      const fourthLine = fourthLineSentences.map((text: string) => text + safeRepeat('_', fourthLineUnderscores)).join('')
+      
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = `编号栏分为四行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}/${thirdLineUnderscores}/${fourthLineUnderscores}下划线）`
+    } else if (nextFormatState === 4) {
+      // 分为五行
+      const sentencesPerLine = Math.ceil(sentenceCount / 5)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
+      const fourthLineSentences = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4)
+      const fifthLineSentences = sentences.slice(sentencesPerLine * 4)
+      
+      // 计算各行的间距和下划线数量
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
+      const secondLineUnderscores = spacingToUnderscores(secondLineSpacing, labelData.fontSize, labelData.fontFamily, secondLineSentences.length)
+      
+      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
+      const thirdLineUnderscores = spacingToUnderscores(thirdLineSpacing, labelData.fontSize, labelData.fontFamily, thirdLineSentences.length)
+      
+      const fourthLineSpacing = calculateSpacing(containerWidth, fourthLineSentences, labelData.fontSize, labelData.fontFamily)
+      const fourthLineUnderscores = spacingToUnderscores(fourthLineSpacing, labelData.fontSize, labelData.fontFamily, fourthLineSentences.length)
+      
+      const fifthLineSpacing = calculateSpacing(containerWidth, fifthLineSentences, labelData.fontSize, labelData.fontFamily)
+      const fifthLineUnderscores = spacingToUnderscores(fifthLineSpacing, labelData.fontSize, labelData.fontFamily, fifthLineSentences.length)
+      
+      // 为每个元素后面添加下划线
+      const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      const secondLine = secondLineSentences.map((text: string) => text + safeRepeat('_', secondLineUnderscores)).join('')
+      const thirdLine = thirdLineSentences.map((text: string) => text + safeRepeat('_', thirdLineUnderscores)).join('')
+      const fourthLine = fourthLineSentences.map((text: string) => text + safeRepeat('_', fourthLineUnderscores)).join('')
+      const fifthLine = fifthLineSentences.map((text: string) => text + safeRepeat('_', fifthLineUnderscores)).join('')
+      
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = `编号栏分为五行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}/${thirdLineUnderscores}/${fourthLineUnderscores}/${fifthLineUnderscores}下划线）`
     } else {
       // 分为一行
       const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
@@ -908,7 +1034,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
     // 获取当前格式化状态并计算下一个状态
     const currentFormatState = formatStates.drugName || 0
-    const nextFormatState = (currentFormatState + 1) % 3
+    const nextFormatState = (currentFormatState + 1) % 5
 
     let formattedText = ''
     let toastMessage = ''
@@ -924,7 +1050,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '药品名称分为两行（已替换XX为罗马数字）'
-    } else {
+    } else if (nextFormatState === 3) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -932,6 +1058,25 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '药品名称分为三行（已替换XX为罗马数字）'
+    } else if (nextFormatState === 4) {
+      // 分为四行
+      const sentencesPerLine = Math.ceil(sentenceCount / 4)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3).join(' ')
+      const fourthLine = sentences.slice(sentencesPerLine * 3).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '药品名称分为四行（已替换XX为罗马数字）'
+    } else {
+      // 分为五行
+      const sentencesPerLine = Math.ceil(sentenceCount / 5)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3).join(' ')
+      const fourthLine = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4).join(' ')
+      const fifthLine = sentences.slice(sentencesPerLine * 4).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '药品名称分为五行（已替换XX为罗马数字）'
     }
 
     // 更新对应字段的内容（同时更新 ref 和 state）
@@ -981,7 +1126,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
     // 获取当前格式化状态并计算下一个状态
     const currentFormatState = formatStates.numberOfSheets || 0
-    const nextFormatState = (currentFormatState + 1) % 3
+    const nextFormatState = (currentFormatState + 1) % 5
 
     let formattedText = ''
     let toastMessage = ''
@@ -997,7 +1142,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '片数分为两行（已替换XX为罗马数字）'
-    } else {
+    } else if (nextFormatState === 3) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -1005,6 +1150,25 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '片数分为三行（已替换XX为罗马数字）'
+    } else if (nextFormatState === 4) {
+      // 分为四行
+      const sentencesPerLine = Math.ceil(sentenceCount / 4)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3).join(' ')
+      const fourthLine = sentences.slice(sentencesPerLine * 3).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '片数分为四行（已替换XX为罗马数字）'
+    } else {
+      // 分为五行
+      const sentencesPerLine = Math.ceil(sentenceCount / 5)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3).join(' ')
+      const fourthLine = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4).join(' ')
+      const fifthLine = sentences.slice(sentencesPerLine * 4).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '片数分为五行（已替换XX为罗马数字）'
     }
 
     // 更新对应字段的内容（同时更新 ref 和 state）
