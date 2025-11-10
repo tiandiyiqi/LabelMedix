@@ -540,11 +540,11 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       })
       processedText = processedLines.join('\n')
     } else if (fieldType === 'drugName' || fieldType === 'numberOfSheets') {
-      // 替换文本中的"XX"或"XXX"为罗马数字序号
+      // 替换文本中的"XX"或"XXX"为带括号的罗马数字序号
       processedText = text.replace(/XXX?/g, () => {
         const romanNumber = getRomanNumber(currentIndex)
         currentIndex++
-        return romanNumber
+        return `(${romanNumber})`
       })
     }
 
