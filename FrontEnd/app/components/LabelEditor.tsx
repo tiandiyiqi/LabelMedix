@@ -30,11 +30,10 @@ export default function LabelEditor() {
   // 保存字体参数为默认值
   const saveFontDefaults = () => {
     const defaults = {
-      fontFamily: labelData.fontFamily,
-      secondaryFontFamily: labelData.secondaryFontFamily,
       fontSize: labelData.fontSize,
       spacing: labelData.spacing,
-      lineHeight: labelData.lineHeight
+      lineHeight: labelData.lineHeight,
+      sequenceFontSize: labelData.fontSize // 序号字符大小根据主字体大小同步
     }
     localStorage.setItem(FONT_DEFAULTS_KEY, JSON.stringify(defaults))
     showToast('字体默认值已保存', 'success')
@@ -47,11 +46,10 @@ export default function LabelEditor() {
       try {
         const defaults = JSON.parse(savedDefaults)
         updateLabelData({
-          fontFamily: defaults.fontFamily,
-          secondaryFontFamily: defaults.secondaryFontFamily,
           fontSize: defaults.fontSize,
           spacing: defaults.spacing,
-          lineHeight: defaults.lineHeight
+          lineHeight: defaults.lineHeight,
+          sequenceFontSize: defaults.fontSize // 序号字符大小根据主字体大小同步
         })
         showToast('已应用字体默认值', 'success')
       } catch (error) {
