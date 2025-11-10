@@ -203,7 +203,7 @@ export default function LabelEditor() {
     // 中文字符
     chinese: 1.0,  // 中文字符固定为字体大小
     
-    // 大写英文字母
+    // 大写英文字母（罗马数字相关字符）
     'A': 0.722, 'B': 0.667, 'C': 0.722, 'D': 0.722, 'E': 0.611,
     'F': 0.556, 'G': 0.722, 'H': 0.722, 'I': 0.278, 'J': 0.5,
     'K': 0.667, 'L': 0.556, 'M': 0.833, 'N': 0.722, 'O': 0.778,
@@ -236,8 +236,8 @@ export default function LabelEditor() {
     '\u201c': 1.0, '\u201d': 1.0, '\u2018': 1.0, '\u2019': 1.0, '\uff08': 1.0, '\uff09': 1.0,
     '\u3010': 1.0, '\u3011': 1.0, '\u300a': 1.0, '\u300b': 1.0, '\u3008': 1.0, '\u3009': 1.0,
     
-    // 空格
-    ' ': 0.25,
+    // 空格（调整为更准确的值）
+    ' ': 0.35,  // 从0.25调整为0.35，更接近实际空格宽度
     
     // 其他特殊字符
     '·': 0.333, '—': 1.0, '…': 1.0, '™': 1.0, '©': 1.0, '®': 1.0,
@@ -285,6 +285,106 @@ export default function LabelEditor() {
       return totalWidth;
     }
     return 0;
+  };
+
+  // 通用的列对齐函数
+  const alignColumnsToFirstLine = (firstLineSentences: string[], otherLineSentences: string[], containerWidth: number, fontSize: number, fontFamily: string): string => {
+    if (otherLineSentences.length === 0) return ''
+    
+    // 直接计算第一行每个元素的x坐标（基于精确的文本宽度和间距）
+    const firstLineElementWidths = firstLineSentences.map(text => measureTextWidth(text, fontSize, fontFamily))
+    const firstLineTotalWidth = firstLineElementWidths.reduce((sum, width) => sum + width, 0)
+    const firstLineAvailableSpace = containerWidth - firstLineTotalWidth
+    const firstLineNumberOfGaps = firstLineSentences.length - 1
+    const firstLineSpacing = firstLineNumberOfGaps > 0 ? Math.max(firstLineAvailableSpace / firstLineNumberOfGaps, mmToPt(1)) : 0
+    
+    // 计算第一行实际使用的空格数量（基于间距计算）
+    const spaceWidth = fontSize * 0.35 // 空格宽度估算
+    const firstLineActualSpaces = spacingToSpaces(firstLineSpacing, fontSize, fontFamily)
+    const firstLineActualSpacing = firstLineActualSpaces * spaceWidth
+    
+    // 计算第一行每个元素的x坐标（使用实际间距）
+    const firstLinePositions: number[] = []
+    let currentX = 0
+    for (let i = 0; i < firstLineSentences.length; i++) {
+      firstLinePositions.push(currentX)
+      currentX += firstLineElementWidths[i] + firstLineActualSpacing
+    }
+    
+    // 确保其他行有足够的元素，不足时用空字符串填充
+    const alignedLine = []
+    for (let i = 0; i < firstLineSentences.length; i++) {
+      if (i < otherLineSentences.length) {
+        alignedLine.push(otherLineSentences[i])
+      } else {
+        alignedLine.push('') // 用空字符串填充
+      }
+    }
+    
+    // 使用第一行的x坐标对齐其他行
+    return alignedLine.map((text, index) => {
+      if (index === 0) return text // 第一列不需要前导空格
+      
+      // 计算当前文本的宽度
+      const currentWidth = measureTextWidth(text, fontSize, fontFamily)
+      
+      // 计算当前列应该开始的位置（使用第一行的列坐标）
+      const targetPosition = firstLinePositions[index]
+      
+      // 计算前面所有文本的总宽度（包括空格）
+      let previousTotalWidth = 0
+      for (let i = 0; i < index; i++) {
+        previousTotalWidth += measureTextWidth(alignedLine[i], fontSize, fontFamily)
+      }
+      
+      // 计算需要的前导空格数（更精确的计算）
+      const requiredSpacing = targetPosition - previousTotalWidth
+      
+      // 使用更精确的空格数量计算，避免累积误差
+      let spaces = 0
+      if (requiredSpacing > 0) {
+        spaces = Math.max(0, Math.floor(requiredSpacing / spaceWidth))
+        
+        // 检查是否需要额外调整（处理小数部分）
+        const actualSpacing = spaces * spaceWidth
+        const spacingDiff = requiredSpacing - actualSpacing
+        
+        // 如果误差超过半个空格宽度，考虑增加一个空格
+        if (spacingDiff > spaceWidth / 2) {
+          spaces += 1
+        }
+      }
+      
+      return safeRepeat(' ', spaces) + text
+    }).join('')
+  };
+
+  // 计算每列的x坐标
+  const calculateColumnPositions = (containerWidth: number, elements: string[], fontSize: number, fontFamily: string): number[] => {
+    // 安全检查：确保输入参数有效
+    if (!elements || elements.length === 0 || containerWidth <= 0 || fontSize <= 0) {
+      return []; // 返回空数组
+    }
+
+    // 计算每个元素的宽度
+    const elementWidths = elements.map(text => measureTextWidth(text, fontSize, fontFamily));
+    const totalContentWidth = elementWidths.reduce((sum, width) => sum + width, 0);
+    
+    // 计算可用空间和间距
+    const availableSpace = containerWidth - totalContentWidth;
+    const numberOfGaps = elements.length - 1;
+    const spacing = numberOfGaps > 0 ? Math.max(availableSpace / numberOfGaps, mmToPt(1)) : 0;
+    
+    // 计算每列的x坐标
+    const positions: number[] = [];
+    let currentX = 0;
+    
+    for (let i = 0; i < elements.length; i++) {
+      positions.push(currentX);
+      currentX += elementWidths[i] + spacing;
+    }
+    
+    return positions;
   };
 
   // 间距计算函数
@@ -701,21 +801,20 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const firstLineSentences = sentences.slice(0, sentencesPerLine)
       const secondLineSentences = sentences.slice(sentencesPerLine)
       
-      // 计算第一行的间距
-      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      // 第一行使用精确的间距计算（与alignColumnsToFirstLine函数保持一致）
+      const firstLineElementWidths = firstLineSentences.map(text => measureTextWidth(text, labelData.fontSize, labelData.fontFamily))
+      const firstLineTotalWidth = firstLineElementWidths.reduce((sum, width) => sum + width, 0)
+      const firstLineAvailableSpace = containerWidth - firstLineTotalWidth
+      const firstLineNumberOfGaps = firstLineSentences.length - 1
+      const firstLineSpacing = firstLineNumberOfGaps > 0 ? Math.max(firstLineAvailableSpace / firstLineNumberOfGaps, mmToPt(1)) : 0
       const firstLineSpaces = spacingToSpaces(firstLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      // 计算第二行的间距
-      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
-      const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      
-      // 添加计算出的空格
       const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
-      const secondLine = secondLineSentences.join(safeRepeat(' ', secondLineSpaces))
+      
+      // 第二行使用第一行的列坐标对齐
+      const secondLine = alignColumnsToFirstLine(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
       
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `基本信息分为两行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}空格）`
+      toastMessage = `基本信息分为两行（第一行${firstLineSpaces}空格，第二行与第一行列对齐）`
     } else if (nextFormatState === 2) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
@@ -723,23 +822,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
       const thirdLineSentences = sentences.slice(sentencesPerLine * 2)
       
-      // 计算各行的间距
+      // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
       const firstLineSpaces = spacingToSpaces(firstLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
-      const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
-      const thirdLineSpaces = spacingToSpaces(thirdLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      // 添加计算出的空格
       const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
-      const secondLine = secondLineSentences.join(safeRepeat(' ', secondLineSpaces))
-      const thirdLine = thirdLineSentences.join(safeRepeat(' ', thirdLineSpaces))
+      
+      // 第二行和第三行使用第一行的列坐标对齐
+      const secondLine = alignColumnsToFirstLine(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLine(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
       
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `基本信息分为三行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}/${thirdLineSpaces}空格）`
+      toastMessage = `基本信息分为三行（第一行${firstLineSpaces}空格，其他行与第一行列对齐）`
     } else if (nextFormatState === 3) {
       // 分为四行
       const sentencesPerLine = Math.ceil(sentenceCount / 4)
@@ -748,27 +841,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
       const fourthLineSentences = sentences.slice(sentencesPerLine * 3)
       
-      // 计算各行的间距
+      // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
       const firstLineSpaces = spacingToSpaces(firstLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
-      const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
-      const thirdLineSpaces = spacingToSpaces(thirdLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const fourthLineSpacing = calculateSpacing(containerWidth, fourthLineSentences, labelData.fontSize, labelData.fontFamily)
-      const fourthLineSpaces = spacingToSpaces(fourthLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      // 添加计算出的空格
       const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
-      const secondLine = secondLineSentences.join(safeRepeat(' ', secondLineSpaces))
-      const thirdLine = thirdLineSentences.join(safeRepeat(' ', thirdLineSpaces))
-      const fourthLine = fourthLineSentences.join(safeRepeat(' ', fourthLineSpaces))
+      
+      // 其他行使用第一行的列坐标对齐
+      const secondLine = alignColumnsToFirstLine(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLine(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fourthLine = alignColumnsToFirstLine(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
       
       formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `基本信息分为四行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}/${thirdLineSpaces}/${fourthLineSpaces}空格）`
+      toastMessage = `基本信息分为四行（第一行${firstLineSpaces}空格，其他行与第一行列对齐）`
     } else if (nextFormatState === 4) {
       // 分为五行
       const sentencesPerLine = Math.ceil(sentenceCount / 5)
@@ -778,31 +862,19 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const fourthLineSentences = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4)
       const fifthLineSentences = sentences.slice(sentencesPerLine * 4)
       
-      // 计算各行的间距
+      // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
       const firstLineSpaces = spacingToSpaces(firstLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
-      const secondLineSpaces = spacingToSpaces(secondLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
-      const thirdLineSpaces = spacingToSpaces(thirdLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const fourthLineSpacing = calculateSpacing(containerWidth, fourthLineSentences, labelData.fontSize, labelData.fontFamily)
-      const fourthLineSpaces = spacingToSpaces(fourthLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      const fifthLineSpacing = calculateSpacing(containerWidth, fifthLineSentences, labelData.fontSize, labelData.fontFamily)
-      const fifthLineSpaces = spacingToSpaces(fifthLineSpacing, labelData.fontSize, labelData.fontFamily)
-      
-      // 添加计算出的空格
       const firstLine = firstLineSentences.join(safeRepeat(' ', firstLineSpaces))
-      const secondLine = secondLineSentences.join(safeRepeat(' ', secondLineSpaces))
-      const thirdLine = thirdLineSentences.join(safeRepeat(' ', thirdLineSpaces))
-      const fourthLine = fourthLineSentences.join(safeRepeat(' ', fourthLineSpaces))
-      const fifthLine = fifthLineSentences.join(safeRepeat(' ', fifthLineSpaces))
+      
+      // 其他行使用第一行的列坐标对齐
+      const secondLine = alignColumnsToFirstLine(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLine(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fourthLine = alignColumnsToFirstLine(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fifthLine = alignColumnsToFirstLine(firstLineSentences, fifthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
       
       formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `基本信息分为五行（已添加罗马数字序号和间距：${firstLineSpaces}/${secondLineSpaces}/${thirdLineSpaces}/${fourthLineSpaces}/${fifthLineSpaces}空格）`
+      toastMessage = `基本信息分为五行（第一行${firstLineSpaces}空格，其他行与第一行列对齐）`
     } else {
       // 分为一行
       // 计算整行的间距
@@ -876,20 +948,19 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const firstLineSentences = sentences.slice(0, sentencesPerLine)
       const secondLineSentences = sentences.slice(sentencesPerLine)
       
-      // 计算第一行的间距和下划线数量
+      // 只计算第一行的间距和下划线数量
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
       const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
       
-      // 计算第二行的间距和下划线数量
-      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
-      const secondLineUnderscores = spacingToUnderscores(secondLineSpacing, labelData.fontSize, labelData.fontFamily, secondLineSentences.length)
+      // 第二行使用第一行的下划线数量进行对齐
+      const secondLineUnderscores = firstLineUnderscores
       
       // 为每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       const secondLine = secondLineSentences.map((text: string) => text + safeRepeat('_', secondLineUnderscores)).join('')
       
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `编号栏分为两行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}下划线）`
+      toastMessage = `编号栏分为两行（每个字段后添加${firstLineUnderscores}下划线，第二行与第一行对齐）`
     } else if (nextFormatState === 2) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
@@ -898,14 +969,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLineSentences = sentences.slice(sentencesPerLine * 2)
       
       // 计算各行的间距和下划线数量
+      // 只计算第一行的间距和下划线数量
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
       const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
       
-      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
-      const secondLineUnderscores = spacingToUnderscores(secondLineSpacing, labelData.fontSize, labelData.fontFamily, secondLineSentences.length)
-      
-      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
-      const thirdLineUnderscores = spacingToUnderscores(thirdLineSpacing, labelData.fontSize, labelData.fontFamily, thirdLineSentences.length)
+      // 第二行和第三行使用第一行的下划线数量进行对齐
+      const secondLineUnderscores = firstLineUnderscores
+      const thirdLineUnderscores = firstLineUnderscores
       
       // 为每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
@@ -913,7 +983,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = thirdLineSentences.map((text: string) => text + safeRepeat('_', thirdLineUnderscores)).join('')
       
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `编号栏分为三行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}/${thirdLineUnderscores}下划线）`
+      toastMessage = `编号栏分为三行（每个字段后添加${firstLineUnderscores}下划线，其他行与第一行对齐）`
     } else if (nextFormatState === 3) {
       // 分为四行
       const sentencesPerLine = Math.ceil(sentenceCount / 4)
@@ -922,18 +992,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
       const fourthLineSentences = sentences.slice(sentencesPerLine * 3)
       
-      // 计算各行的间距和下划线数量
+      // 只计算第一行的间距和下划线数量
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
       const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
       
-      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
-      const secondLineUnderscores = spacingToUnderscores(secondLineSpacing, labelData.fontSize, labelData.fontFamily, secondLineSentences.length)
-      
-      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
-      const thirdLineUnderscores = spacingToUnderscores(thirdLineSpacing, labelData.fontSize, labelData.fontFamily, thirdLineSentences.length)
-      
-      const fourthLineSpacing = calculateSpacing(containerWidth, fourthLineSentences, labelData.fontSize, labelData.fontFamily)
-      const fourthLineUnderscores = spacingToUnderscores(fourthLineSpacing, labelData.fontSize, labelData.fontFamily, fourthLineSentences.length)
+      // 其他行使用第一行的下划线数量进行对齐
+      const secondLineUnderscores = firstLineUnderscores
+      const thirdLineUnderscores = firstLineUnderscores
+      const fourthLineUnderscores = firstLineUnderscores
       
       // 为每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
@@ -942,7 +1008,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const fourthLine = fourthLineSentences.map((text: string) => text + safeRepeat('_', fourthLineUnderscores)).join('')
       
       formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `编号栏分为四行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}/${thirdLineUnderscores}/${fourthLineUnderscores}下划线）`
+      toastMessage = `编号栏分为四行（每个字段后添加${firstLineUnderscores}下划线，其他行与第一行对齐）`
     } else if (nextFormatState === 4) {
       // 分为五行
       const sentencesPerLine = Math.ceil(sentenceCount / 5)
@@ -952,21 +1018,15 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const fourthLineSentences = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4)
       const fifthLineSentences = sentences.slice(sentencesPerLine * 4)
       
-      // 计算各行的间距和下划线数量
+      // 只计算第一行的间距和下划线数量
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
       const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
       
-      const secondLineSpacing = calculateSpacing(containerWidth, secondLineSentences, labelData.fontSize, labelData.fontFamily)
-      const secondLineUnderscores = spacingToUnderscores(secondLineSpacing, labelData.fontSize, labelData.fontFamily, secondLineSentences.length)
-      
-      const thirdLineSpacing = calculateSpacing(containerWidth, thirdLineSentences, labelData.fontSize, labelData.fontFamily)
-      const thirdLineUnderscores = spacingToUnderscores(thirdLineSpacing, labelData.fontSize, labelData.fontFamily, thirdLineSentences.length)
-      
-      const fourthLineSpacing = calculateSpacing(containerWidth, fourthLineSentences, labelData.fontSize, labelData.fontFamily)
-      const fourthLineUnderscores = spacingToUnderscores(fourthLineSpacing, labelData.fontSize, labelData.fontFamily, fourthLineSentences.length)
-      
-      const fifthLineSpacing = calculateSpacing(containerWidth, fifthLineSentences, labelData.fontSize, labelData.fontFamily)
-      const fifthLineUnderscores = spacingToUnderscores(fifthLineSpacing, labelData.fontSize, labelData.fontFamily, fifthLineSentences.length)
+      // 其他行使用第一行的下划线数量进行对齐
+      const secondLineUnderscores = firstLineUnderscores
+      const thirdLineUnderscores = firstLineUnderscores
+      const fourthLineUnderscores = firstLineUnderscores
+      const fifthLineUnderscores = firstLineUnderscores
       
       // 为每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
@@ -976,7 +1036,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const fifthLine = fifthLineSentences.map((text: string) => text + safeRepeat('_', fifthLineUnderscores)).join('')
       
       formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
-      toastMessage = `编号栏分为五行（每个字段后添加${firstLineUnderscores}/${secondLineUnderscores}/${thirdLineUnderscores}/${fourthLineUnderscores}/${fifthLineUnderscores}下划线）`
+      toastMessage = `编号栏分为五行（每个字段后添加${firstLineUnderscores}下划线，其他行与第一行对齐）`
     } else {
       // 分为一行
       const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
