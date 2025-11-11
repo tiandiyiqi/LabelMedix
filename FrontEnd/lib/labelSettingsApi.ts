@@ -1,5 +1,21 @@
 import { API_BASE_URL } from './apiConfig';
 
+// 项目信息接口
+export interface ProjectInfo {
+  id: number;
+  job_name: string;
+  job_description?: string;
+  status: string;
+  total_files: number;
+  user_id: number;
+  label_width: number;
+  label_height: number;
+  label_category: string;
+  is_wrapped: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LabelSettings {
   id?: number;
   project_id: number;
@@ -43,7 +59,47 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-// 获取标签设置
+// 获取项目级别的标签配置
+export async function getProjectLabelConfig(projectId: number): Promise<{
+  label_width: number;
+  label_height: number;
+  label_category: string;
+  is_wrapped: boolean;
+}> {
+  try {
+    // 获取项目信息，其中包含项目级别的标签配置
+    const projectInfo = await getProjectInfo(projectId);
+    
+    return {
+      label_width: projectInfo.label_width || 100.0,
+      label_height: projectInfo.label_height || 60.0,
+      label_category: projectInfo.label_category || "阶梯标",
+      is_wrapped: projectInfo.is_wrapped || false,
+    };
+  } catch (error) {
+    console.error('获取项目级别标签配置失败:', error);
+    throw error;
+  }
+}
+
+// 获取项目信息
+export async function getProjectInfo(projectId: number): Promise<ProjectInfo> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${projectId}`);
+    const result: ApiResponse<ProjectInfo> = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || '获取项目信息失败');
+    }
+    
+    return result.data!;
+  } catch (error) {
+    console.error('获取项目信息失败:', error);
+    throw error;
+  }
+}
+
+// 获取标签设置（支持项目级别配置优先）
 export async function getLabelSettings(
   projectId: number, 
   countryCode?: string, 
@@ -62,6 +118,7 @@ export async function getLabelSettings(
       throw new Error(result.message || '获取标签设置失败');
     }
     
+    // 后端已经处理了项目级别配置的优先级，直接返回结果
     return result.data!;
   } catch (error) {
     console.error('获取标签设置失败:', error);

@@ -5,6 +5,15 @@ const getLabelSettings = async (req, res) => {
   try {
     const { projectId, countryCode, sequenceNumber } = req.params;
 
+    // 首先获取项目信息，以获取项目级别的标签设置
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "项目不存在",
+      });
+    }
+
     let whereCondition = { project_id: projectId };
 
     // 如果提供了国别代码和序号，查询特定设置
@@ -25,15 +34,15 @@ const getLabelSettings = async (req, res) => {
     });
 
     if (!settings) {
-      // 如果没有找到设置，返回默认值
+      // 如果没有找到设置，返回默认值（优先使用项目级别的配置）
       const defaultSettings = {
         project_id: parseInt(projectId),
         country_code: countryCode || null,
         sequence_number: sequenceNumber ? parseInt(sequenceNumber) : null,
-        label_width: 100.0,
-        label_height: 60.0,
-        label_category: "阶梯标",
-        is_wrapped: false,
+        label_width: project.label_width || 100.0,
+        label_height: project.label_height || 60.0,
+        label_category: project.label_category || "阶梯标",
+        is_wrapped: project.is_wrapped || false,
         current_width: 120.0,
         base_sheet: 0,
         adhesive_area: 0,
@@ -60,9 +69,19 @@ const getLabelSettings = async (req, res) => {
       });
     }
 
+    // 如果找到了LabelSettings记录，但项目级别的配置更优先，则合并配置
+    const mergedSettings = {
+      ...settings.toJSON(),
+      // 项目级别的配置优先（这4个参数在所有国别中保持一致）
+      label_width: project.label_width || settings.label_width,
+      label_height: project.label_height || settings.label_height,
+      label_category: project.label_category || settings.label_category,
+      is_wrapped: project.is_wrapped || settings.is_wrapped,
+    };
+
     res.json({
       success: true,
-      data: settings,
+      data: mergedSettings,
     });
   } catch (error) {
     console.error("获取标签设置失败:", error);
@@ -79,6 +98,15 @@ const saveLabelSettings = async (req, res) => {
   try {
     const { projectId, countryCode, sequenceNumber } = req.params;
     const settingsData = req.body;
+
+    // 首先获取项目信息
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "项目不存在",
+      });
+    }
 
     // 构建查询条件
     let whereCondition = { project_id: projectId };
@@ -100,6 +128,37 @@ const saveLabelSettings = async (req, res) => {
       where: whereCondition,
       returning: true,
     });
+
+    // 如果是项目级别的设置（没有国别和序号），或者修改了项目级别的4个参数，则同步更新Projects表
+    const isProjectLevel = !countryCode && !sequenceNumber;
+    const hasProjectLevelChanges = 
+      settingsData.label_width !== undefined ||
+      settingsData.label_height !== undefined ||
+      settingsData.label_category !== undefined ||
+      settingsData.is_wrapped !== undefined;
+
+    if (isProjectLevel || hasProjectLevelChanges) {
+      const projectUpdateData = {};
+      
+      // 只更新有变化的项目级别参数
+      if (settingsData.label_width !== undefined) {
+        projectUpdateData.label_width = settingsData.label_width;
+      }
+      if (settingsData.label_height !== undefined) {
+        projectUpdateData.label_height = settingsData.label_height;
+      }
+      if (settingsData.label_category !== undefined) {
+        projectUpdateData.label_category = settingsData.label_category;
+      }
+      if (settingsData.is_wrapped !== undefined) {
+        projectUpdateData.is_wrapped = settingsData.is_wrapped;
+      }
+
+      // 如果有需要更新的项目级别参数，则更新Projects表
+      if (Object.keys(projectUpdateData).length > 0) {
+        await project.update(projectUpdateData);
+      }
+    }
 
     res.json({
       success: true,

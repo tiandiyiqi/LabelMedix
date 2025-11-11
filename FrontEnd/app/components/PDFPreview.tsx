@@ -850,11 +850,7 @@ export default function PDFPreview() {
       // 使用自定义序号内容 - 不参与自动对齐判断
       sequenceText = labelData.customSequenceText;
       sequenceNum = 1; // 自定义序号不参与自动对齐，设为默认值
-      console.log('🔍 自定义序号模式:', {
-        customText: labelData.customSequenceText,
-        sequenceNum: sequenceNum,
-        sequencePosition: labelData.sequencePosition
-      });
+
     } else {
       // 使用自动序号（原有逻辑）
       const numStr = selectedNumber || '1';
@@ -872,12 +868,6 @@ export default function PDFPreview() {
       };
       
       sequenceText = getCircledNumber(sequenceNum);
-      console.log('🔍 自动序号模式:', {
-        selectedNumber: selectedNumber,
-        sequenceNum: sequenceNum,
-        sequenceText: sequenceText,
-        sequencePosition: labelData.sequencePosition
-      });
     }
     
     // 计算序号位置
@@ -894,37 +884,27 @@ export default function PDFPreview() {
     if (labelData.sequencePosition === 'center') {
       textAlign = 'center';
       justifyContent = 'center';
-      console.log('🎯 用户手动设置对齐方式: center');
+      
     } else if (labelData.sequencePosition === 'right') {
       textAlign = 'right';
       justifyContent = 'flex-end';
-      console.log('🎯 用户手动设置对齐方式: right');
+
     } else if (labelData.sequencePosition === 'left') {
       textAlign = 'left';
       justifyContent = 'flex-start';
-      console.log('🎯 用户手动设置对齐方式: left');
+
     } else {
       // 用户没有手动设置对齐方式时，根据序号自动调整（仅对自动序号生效）
       if (!labelData.customSequenceText) {
         const isOdd = sequenceNum % 2 === 1;
         textAlign = isOdd ? 'right' : 'left';
         justifyContent = isOdd ? 'flex-end' : 'flex-start';
-        console.log('🎯 自动对齐判断:', {
-          sequenceNum: sequenceNum,
-          isOdd: isOdd,
-          textAlign: textAlign,
-          justifyContent: justifyContent
-        });
+
       } else {
-        console.log('🎯 自定义序号使用默认对齐: left');
+        
       }
     }
     
-    console.log('📊 最终对齐设置:', {
-      textAlign: textAlign,
-      justifyContent: justifyContent,
-      customSequenceText: labelData.customSequenceText
-    });
 
     return (
       <View style={{

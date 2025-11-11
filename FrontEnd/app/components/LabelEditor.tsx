@@ -6,7 +6,7 @@ import { ThemeContext } from "./Layout"
 import { useLabelContext } from "../../lib/context/LabelContext"
 import { calculatePageWidth, calculatePageMargins } from '../utils/calculatePageWidth'
 import { getProjectById, getCountryDetails, getTranslationsByCountry, updateFormattedSummary, savePdfFile } from '@/lib/projectApi'
-import { getLabelSettings, saveLabelSettings, convertSettingsToLabelData, convertLabelDataToSettings } from '@/lib/labelSettingsApi'
+import { getLabelSettings, saveLabelSettings, convertSettingsToLabelData, convertLabelDataToSettings, getProjectLabelConfig } from '@/lib/labelSettingsApi'
 import { pdf } from '@react-pdf/renderer'
 
 export default function LabelEditor() {
@@ -2038,6 +2038,15 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             const shortCountryCode = extractShortCountryCode(selectedLanguage)
             const sequence = selectedProject.currentSequence || 1
             
+            // 先获取项目级别的标签配置
+            let projectLabelConfig = null
+            try {
+              projectLabelConfig = await getProjectLabelConfig(selectedProject.id)
+            } catch (projectConfigError) {
+              console.warn('⚠️ [useEffect-AutoLoad] 获取项目级别配置失败:', projectConfigError)
+            }
+            
+            // 获取标签设置（后端已处理项目级别配置优先级）
             const labelSettings = await getLabelSettings(
               selectedProject.id,
               shortCountryCode,
@@ -2049,6 +2058,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             setBackendDataExists(backendSettingsExist)
             
             labelDataFromSettings = convertSettingsToLabelData(labelSettings)
+            
+            // 如果项目级别配置存在，优先使用项目级别的标签配置
+            if (projectLabelConfig) {
+              labelDataFromSettings = {
+                ...labelDataFromSettings,
+                labelWidth: projectLabelConfig.labelWidth || labelDataFromSettings.labelWidth,
+                labelHeight: projectLabelConfig.labelHeight || labelDataFromSettings.labelHeight,
+                labelCategory: projectLabelConfig.labelCategory || labelDataFromSettings.labelCategory,
+                isWrapped: projectLabelConfig.isWrapped !== undefined ? projectLabelConfig.isWrapped : labelDataFromSettings.isWrapped
+              }
+            }
           } catch (labelError) {
             // console.warn('⚠️ [useEffect-AutoLoad] 加载标签设置失败，使用默认设置:', labelError)
             setBackendDataExists(false)

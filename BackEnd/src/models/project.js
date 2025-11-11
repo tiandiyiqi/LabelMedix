@@ -78,6 +78,31 @@ module.exports = (sequelize) => {
         type: DataTypes.INTEGER,
         allowNull: true,
       },
+      // 标签基本设置 - 项目级别配置
+      label_width: {
+        type: DataTypes.DECIMAL(6, 2),
+        allowNull: false,
+        defaultValue: 100.0,
+        comment: "标签宽度(mm)",
+      },
+      label_height: {
+        type: DataTypes.DECIMAL(6, 2),
+        allowNull: false,
+        defaultValue: 60.0,
+        comment: "标签高度(mm)",
+      },
+      label_category: {
+        type: DataTypes.STRING(50),
+        allowNull: false,
+        defaultValue: "阶梯标",
+        comment: "标签分类：阶梯标/单页左右1/单页左右2/单页上下1/单页上下2",
+      },
+      is_wrapped: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        comment: "是否缠绕标",
+      },
     },
     {
       sequelize,
