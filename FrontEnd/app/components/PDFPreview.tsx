@@ -555,16 +555,37 @@ export default function PDFPreview() {
   // const processedRemainingParagraphs = paragraphs.slice(2).map(para => processRemainingParagraphs(para));
 
   // ============================================
-  // 新的处理方式：6个字段独立处理，简单排列
+  // 新的处理方式：将编号栏、药品名称、片数、药品说明、公司名称组合成一个文本域
+  // 保持基本信息字段独立，其他字段合并处理以实现行距一致
   // ============================================
-  const processedFields = processSixFields(
-    basicInfo,
+  
+  // 处理基本信息字段（保持独立）
+  const basicInfoField = processFieldContent(basicInfo);
+  
+  // 将其他字段内容组合成一个文本域，用换行符分隔
+  const combinedContent = [
     numberField,
     drugName,
     numberOfSheets,
     drugDescription,
     companyName
-  );
+  ].filter(content => content && content.trim() !== '').join('\n');
+  
+  // 处理组合后的内容
+  const combinedFieldLines = processFieldContent(combinedContent);
+  
+  // 构建处理后的字段数组
+  const processedFields: FieldData[] = [];
+  
+  // 添加基本信息字段（如果有内容）
+  if (basicInfoField.length > 0) {
+    processedFields.push({ fieldName: 'basicInfo', lines: basicInfoField });
+  }
+  
+  // 添加组合字段（如果有内容）
+  if (combinedFieldLines.length > 0) {
+    processedFields.push({ fieldName: 'combinedField', lines: combinedFieldLines });
+  }
 
   // 更新样式以使用动态参数
   const dynamicStyles = StyleSheet.create({
@@ -666,7 +687,7 @@ export default function PDFPreview() {
   // 布局渲染函数系统
   // ============================================
   
-  // 1. 阶梯标布局（原有逻辑）
+  // 1. 阶梯标布局（修改后逻辑）
   const renderStepLayout = () => {
     return (
       <>
@@ -683,6 +704,10 @@ export default function PDFPreview() {
                 </SmartMixedFontText>
               </View>
             ))}
+            {/* 对于组合字段，在字段内部添加与行间距一致的间距 */}
+            {field.fieldName === 'combinedField' && fieldIndex < processedFields.length - 1 && (
+              <View style={{ height: mmToPt(spacing) }} />
+            )}
           </View>
         ))}
       </>
@@ -1430,4 +1455,5 @@ export default function PDFPreview() {
       {/* 操作按钮容器已上移到预览区域右侧 */}
     </div>
   );
-} 
+}
+//
