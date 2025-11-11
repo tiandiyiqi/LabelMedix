@@ -160,7 +160,7 @@ export default function LabelEditor() {
   }, [userModifiedSequencePosition]);
 
   // 包装的updateLabelData函数，专门处理sequencePosition的优先级逻辑
-  const wrappedUpdateLabelData = (data: Partial<LabelData>) => {
+  const wrappedUpdateLabelData = (data: Partial<typeof labelData>) => {
     // 如果更新中包含sequencePosition，并且用户还没有手动修改过，则标记为用户手动修改
     if (data.sequencePosition !== undefined && !userModifiedSequencePosition) {
       setUserModifiedSequencePosition(true)

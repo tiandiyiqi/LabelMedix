@@ -413,7 +413,7 @@ export default function PDFPreview() {
   const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, isWrapped, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, textAlign } = labelData
   
   // 获取包装的updateLabelData函数
-  const wrappedUpdateLabelData = (data: Partial<LabelData>) => {
+  const wrappedUpdateLabelData = (data: Partial<typeof labelData>) => {
     // 如果更新中包含sequencePosition，则使用包装函数
     if (data.sequencePosition !== undefined) {
       // 触发自定义事件，让LabelEditor组件知道用户手动修改了序号位置
