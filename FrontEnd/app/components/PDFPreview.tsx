@@ -562,19 +562,21 @@ export default function PDFPreview() {
   // 处理基本信息字段（保持独立）
   const basicInfoField = processFieldContent(basicInfo);
   
-  // 将其他字段内容组合成一个文本域，用换行符分隔
-  const combinedContent = [
-    numberField,
+  // 处理编号栏信息字段（独立）
+  const numberFieldLines = processFieldContent(numberField);
+  
+  // 将药品名称、片数、药品说明、公司名称字段组合成一个文本域
+  const drugRelatedContent = [
     drugName,
     numberOfSheets,
     drugDescription,
     companyName
   ].filter(content => content && content.trim() !== '').join('\n');
   
-  // 处理组合后的内容
-  const combinedFieldLines = processFieldContent(combinedContent);
+  // 处理组合后的药品相关字段内容
+  const drugRelatedFieldLines = processFieldContent(drugRelatedContent);
   
-  // 构建处理后的字段数组
+  // 构建处理后的字段数组（三个独立分组）
   const processedFields: FieldData[] = [];
   
   // 添加基本信息字段（如果有内容）
@@ -582,9 +584,14 @@ export default function PDFPreview() {
     processedFields.push({ fieldName: 'basicInfo', lines: basicInfoField });
   }
   
-  // 添加组合字段（如果有内容）
-  if (combinedFieldLines.length > 0) {
-    processedFields.push({ fieldName: 'combinedField', lines: combinedFieldLines });
+  // 添加编号栏信息字段（如果有内容）
+  if (numberFieldLines.length > 0) {
+    processedFields.push({ fieldName: 'numberField', lines: numberFieldLines });
+  }
+  
+  // 添加药品相关组合字段（如果有内容）
+  if (drugRelatedFieldLines.length > 0) {
+    processedFields.push({ fieldName: 'drugRelatedField', lines: drugRelatedFieldLines });
   }
 
   // 更新样式以使用动态参数
@@ -599,7 +606,7 @@ export default function PDFPreview() {
     },
   // 新的简单样式：用于6个字段独立显示
   fieldContainer: {
-    marginBottom: mmToPt(spacing),
+    marginBottom: 0, // 移除底部边距，由分组间间距控制
     width: '100%',
     paddingHorizontal: mmToPt(2), // 添加左右内边距，形成文本域效果
   },
@@ -704,9 +711,9 @@ export default function PDFPreview() {
                 </SmartMixedFontText>
               </View>
             ))}
-            {/* 对于组合字段，在字段内部添加与行间距一致的间距 */}
-            {field.fieldName === 'combinedField' && fieldIndex < processedFields.length - 1 && (
-              <View style={{ height: mmToPt(spacing) }} />
+            {/* 在分组间添加1.5倍行距（即1.5/1.2的比例关系） */}
+            {fieldIndex < processedFields.length - 1 && (
+              <View style={{ height: mmToPt(spacing * 0.99) }} />
             )}
           </View>
         ))}
