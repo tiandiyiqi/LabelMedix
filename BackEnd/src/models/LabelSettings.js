@@ -133,8 +133,8 @@ module.exports = (sequelize) => {
       sequence_position: {
         type: DataTypes.STRING(10),
         allowNull: false,
-        defaultValue: "right",
-        comment: "序号位置：left/center/right",
+        defaultValue: "",
+        comment: "序号位置：left/center/right，空字符串表示自动对齐",
       },
       sequence_font_size: {
         type: DataTypes.DECIMAL(4, 1),

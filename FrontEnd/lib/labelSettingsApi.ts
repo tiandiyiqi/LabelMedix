@@ -195,7 +195,7 @@ export function convertSettingsToLabelData(settings: LabelSettings): any {
     lineHeight: Number(settings.line_height) || 1.2,
     showSequenceNumber: Boolean(settings.show_sequence_number),
     customSequenceText: settings.custom_sequence_text || '',
-    sequencePosition: settings.sequence_position || 'right',
+    sequencePosition: settings.sequence_position || '',
     sequenceFontSize: Number(settings.sequence_font_size) || 9,
     sequenceOffsetX: Number(settings.sequence_offset_x) || 0,
     sequenceOffsetY: Number(settings.sequence_offset_y) || 0,

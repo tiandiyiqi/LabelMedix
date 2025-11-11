@@ -47,7 +47,7 @@ const getLabelSettings = async (req, res) => {
         line_height: 1.2,
         show_sequence_number: true,
         custom_sequence_text: "",
-        sequence_position: "right",
+        sequence_position: "",
         sequence_font_size: 9.0,
         sequence_offset_x: 0.0,
         sequence_offset_y: 0.0,

@@ -138,6 +138,38 @@ export default function LabelEditor() {
   const [availableCountries, setAvailableCountries] = useState<string[]>([])
   const [dataLoadCompleted, setDataLoadCompleted] = useState<boolean>(false)
   
+  // 跟踪用户是否手动修改了序号设置
+  const [userModifiedSequencePosition, setUserModifiedSequencePosition] = useState<boolean>(false)
+  
+  // 跟踪后端数据是否存在
+  const [backendDataExists, setBackendDataExists] = useState<boolean>(false)
+  
+  // 监听用户手动修改序号位置的事件
+  useEffect(() => {
+    const handleUserModifiedSequencePosition = () => {
+      if (!userModifiedSequencePosition) {
+        setUserModifiedSequencePosition(true);
+      }
+    };
+    
+    window.addEventListener('userModifiedSequencePosition', handleUserModifiedSequencePosition);
+    
+    return () => {
+      window.removeEventListener('userModifiedSequencePosition', handleUserModifiedSequencePosition);
+    };
+  }, [userModifiedSequencePosition]);
+
+  // 包装的updateLabelData函数，专门处理sequencePosition的优先级逻辑
+  const wrappedUpdateLabelData = (data: Partial<LabelData>) => {
+    // 如果更新中包含sequencePosition，并且用户还没有手动修改过，则标记为用户手动修改
+    if (data.sequencePosition !== undefined && !userModifiedSequencePosition) {
+      setUserModifiedSequencePosition(true)
+    }
+    
+    // 调用原始的updateLabelData函数
+    updateLabelData(data)
+  }
+  
 
   // 显示自动消失的提示
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info', duration = 2000) => {
@@ -2001,6 +2033,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           
           // 加载标签预览区参数设置
           let labelDataFromSettings = null
+          let backendSettingsExist = false
           try {
             const shortCountryCode = extractShortCountryCode(selectedLanguage)
             const sequence = selectedProject.currentSequence || 1
@@ -2011,9 +2044,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               sequence
             )
             
+            // 判断后端数据是否存在（非默认值）
+            backendSettingsExist = !!(labelSettings && labelSettings.sequence_position !== '')
+            setBackendDataExists(backendSettingsExist)
+            
             labelDataFromSettings = convertSettingsToLabelData(labelSettings)
           } catch (labelError) {
             // console.warn('⚠️ [useEffect-AutoLoad] 加载标签设置失败，使用默认设置:', labelError)
+            setBackendDataExists(false)
           }
           
           // 尝试解析JSON格式的格式化状态
@@ -2668,6 +2706,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           
           // 加载标签预览区参数设置
           let labelDataFromSettings = null
+          let backendSettingsExist = false
           try {
             const shortCountryCode = extractShortCountryCode(newLanguage)
             
@@ -2677,9 +2716,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               sequence
             )
             
+            // 判断后端数据是否存在（非默认值）
+            backendSettingsExist = !!(labelSettings && labelSettings.sequence_position !== '')
+            setBackendDataExists(backendSettingsExist)
+            
             labelDataFromSettings = convertSettingsToLabelData(labelSettings)
           } catch (labelError) {
             // console.warn('⚠️ 加载标签设置失败，使用默认设置:', labelError)
+            setBackendDataExists(false)
           }
           
           // 优先尝试解析JSON格式的格式化状态
@@ -2825,6 +2869,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           
           // 加载标签预览区参数设置
           let labelDataFromSettings = null
+          let backendSettingsExist = false
           try {
             const shortCountryCode = extractShortCountryCode(countryCode)
             
@@ -2834,9 +2879,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               newNumber
             )
             
+            // 判断后端数据是否存在（非默认值）
+            backendSettingsExist = !!(labelSettings && labelSettings.sequence_position !== '')
+            setBackendDataExists(backendSettingsExist)
+            
             labelDataFromSettings = convertSettingsToLabelData(labelSettings)
           } catch (labelError) {
             // console.warn('⚠️ 加载标签设置失败，使用默认设置:', labelError)
+            setBackendDataExists(false)
           }
           
           // 优先尝试解析JSON格式的格式化状态

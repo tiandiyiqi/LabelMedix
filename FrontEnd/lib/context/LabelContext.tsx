@@ -101,7 +101,7 @@ const defaultLabelData: LabelData = {
   // 序号设置默认值
   showSequenceNumber: true, // 默认显示序号
   customSequenceText: '', // 默认无自定义序号内容
-  sequencePosition: 'right', // 默认右对齐
+  sequencePosition: '', // 默认不设置，使用自动对齐
   sequenceFontSize: 9, // 默认字体大小 9pt
   sequenceOffsetX: 0, // 默认无水平位移
   sequenceOffsetY: 0, // 默认无垂直位移

@@ -411,6 +411,18 @@ export default function PDFPreview() {
   // ===== Context hooks =====
   const { labelData, updateLabelData } = useLabelContext()
   const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, isWrapped, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, textAlign } = labelData
+  
+  // 获取包装的updateLabelData函数
+  const wrappedUpdateLabelData = (data: Partial<LabelData>) => {
+    // 如果更新中包含sequencePosition，则使用包装函数
+    if (data.sequencePosition !== undefined) {
+      // 触发自定义事件，让LabelEditor组件知道用户手动修改了序号位置
+      window.dispatchEvent(new CustomEvent('userModifiedSequencePosition'));
+    }
+    
+    // 调用原始的updateLabelData函数
+    updateLabelData(data);
+  }
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -831,28 +843,41 @@ export default function PDFPreview() {
     if (!labelData.showSequenceNumber) return null;
 
     let sequenceText;
+    let sequenceNum: number;
     
     // 判断是否使用自定义序号内容
     if (labelData.customSequenceText) {
-      // 使用自定义序号内容
+      // 使用自定义序号内容 - 不参与自动对齐判断
       sequenceText = labelData.customSequenceText;
+      sequenceNum = 1; // 自定义序号不参与自动对齐，设为默认值
+      console.log('🔍 自定义序号模式:', {
+        customText: labelData.customSequenceText,
+        sequenceNum: sequenceNum,
+        sequencePosition: labelData.sequencePosition
+      });
     } else {
       // 使用自动序号（原有逻辑）
-      const sequenceNum = selectedNumber || '1';
+      const numStr = selectedNumber || '1';
+      sequenceNum = parseInt(numStr);
       
       // 将数字转换为带圆圈的数字（使用 Unicode 字符）
       // ① = U+2460 (1), ② = U+2461 (2), ... ⑳ = U+2473 (20)
-      const getCircledNumber = (num: string) => {
-        const n = parseInt(num);
-        if (n >= 1 && n <= 20) {
+      const getCircledNumber = (num: number) => {
+        if (num >= 1 && num <= 20) {
           // Unicode 字符：①-⑳ (U+2460 到 U+2473)
-          return String.fromCharCode(0x245F + n);
+          return String.fromCharCode(0x245F + num);
         }
         // 如果超过20，返回原数字加括号
         return `(${num})`;
       };
       
       sequenceText = getCircledNumber(sequenceNum);
+      console.log('🔍 自动序号模式:', {
+        selectedNumber: selectedNumber,
+        sequenceNum: sequenceNum,
+        sequenceText: sequenceText,
+        sequencePosition: labelData.sequencePosition
+      });
     }
     
     // 计算序号位置
@@ -860,13 +885,46 @@ export default function PDFPreview() {
     const bottom = mmToPt(margins.bottom + labelData.sequenceOffsetY);
     const width = mmToPt(currentWidth - margins.left - margins.right);
     
-    // 根据对齐方式调整位置
+    // 根据奇偶数自动调整对齐方式（仅对自动序号生效）
+    // 奇数：右对齐，偶数：左对齐
     let textAlign: 'left' | 'center' | 'right' = 'left';
+    let justifyContent: 'flex-start' | 'center' | 'flex-end' = 'flex-start';
+    
+    // 如果用户手动设置了对齐方式，则优先使用用户设置
     if (labelData.sequencePosition === 'center') {
       textAlign = 'center';
+      justifyContent = 'center';
+      console.log('🎯 用户手动设置对齐方式: center');
     } else if (labelData.sequencePosition === 'right') {
       textAlign = 'right';
+      justifyContent = 'flex-end';
+      console.log('🎯 用户手动设置对齐方式: right');
+    } else if (labelData.sequencePosition === 'left') {
+      textAlign = 'left';
+      justifyContent = 'flex-start';
+      console.log('🎯 用户手动设置对齐方式: left');
+    } else {
+      // 用户没有手动设置对齐方式时，根据序号自动调整（仅对自动序号生效）
+      if (!labelData.customSequenceText) {
+        const isOdd = sequenceNum % 2 === 1;
+        textAlign = isOdd ? 'right' : 'left';
+        justifyContent = isOdd ? 'flex-end' : 'flex-start';
+        console.log('🎯 自动对齐判断:', {
+          sequenceNum: sequenceNum,
+          isOdd: isOdd,
+          textAlign: textAlign,
+          justifyContent: justifyContent
+        });
+      } else {
+        console.log('🎯 自定义序号使用默认对齐: left');
+      }
     }
+    
+    console.log('📊 最终对齐设置:', {
+      textAlign: textAlign,
+      justifyContent: justifyContent,
+      customSequenceText: labelData.customSequenceText
+    });
 
     return (
       <View style={{
@@ -875,7 +933,7 @@ export default function PDFPreview() {
         left: left + mmToPt(labelData.sequenceOffsetX),
         width: width,
         flexDirection: 'row',
-        justifyContent: labelData.sequencePosition === 'center' ? 'center' : (labelData.sequencePosition === 'right' ? 'flex-end' : 'flex-start'),
+        justifyContent: justifyContent,
       }}>
         <Text style={{
           fontSize: labelData.sequenceFontSize,  // 使用用户设置的字体大小
@@ -1240,7 +1298,7 @@ export default function PDFPreview() {
                   {/* 左对齐 */}
                   <div className="relative group">
                     <button
-                      onClick={() => updateLabelData({ sequencePosition: 'left' })}
+                      onClick={() => wrappedUpdateLabelData({ sequencePosition: 'left' })}
                       className={`flex items-center justify-center p-0.5 rounded transition-colors ${
                         labelData.sequencePosition === 'left' 
                           ? 'bg-[#30B8D6]' 
@@ -1260,7 +1318,7 @@ export default function PDFPreview() {
                   {/* 居中对齐 */}
                   <div className="relative group">
                     <button
-                      onClick={() => updateLabelData({ sequencePosition: 'center' })}
+                      onClick={() => wrappedUpdateLabelData({ sequencePosition: 'center' })}
                       className={`flex items-center justify-center p-0.5 rounded transition-colors ${
                         labelData.sequencePosition === 'center' 
                           ? 'bg-[#30B8D6]' 
@@ -1280,7 +1338,7 @@ export default function PDFPreview() {
                   {/* 右对齐 */}
                   <div className="relative group">
                     <button
-                      onClick={() => updateLabelData({ sequencePosition: 'right' })}
+                      onClick={() => wrappedUpdateLabelData({ sequencePosition: 'right' })}
                       className={`flex items-center justify-center p-0.5 rounded transition-colors ${
                         labelData.sequencePosition === 'right' 
                           ? 'bg-[#30B8D6]' 
