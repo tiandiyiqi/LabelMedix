@@ -1313,6 +1313,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       toastMessage = `基本信息分为一行（已添加罗马数字序号和间距：${lineUnderscores}下划线）`
     }
 
+    // 在处理完对齐计算后，将结果中的下划线替换为两个空格（保持相同视觉宽度）
+    formattedText = formattedText.replace(/_/g, '  ')
+
     // 更新对应字段的内容（同时更新 ref 和 state）
     formattedFieldsRef.current.basicInfo = formattedText // 立即更新 ref
     updateLabelData({ basicInfo: formattedText })
