@@ -413,7 +413,7 @@ export default function PDFPreview() {
   const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, isWrapped, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, textAlign } = labelData
   
   // 获取包装的updateLabelData函数
-  const wrappedUpdateLabelData = (data: Partial<typeof labelData>) => {
+  const wrappedUpdateLabelData = useCallback((data: Partial<typeof labelData>) => {
     // 如果更新中包含sequencePosition，则使用包装函数
     if (data.sequencePosition !== undefined) {
       // 触发自定义事件，让LabelEditor组件知道用户手动修改了序号位置
@@ -422,7 +422,7 @@ export default function PDFPreview() {
     
     // 调用原始的updateLabelData函数
     updateLabelData(data);
-  }
+  }, [updateLabelData]);
 
   const themeContext = useContext(ThemeContext)
   if (!themeContext) throw new Error("Theme context must be used within ThemeContext.Provider")
@@ -473,39 +473,16 @@ export default function PDFPreview() {
     executePdfSave();
   }, [pdfSaveRequest, isClient]);
 
-  // 如果不是客户端环境，返回加载占位符
-  if (!isClient) {
-    return (
-      <div className="h-full flex flex-col card rounded-lg shadow w-full" style={{ borderColor: theme.border }}>
-        <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
-          <Eye className="mr-2" size={24} />
-          标签预览
-        </h2>
-        <div className="h-[400px] flex items-center justify-center text-gray-500 bg-gray-100 rounded-lg">
-          正在加载PDF预览...
-        </div>
-      </div>
-    );
-  }
-
-  // 计算当前页面宽度和边距
-  const currentWidth = calculatePageWidth(labelWidth, Number(selectedNumber));
-  const margins = calculatePageMargins(Number(selectedNumber));
-
-  // 创建动态页面样式
-  const pageStyle = {
-    ...styles.page,
-  };
-
+  // ===== 所有useCallback必须在条件判断之前 =====
   // 验证并获取有效的尺寸值
-  const getValidDimension = (value: number) => {
+  const getValidDimension = useCallback((value: number) => {
     const minSize = 20; // PDF模块要求的最小安全尺寸
     const maxSize = 1000;
     return Math.max(minSize, Math.min(maxSize, value));
-  };
+  }, []);
 
   // 处理尺寸输入
-  const handleDimensionInput = (e: React.KeyboardEvent<HTMLInputElement>, type: 'width' | 'height') => {
+  const handleDimensionInput = useCallback((e: React.KeyboardEvent<HTMLInputElement>, type: 'width' | 'height') => {
     if (e.key === 'Enter') {
       const value = Number(e.currentTarget.value);
       const validValue = getValidDimension(value);
@@ -524,18 +501,61 @@ export default function PDFPreview() {
       // 更新输入框显示的值
       e.currentTarget.value = validValue.toString();
     }
-  };
+  }, [updateLabelData, getValidDimension]);
 
   // 处理尺寸微调
-  const handleDimensionStep = (e: React.ChangeEvent<HTMLInputElement>, type: 'width' | 'height') => {
+  const handleDimensionStep = useCallback((e: React.ChangeEvent<HTMLInputElement>, type: 'width' | 'height') => {
     // 移除即时更新，让用户按回车确认
-  };
+  }, []);
 
   // 检查是否为从右到左的语言
-  const isRTL = () => {
+  const isRTL = useCallback(() => {
     if (!selectedLanguage) return false;
     const rtlKeywords = ['Arabic', 'Hebrew', 'Persian', 'Farsi', 'Urdu', 'Punjabi', 'Somali'];
     return rtlKeywords.some(keyword => selectedLanguage.includes(keyword));
+  }, [selectedLanguage]);
+
+  // 处理文本，分离中文和非中文字符
+  const processText = useCallback((text: string) => {
+    // 如果是阿拉伯语或其他RTL语言，不进行混合字体处理
+    if (selectedLanguage === 'AE') {
+      return <Text>{text}</Text>;
+    }
+    
+    // 使用SmartMixedFontText自动处理混合字体
+    return (
+      <SmartMixedFontText
+        primaryFont={fontFamily}
+        secondaryFont={secondaryFontFamily}
+      >
+        {text}
+      </SmartMixedFontText>
+    );
+  }, [selectedLanguage, fontFamily, secondaryFontFamily]);
+
+  // 如果不是客户端环境，返回加载占位符
+  if (!isClient) {
+    return (
+      <div className="h-full flex flex-col card rounded-lg shadow w-full" style={{ borderColor: theme.border }}>
+        <h2 className="text-xl font-bold mb-6 flex items-center" style={{ color: theme.primary }}>
+          <Eye className="mr-2" size={24} />
+          标签预览
+        </h2>
+        <div className="h-[400px] flex items-center justify-center text-gray-500 bg-gray-100 rounded-lg">
+          正在加载PDF预览...
+        </div>
+      </div>
+    );
+  }
+
+  // ===== 以下代码只在客户端执行 =====
+  // 计算当前页面宽度和边距
+  const currentWidth = calculatePageWidth(labelWidth || 0, Number(selectedNumber) || 1);
+  const margins = calculatePageMargins(Number(selectedNumber) || 1);
+
+  // 创建动态页面样式
+  const pageStyle = {
+    ...styles.page,
   };
 
   // 创建动态内容样式
@@ -683,24 +703,6 @@ export default function PDFPreview() {
       direction: textAlign === 'right' ? 'rtl' : 'ltr',
     },
   });
-
-  // 处理文本，分离中文和非中文字符
-  const processText = (text: string) => {
-    // 如果是阿拉伯语或其他RTL语言，不进行混合字体处理
-    if (selectedLanguage === 'AE') {
-      return <Text>{text}</Text>;
-    }
-    
-    // 使用SmartMixedFontText自动处理混合字体
-    return (
-      <SmartMixedFontText
-        primaryFont={fontFamily}
-        secondaryFont={secondaryFontFamily}
-      >
-        {text}
-      </SmartMixedFontText>
-    );
-  };
 
   // ============================================
   // 布局渲染函数系统
@@ -1136,7 +1138,7 @@ export default function PDFPreview() {
               <div className="flex items-center gap-2 px-2 py-0.5">
                 <input
                   type="text"
-                  value={currentWidth.toFixed(1)}
+                  value={typeof currentWidth === 'number' ? currentWidth.toFixed(1) : '0.0'}
                   readOnly
                   className="w-16 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
                   style={{ color: theme.text }}
@@ -1493,7 +1495,7 @@ export default function PDFPreview() {
 
       {/* 显示当前页面尺寸和页边距信息 */}
       {/* <div className="text-sm text-gray-500 mt-4 mb-4">
-        <div>当前页面尺寸：{currentWidth.toFixed(1)}mm × {labelHeight}mm</div>
+        <div>当前页面尺寸：{typeof currentWidth === 'number' ? currentWidth.toFixed(1) : '0.0'}mm × {labelHeight}mm</div>
         <div>页边距：上{margins.top}mm 下{margins.bottom}mm 左{margins.left}mm 右{margins.right}mm</div>
       </div> */}
 

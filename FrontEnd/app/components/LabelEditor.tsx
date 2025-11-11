@@ -2063,10 +2063,10 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             if (projectLabelConfig) {
               labelDataFromSettings = {
                 ...labelDataFromSettings,
-                labelWidth: projectLabelConfig.labelWidth || labelDataFromSettings.labelWidth,
-                labelHeight: projectLabelConfig.labelHeight || labelDataFromSettings.labelHeight,
-                labelCategory: projectLabelConfig.labelCategory || labelDataFromSettings.labelCategory,
-                isWrapped: projectLabelConfig.isWrapped !== undefined ? projectLabelConfig.isWrapped : labelDataFromSettings.isWrapped
+                labelWidth: projectLabelConfig.label_width || labelDataFromSettings.labelWidth,
+                labelHeight: projectLabelConfig.label_height || labelDataFromSettings.labelHeight,
+                labelCategory: projectLabelConfig.label_category || labelDataFromSettings.labelCategory,
+                isWrapped: projectLabelConfig.is_wrapped !== undefined ? projectLabelConfig.is_wrapped : labelDataFromSettings.isWrapped
               }
             }
           } catch (labelError) {
