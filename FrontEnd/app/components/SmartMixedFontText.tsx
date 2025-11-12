@@ -62,7 +62,7 @@ const detectCharacterType = (char: string): CharacterType => {
     (code >= 0x0E00 && code <= 0x0E7F) ||   // 泰文字符
     (code >= 0x0E80 && code <= 0x0EFF)      // 泰文扩展
   ) {
-    console.log('🔤 检测到泰文字符:', char, 'Unicode:', code.toString(16));
+    //console.log('🔤 检测到泰文字符:', char, 'Unicode:', code.toString(16));
     return 'primary';
   }
   
@@ -83,7 +83,7 @@ const detectCharacterType = (char: string): CharacterType => {
     (code >= 0x00DD && code <= 0x00DD) ||   // Ý
     (code >= 0x00FD && code <= 0x00FD)       // ý
   ) {
-    console.log('🔤 检测到越南文字符:', char, 'Unicode:', code.toString(16));
+    //console.log('🔤 检测到越南文字符:', char, 'Unicode:', code.toString(16));
     return 'primary';
   }
   
@@ -100,7 +100,7 @@ const detectCharacterType = (char: string): CharacterType => {
     (code >= 0x0D00 && code <= 0x0D7F) ||   // 马拉雅拉姆文字符
     (code >= 0x0D80 && code <= 0x0DFF)      // 僧伽罗文字符
   ) {
-    console.log('🔤 检测到印度语系字符:', char, 'Unicode:', code.toString(16));
+    //console.log('🔤 检测到印度语系字符:', char, 'Unicode:', code.toString(16));
     return 'primary';
   }
   
@@ -112,7 +112,7 @@ const detectCharacterType = (char: string): CharacterType => {
     (code >= 0xFB50 && code <= 0xFDFF) ||   // 阿拉伯文表现形式A
     (code >= 0xFE70 && code <= 0xFEFF)      // 阿拉伯文表现形式B
   ) {
-    console.log('🔤 检测到阿拉伯文字符:', char, 'Unicode:', code.toString(16));
+    //console.log('🔤 检测到阿拉伯文字符:', char, 'Unicode:', code.toString(16));
     return 'primary';
   }
   
@@ -121,7 +121,7 @@ const detectCharacterType = (char: string): CharacterType => {
     (code >= 0x0590 && code <= 0x05FF) ||   // 希伯来文字符
     (code >= 0xFB1D && code <= 0xFB4F)      // 希伯来文字母表现形式
   ) {
-    console.log('🔤 检测到希伯来文字符:', char, 'Unicode:', code.toString(16));
+    //console.log('🔤 检测到希伯来文字符:', char, 'Unicode:', code.toString(16));
     return 'primary';
   }
   
@@ -130,7 +130,7 @@ const detectCharacterType = (char: string): CharacterType => {
     (code >= 0x10A0 && code <= 0x10FF) ||   // 格鲁吉亚文字符
     (code >= 0x2D00 && code <= 0x2D2F)      // 格鲁吉亚文补充
   ) {
-    console.log('🔤 检测到格鲁吉亚文字符:', char, 'Unicode:', code.toString(16));
+    //console.log('🔤 检测到格鲁吉亚文字符:', char, 'Unicode:', code.toString(16));
     return 'primary';
   }
   
@@ -142,7 +142,7 @@ const detectCharacterType = (char: string): CharacterType => {
     (code >= 0xFB50 && code <= 0xFDFF) ||   // 阿拉伯文表现形式A
     (code >= 0xFE70 && code <= 0xFEFF)      // 阿拉伯文表现形式B
   ) {
-    console.log('🔤 检测到乌尔都文字符:', char, 'Unicode:', code.toString(16));
+    //console.log('🔤 检测到乌尔都文字符:', char, 'Unicode:', code.toString(16));
     return 'primary';
   }
   
@@ -151,7 +151,7 @@ const detectCharacterType = (char: string): CharacterType => {
     (code >= 0x0A00 && code <= 0x0A7F) ||   // 古木基文字符（旁遮普语使用古木基文）
     (code >= 0x0A80 && code <= 0x0AFF)      // 古吉拉特文字符
   ) {
-    console.log('🔤 检测到旁遮普文字符:', char, 'Unicode:', code.toString(16));
+    //console.log('🔤 检测到旁遮普文字符:', char, 'Unicode:', code.toString(16));
     return 'primary';
   }
   
@@ -236,7 +236,7 @@ export const SmartMixedFontText: React.FC<SmartMixedFontTextProps> = ({
   const segments = segmentText(children);
   
   if (debug) {
-    console.log('SmartMixedFontText 分段结果:', segments);
+    //console.log('SmartMixedFontText 分段结果:', segments);
   }
   
   // 渲染分段文本

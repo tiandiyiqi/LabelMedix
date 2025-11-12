@@ -550,7 +550,18 @@ export default function PDFPreview() {
 
   // ===== 以下代码只在客户端执行 =====
   // 计算当前页面宽度和边距
+  // console.log('🔍 [PDFPreview] 计算currentWidth:', {
+  //   labelWidth: labelWidth,
+  //   labelWidthType: typeof labelWidth,
+  //   selectedNumber: selectedNumber,
+  //   timestamp: new Date().toISOString()
+  // });
   const currentWidth = calculatePageWidth(labelWidth || 0, Number(selectedNumber) || 1);
+  // console.log('🔍 [PDFPreview] 计算结果:', {
+  //   currentWidth: currentWidth,
+  //   currentWidthType: typeof currentWidth,
+  //   timestamp: new Date().toISOString()
+  // });
   const margins = calculatePageMargins(Number(selectedNumber) || 1);
 
   // 创建动态页面样式

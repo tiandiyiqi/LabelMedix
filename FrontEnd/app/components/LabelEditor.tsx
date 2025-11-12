@@ -2060,11 +2060,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             labelDataFromSettings = convertSettingsToLabelData(labelSettings)
             
             // 如果项目级别配置存在，优先使用项目级别的标签配置
+            // ⚠️ 注意：从数据库来的DECIMAL类型是字符串，需要转换为数字
             if (projectLabelConfig) {
               labelDataFromSettings = {
                 ...labelDataFromSettings,
-                labelWidth: projectLabelConfig.label_width || labelDataFromSettings.labelWidth,
-                labelHeight: projectLabelConfig.label_height || labelDataFromSettings.labelHeight,
+                labelWidth: parseFloat(String(projectLabelConfig.label_width)) || labelDataFromSettings.labelWidth,
+                labelHeight: parseFloat(String(projectLabelConfig.label_height)) || labelDataFromSettings.labelHeight,
                 labelCategory: projectLabelConfig.label_category || labelDataFromSettings.labelCategory,
                 isWrapped: projectLabelConfig.is_wrapped !== undefined ? projectLabelConfig.is_wrapped : labelDataFromSettings.isWrapped
               }
@@ -2267,8 +2268,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
   // 正式格式化函数（预留）
   const format_official = (text: string): string => {
-    // 正式格式化逻辑待实现
-    // console.log('正式格式化函数调用，文本长度:', text.length)
+
     return text
   }
 
@@ -2701,6 +2701,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 处理语言选择变化
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLanguage = e.target.value
+
     
     // 使用统一的字体选择函数
     const autoFonts = getAutoFontsByLanguage(newLanguage)
@@ -2735,12 +2736,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               shortCountryCode,
               sequence
             )
+
             
             // 判断后端数据是否存在（非默认值）
             backendSettingsExist = !!(labelSettings && labelSettings.sequence_position !== '')
             setBackendDataExists(backendSettingsExist)
             
             labelDataFromSettings = convertSettingsToLabelData(labelSettings)
+
           } catch (labelError) {
             // console.warn('⚠️ 加载标签设置失败，使用默认设置:', labelError)
             setBackendDataExists(false)
@@ -2770,6 +2773,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
             }
+
             updateLabelData(mergedData)
             
             // 恢复格式化状态
@@ -2780,7 +2784,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             
             if (originalData) {
               // 如果有JSON格式的原始状态，恢复6个字段
-              updateLabelData({
+              const mergedDataOriginal = {
                 ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedLanguage: newLanguage,
                 fontFamily: countryDetail.font_family || autoFonts.fontFamily,
@@ -2798,10 +2802,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 companyName: originalData.companyName || '',
                 originalSummary: countryDetail.original_summary,
                 formatted_summary: countryDetail.formatted_summary
-              })
+              }
+
+              updateLabelData(mergedDataOriginal)
             } else {
               // 如果没有JSON格式数据，使用旧逻辑
-              updateLabelData({
+              const mergedDataOld = {
                 ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedLanguage: newLanguage,
                 fontFamily: countryDetail.font_family || autoFonts.fontFamily,
@@ -2814,7 +2820,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 basicInfo: countryDetail.formatted_summary || '未格式化',
                 originalSummary: countryDetail.original_summary,
                 formatted_summary: countryDetail.formatted_summary
-              })
+              }
+
+              updateLabelData(mergedDataOld)
             }
             
             // 重置格式化状态
@@ -2859,12 +2867,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     const newNumber = Number(e.target.value)
     setSelectedNumberState(newNumber)
     
+
+    
     // 确保labelWidth是数字类型
     const safeLabelWidth = typeof labelWidth === 'number' ? labelWidth : Number(labelWidth) || 100
+
     
     // 计算当前页面宽度和边距
     const currentWidth = calculatePageWidth(safeLabelWidth, newNumber)
     const margins = calculatePageMargins(newNumber)
+    
+
     
     // 输出页面相关信息
     
@@ -2898,12 +2911,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               shortCountryCode,
               newNumber
             )
+
             
             // 判断后端数据是否存在（非默认值）
             backendSettingsExist = !!(labelSettings && labelSettings.sequence_position !== '')
             setBackendDataExists(backendSettingsExist)
             
             labelDataFromSettings = convertSettingsToLabelData(labelSettings)
+
           } catch (labelError) {
             // console.warn('⚠️ 加载标签设置失败，使用默认设置:', labelError)
             setBackendDataExists(false)
@@ -2914,7 +2929,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           
           if (formattedData && formattedData.formatStates) {
             // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
-            updateLabelData({
+            const mergedDataFormatStates = {
               ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
               selectedNumber: e.target.value,
               selectedLanguage: countryCode,
@@ -2932,7 +2947,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               companyName: formattedData.companyName || '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
-            })
+            }
+
+            updateLabelData(mergedDataFormatStates)
             
             // 恢复格式化状态
             setFormatStates(formattedData.formatStates)

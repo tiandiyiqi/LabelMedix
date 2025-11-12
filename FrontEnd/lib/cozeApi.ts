@@ -176,7 +176,7 @@ export const batchProcessFiles = async (
     const fileInfoStrings = uploadResults.map(fileData => getFileInfoString(fileData));
     
     // 3. 一次性调用工作流处理所有文件
-    console.log(`🚀 开始AI解析 ${files.length} 个文件...`);
+    // console.log(`🚀 开始AI解析 ${files.length} 个文件...`);
     onStatusUpdate?.('parsing', `🚀 开始AI解析 ${files.length} 个文件...`);
     
     const result = await callCozeWorkflow(fileInfoStrings, jobName);

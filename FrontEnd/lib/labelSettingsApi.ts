@@ -234,28 +234,30 @@ export function convertLabelDataToSettings(labelData: any): Partial<LabelSetting
 
 // 将后端LabelSettings转换为前端LabelData格式
 export function convertSettingsToLabelData(settings: LabelSettings): any {
+  // Sequelize的DECIMAL类型返回字符串，需要显式转换为数字
+  // 使用parseFloat确保字符串格式的数字被正确转换
   return {
-    labelWidth: Number(settings.label_width) || 100,
-    labelHeight: Number(settings.label_height) || 60,
+    labelWidth: parseFloat(String(settings.label_width)) || 100,
+    labelHeight: parseFloat(String(settings.label_height)) || 60,
     labelCategory: settings.label_category || '阶梯标',
     isWrapped: Boolean(settings.is_wrapped),
-    currentWidth: Number(settings.current_width) || 120,
-    baseSheet: Number(settings.base_sheet) || 0,
-    adhesiveArea: Number(settings.adhesive_area) || 0,
-    wasteArea: Number(settings.waste_area) || 0,
-    codingArea: Number(settings.coding_area) || 0,
+    currentWidth: parseFloat(String(settings.current_width)) || 120,
+    baseSheet: parseInt(String(settings.base_sheet)) || 0,
+    adhesiveArea: parseInt(String(settings.adhesive_area)) || 0,
+    wasteArea: parseInt(String(settings.waste_area)) || 0,
+    codingArea: parseInt(String(settings.coding_area)) || 0,
     fontFamily: settings.font_family || 'Arial',
     secondaryFontFamily: settings.secondary_font_family || 'Arial',
-    fontSize: Number(settings.font_size) || 10,
+    fontSize: parseFloat(String(settings.font_size)) || 10,
     textAlign: settings.text_align || 'left',
-    spacing: Number(settings.spacing) || 1,
-    lineHeight: Number(settings.line_height) || 1.2,
+    spacing: parseFloat(String(settings.spacing)) || 1,
+    lineHeight: parseFloat(String(settings.line_height)) || 1.2,
     showSequenceNumber: Boolean(settings.show_sequence_number),
     customSequenceText: settings.custom_sequence_text || '',
     sequencePosition: settings.sequence_position || '',
-    sequenceFontSize: Number(settings.sequence_font_size) || 9,
-    sequenceOffsetX: Number(settings.sequence_offset_x) || 0,
-    sequenceOffsetY: Number(settings.sequence_offset_y) || 0,
-    sequenceRotation: Number(settings.sequence_rotation) || 0,
+    sequenceFontSize: parseFloat(String(settings.sequence_font_size)) || 9,
+    sequenceOffsetX: parseFloat(String(settings.sequence_offset_x)) || 0,
+    sequenceOffsetY: parseFloat(String(settings.sequence_offset_y)) || 0,
+    sequenceRotation: parseFloat(String(settings.sequence_rotation)) || 0,
   };
 }
