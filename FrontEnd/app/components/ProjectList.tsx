@@ -45,6 +45,9 @@ export default function ProjectList() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [projectName, setProjectName] = useState('')
   const [projectType, setProjectType] = useState('')
+  const [isWrapped, setIsWrapped] = useState(false)
+  const [labelWidth, setLabelWidth] = useState(100.0)
+  const [labelHeight, setLabelHeight] = useState(100.0)
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const [workStatus, setWorkStatus] = useState<'idle' | 'preparing' | 'uploading' | 'uploaded' | 'parsing' | 'parsed' | 'success' | 'error'>('idle')
   const [parseResults, setParseResults] = useState<any[]>([])
@@ -585,6 +588,9 @@ export default function ProjectList() {
         job_name: projectName,
         job_description: `包含 ${uploadedFiles.length} 个文件`,
         coze_result: classifiedResult as any,
+        is_wrapped: isWrapped,
+        label_width: labelWidth,
+        label_height: labelHeight,
       })
       
       // console.log('✅ 项目创建响应:', createdProject)
@@ -723,6 +729,9 @@ export default function ProjectList() {
   const resetForm = () => {
     setProjectName('')
     setProjectType('')
+    setIsWrapped(false)
+    setLabelWidth(100.0)
+    setLabelHeight(100.0)
     setUploadedFiles([])
     setWorkStatus('idle')
     setStatusMessage('')
@@ -779,6 +788,9 @@ export default function ProjectList() {
         job_name: projectName,
         job_description: `包含 ${uploadedFiles.length} 个文件`,
         coze_result: cozeResult as any,
+        is_wrapped: isWrapped,
+        label_width: labelWidth,
+        label_height: labelHeight,
       })
       
       // 更新项目列表
@@ -1059,6 +1071,61 @@ export default function ProjectList() {
                         <SelectItem value="单页上下2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下2</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+
+                {/* 缠绕标、标签宽度和标签高度 */}
+                <div className="flex space-x-3">
+                  {/* 缠绕标 */}
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="is-wrapped"
+                      checked={isWrapped}
+                      onChange={(e) => setIsWrapped(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="is-wrapped" className="text-base font-semibold text-gray-800 whitespace-nowrap">缠绕标</Label>
+                  </div>
+                  
+                  {/* 标签宽度 */}
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="label-width" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签宽度 (mm)</Label>
+                    <Input
+                      id="label-width"
+                      type="number"
+                      value={labelWidth.toFixed(1)}
+                      step="0.5"
+                      min="40"
+                      max="1000"
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        if (!isNaN(value)) {
+                          setLabelWidth(parseFloat(value.toFixed(1)));
+                        }
+                      }}
+                      className="w-24"
+                    />
+                  </div>
+                  
+                  {/* 标签高度 */}
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="label-height" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签高度 (mm)</Label>
+                    <Input
+                      id="label-height"
+                      type="number"
+                      value={labelHeight.toFixed(1)}
+                      step="0.5"
+                      min="40"
+                      max="1000"
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        if (!isNaN(value)) {
+                          setLabelHeight(parseFloat(value.toFixed(1)));
+                        }
+                      }}
+                      className="w-24"
+                    />
                   </div>
                 </div>
 

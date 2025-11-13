@@ -61,6 +61,9 @@ interface CreateProjectData {
   job_name: string;
   job_description?: string;
   coze_result?: any;
+  is_wrapped?: boolean;
+  label_width?: number;
+  label_height?: number;
 }
 
 /**
