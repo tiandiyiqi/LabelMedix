@@ -844,8 +844,8 @@ export default function ProjectList() {
         </div>
       </div>
 
-      <div className="p-4 flex-1">
-        <div className="relative mb-4">
+      <div className="p-4 flex-1 flex flex-col min-h-0">
+        <div className="relative mb-4 flex-shrink-0">
           <input
             type="text"
             placeholder="搜索项目（工单名称或描述）..."
@@ -884,18 +884,19 @@ export default function ProjectList() {
             )}
           </div>
         ) : (
-          <ul className="space-y-2">
-            {projects.map((project) => (
-              <li
-              key={project.id}
-              className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              style={{ 
-                backgroundColor: "white",
-                borderColor: theme.border,
-                borderWidth: "1px",
-              }}
-              onClick={() => handleProjectClick(project)}
-            >
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ul className="space-y-2 h-full overflow-y-auto pr-2">
+              {projects.map((project) => (
+                <li
+                key={project.id}
+                className="p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                style={{ 
+                  backgroundColor: "white",
+                  borderColor: theme.border,
+                  borderWidth: "1px",
+                }}
+                onClick={() => handleProjectClick(project)}
+              >
               {editingId === project.id ? (
                 <div className="flex items-center justify-between">
                   <input
@@ -958,13 +959,14 @@ export default function ProjectList() {
                   </div>
                 </div>
               )}
-            </li>
-          ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         
-        {/* 新建项目按钮 - 与项目列表保持距离 */}
-        <div className="mt-6">
+        {/* 新建项目按钮 - 固定在容器底部 */}
+        <div className="mt-4 flex-shrink-0">
           <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
             <DialogTrigger asChild>
               <button
