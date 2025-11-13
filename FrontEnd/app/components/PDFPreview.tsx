@@ -481,27 +481,37 @@ export default function PDFPreview() {
     return Math.max(minSize, Math.min(maxSize, value));
   }, []);
 
-  // 处理尺寸输入
+  // 处理尺寸输入（支持一位小数）
   const handleDimensionInput = useCallback((e: React.KeyboardEvent<HTMLInputElement>, type: 'width' | 'height') => {
     if (e.key === 'Enter') {
-      const value = Number(e.currentTarget.value);
+      const inputValue = e.currentTarget.value;
+      // 验证输入格式：允许整数或一位小数
+      const decimalRegex = /^\d+(\.\d{0,1})?$/;
+      
+      if (!decimalRegex.test(inputValue)) {
+        alert('请输入有效的数值（支持整数或一位小数）');
+        e.currentTarget.value = type === 'width' ? labelWidth.toFixed(1) : labelHeight.toFixed(1);
+        return;
+      }
+      
+      const value = parseFloat(inputValue);
       const validValue = getValidDimension(value);
       
       if (value !== validValue) {
         // 如果值被调整，通知用户
-        alert(`输入的值 ${value}mm 已被调整为安全值 ${validValue}mm\n（最小值: 40mm, 最大值: 1000mm）`);
+        alert(`输入的值 ${value.toFixed(1)}mm 已被调整为安全值 ${validValue.toFixed(1)}mm\n（最小值: 40mm, 最大值: 1000mm）`);
       }
       
       updateLabelData(
         type === 'width' 
-          ? { labelWidth: validValue }
-          : { labelHeight: validValue }
+          ? { labelWidth: parseFloat(validValue.toFixed(1)) }
+          : { labelHeight: parseFloat(validValue.toFixed(1)) }
       );
 
-      // 更新输入框显示的值
-      e.currentTarget.value = validValue.toString();
+      // 更新输入框显示的值（保留一位小数）
+      e.currentTarget.value = validValue.toFixed(1);
     }
-  }, [updateLabelData, getValidDimension]);
+  }, [updateLabelData, getValidDimension, labelWidth, labelHeight]);
 
   // 处理尺寸微调
   const handleDimensionStep = useCallback((e: React.ChangeEvent<HTMLInputElement>, type: 'width' | 'height') => {
@@ -1102,9 +1112,17 @@ export default function PDFPreview() {
               <div>
                 <input
                   type="number"
-                  value={labelWidth}
+                  value={labelWidth.toFixed(1)}
                   placeholder="最小值: 40mm"
-                  onChange={(e) => updateLabelData({ labelWidth: Number(e.target.value) || 100 })}
+                  step="0.5"
+                  min="40"
+                  max="1000"
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value)) {
+                      updateLabelData({ labelWidth: parseFloat(value.toFixed(1)) });
+                    }
+                  }}
                   onKeyDown={(e) => handleDimensionInput(e, 'width')}
                   className="px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
@@ -1124,9 +1142,17 @@ export default function PDFPreview() {
               <div>
                 <input
                   type="number"
-                  value={labelHeight}
+                  value={labelHeight.toFixed(1)}
                   placeholder="最小值: 40mm"
-                  onChange={(e) => updateLabelData({ labelHeight: Number(e.target.value) || 60 })}
+                  step="0.5"
+                  min="40"
+                  max="1000"
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (!isNaN(value)) {
+                      updateLabelData({ labelHeight: parseFloat(value.toFixed(1)) });
+                    }
+                  }}
                   onKeyDown={(e) => handleDimensionInput(e, 'height')}
                   className="px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
@@ -1141,26 +1167,42 @@ export default function PDFPreview() {
         </div>
         {/* 页面尺寸 */}
         <div className="flex space-x-3">
-          <div className="flex-1">
+          <div>
             <div className="flex items-center">
               <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
-                页面尺寸：
+                页面宽度：
               </label>
-              <div className="flex items-center gap-2 px-2 py-0.5">
+              <div>
                 <input
                   type="text"
                   value={typeof currentWidth === 'number' ? currentWidth.toFixed(1) : '0.0'}
                   readOnly
-                  className="w-16 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
-                  style={{ color: theme.text }}
+                  className="px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                    width: "100px",
+                  }}
                 />
-                <span className="text-sm" style={{ color: theme.text }}>×</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center">
+              <label className="text-sm font-medium px-2 py-0.5 min-w-[100px]" style={{ color: theme.text }}>
+                页面高度：
+              </label>
+              <div>
                 <input
                   type="text"
-                  value={labelHeight}
+                  value={labelHeight.toFixed(1)}
                   readOnly
-                  className="w-16 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300"
-                  style={{ color: theme.text }}
+                  className="px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
+                  style={{
+                    color: theme.text,
+                    backgroundColor: "white",
+                    width: "100px",
+                  }}
                 />
               </div>
             </div>
