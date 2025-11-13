@@ -1045,56 +1045,60 @@ export default function ProjectList() {
                   </div>
                 </div>
 
-                {/* 工单类型选择 */}
+                {/* 工单类型选择和缠绕标 */}
                 <div className="space-y-2">
-                  <div className="flex items-center space-x-3">
-                    <Label htmlFor="project-type" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签分类 *</Label>
-                    <Select value={projectType} onValueChange={(value) => {
-                      setProjectType(value)
-                      // 清除错误状态
-                      if (hasError && value.trim()) {
-                        setHasError(false)
-                        setWorkStatus('idle')
-                        setStatusMessage('')
-                      }
-                    }}>
-                      <SelectTrigger className={`flex-1 bg-white focus:ring-2 focus:ring-blue-500 transition-all rounded-md px-3 py-2 !border-[1px] !border-solid ${
-                        hasError && !projectType.trim() ? '!border-red-500 bg-red-50' : '!border-gray-200'
-                      } ${projectType ? 'text-gray-900' : 'text-gray-400'}`}>
-                        <SelectValue placeholder="请选择标签类型" />
-                      </SelectTrigger>
-                      <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
-                        <SelectItem value="阶梯型" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯型</SelectItem>
-                        <SelectItem value="单页左右1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右1</SelectItem>
-                        <SelectItem value="单页左右2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右2</SelectItem>
-                        <SelectItem value="单页上下1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下1</SelectItem>
-                        <SelectItem value="单页上下2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下2</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="flex space-x-3">
+                    {/* 标签分类 */}
+                    <div className="flex items-center space-x-2 flex-1">
+                      <Label htmlFor="project-type" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签分类 *</Label>
+                      <Select value={projectType} onValueChange={(value) => {
+                        setProjectType(value)
+                        // 清除错误状态
+                        if (hasError && value.trim()) {
+                          setHasError(false)
+                          setWorkStatus('idle')
+                          setStatusMessage('')
+                        }
+                      }}>
+                        <SelectTrigger className={`w-full bg-white focus:ring-2 focus:ring-blue-500 transition-all rounded-md px-3 py-2 !border-[1px] !border-solid ${
+                          hasError && !projectType.trim() ? '!border-red-500 bg-red-50' : '!border-gray-200'
+                        } ${projectType ? 'text-gray-900' : 'text-gray-400'}`}>
+                          <SelectValue placeholder="请选择标签类型" />
+                        </SelectTrigger>
+                        <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
+                          <SelectItem value="阶梯型" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯型</SelectItem>
+                          <SelectItem value="单页左右1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右1</SelectItem>
+                          <SelectItem value="单页左右2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右2</SelectItem>
+                          <SelectItem value="单页上下1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下1</SelectItem>
+                          <SelectItem value="单页上下2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下2</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* 缠绕标 */}
+                    <div className="flex items-center space-x-2 flex-1">
+                      <input
+                        type="checkbox"
+                        id="is-wrapped"
+                        checked={isWrapped}
+                        onChange={(e) => setIsWrapped(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <Label htmlFor="is-wrapped" className="text-base font-semibold text-gray-800 whitespace-nowrap">缠绕标</Label>
+                    </div>
                   </div>
                 </div>
 
-                {/* 缠绕标、标签宽度和标签高度 */}
+                {/* 标签宽度和标签高度 */}
                 <div className="flex space-x-3">
-                  {/* 缠绕标 */}
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="is-wrapped"
-                      checked={isWrapped}
-                      onChange={(e) => setIsWrapped(e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <Label htmlFor="is-wrapped" className="text-base font-semibold text-gray-800 whitespace-nowrap">缠绕标</Label>
-                  </div>
-                  
                   {/* 标签宽度 */}
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="label-width" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签宽度 (mm)</Label>
+                  <div className="flex items-center space-x-2 flex-1">
+                    <Label htmlFor="label-width" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签宽度</Label>
                     <Input
                       id="label-width"
                       type="number"
-                      value={labelWidth.toFixed(1)}
+                      placeholder=""
+                      value={labelWidth === 100 ? "" : labelWidth.toFixed(1)}
                       step="0.5"
                       min="40"
                       max="1000"
@@ -1102,19 +1106,22 @@ export default function ProjectList() {
                         const value = parseFloat(e.target.value);
                         if (!isNaN(value)) {
                           setLabelWidth(parseFloat(value.toFixed(1)));
+                        } else if (e.target.value === "") {
+                          setLabelWidth(100);
                         }
                       }}
-                      className="w-24"
+                      className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
                     />
                   </div>
                   
                   {/* 标签高度 */}
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="label-height" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签高度 (mm)</Label>
+                  <div className="flex items-center space-x-2 flex-1">
+                    <Label htmlFor="label-height" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签高度</Label>
                     <Input
                       id="label-height"
                       type="number"
-                      value={labelHeight.toFixed(1)}
+                      placeholder=""
+                      value={labelHeight === 100 ? "" : labelHeight.toFixed(1)}
                       step="0.5"
                       min="40"
                       max="1000"
@@ -1122,9 +1129,11 @@ export default function ProjectList() {
                         const value = parseFloat(e.target.value);
                         if (!isNaN(value)) {
                           setLabelHeight(parseFloat(value.toFixed(1)));
+                        } else if (e.target.value === "") {
+                          setLabelHeight(100);
                         }
                       }}
-                      className="w-24"
+                      className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
                     />
                   </div>
                 </div>
