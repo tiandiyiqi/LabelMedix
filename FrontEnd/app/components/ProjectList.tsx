@@ -1098,18 +1098,21 @@ export default function ProjectList() {
                     <Label htmlFor="label-width" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签宽度</Label>
                     <Input
                       id="label-width"
-                      type="number"
+                      type="text"
                       placeholder=""
-                      value={labelWidth === 100 ? "" : labelWidth.toFixed(1)}
-                      step="0.5"
-                      min="40"
-                      max="1000"
                       onChange={(e) => {
                         const value = parseFloat(e.target.value);
                         if (!isNaN(value)) {
-                          setLabelWidth(parseFloat(value.toFixed(1)));
-                        } else if (e.target.value === "") {
-                          setLabelWidth(100);
+                          setLabelWidth(value);
+                        }
+                      }}
+                      onBlur={() => {
+                        setLabelWidth(parseFloat(labelWidth.toFixed(1)));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setLabelWidth(parseFloat(labelWidth.toFixed(1)));
+                          e.currentTarget.blur();
                         }
                       }}
                       className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
@@ -1121,18 +1124,21 @@ export default function ProjectList() {
                     <Label htmlFor="label-height" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签高度</Label>
                     <Input
                       id="label-height"
-                      type="number"
+                      type="text"
                       placeholder=""
-                      value={labelHeight === 100 ? "" : labelHeight.toFixed(1)}
-                      step="0.5"
-                      min="40"
-                      max="1000"
                       onChange={(e) => {
                         const value = parseFloat(e.target.value);
                         if (!isNaN(value)) {
-                          setLabelHeight(parseFloat(value.toFixed(1)));
-                        } else if (e.target.value === "") {
-                          setLabelHeight(100);
+                          setLabelHeight(value);
+                        }
+                      }}
+                      onBlur={() => {
+                        setLabelHeight(parseFloat(labelHeight.toFixed(1)));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setLabelHeight(parseFloat(labelHeight.toFixed(1)));
+                          e.currentTarget.blur();
                         }
                       }}
                       className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
