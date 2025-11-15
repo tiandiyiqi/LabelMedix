@@ -35,6 +35,9 @@ export default function ProjectList() {
   const [editProjectName, setEditProjectName] = useState("")
   const [editLabelWidth, setEditLabelWidth] = useState<number>(100.0)
   const [editLabelHeight, setEditLabelHeight] = useState<number>(100.0)
+  // 添加临时输入状态，用于处理用户输入过程
+  const [tempLabelWidth, setTempLabelWidth] = useState<string>("")
+  const [tempLabelHeight, setTempLabelHeight] = useState<string>("")
   const [editLabelCategory, setEditLabelCategory] = useState("")
   const [editIsWrapped, setEditIsWrapped] = useState(false)
   const [countryGroups, setCountryGroups] = useState<Array<{ id: number; country_code: string; sequence_number: number; total_items: number }>>([])
@@ -178,7 +181,10 @@ export default function ProjectList() {
       setEditingProject(projectDetail)
       setEditProjectName(projectDetail.job_name)
       setEditLabelWidth(projectDetail.label_width ? Number(projectDetail.label_width) : 0)
-        setEditLabelHeight(projectDetail.label_height ? Number(projectDetail.label_height) : 0)
+      setEditLabelHeight(projectDetail.label_height ? Number(projectDetail.label_height) : 0)
+      // 初始化临时状态
+      setTempLabelWidth(projectDetail.label_width ? projectDetail.label_width.toString() : "0")
+      setTempLabelHeight(projectDetail.label_height ? projectDetail.label_height.toString() : "0")
       setEditLabelCategory(projectDetail.label_category || '')
       setEditIsWrapped(projectDetail.is_wrapped || false)
       
@@ -1330,26 +1336,28 @@ export default function ProjectList() {
                     id="edit-label-width"
                     type="text"
                     placeholder=""
-                    value={editLabelWidth.toFixed(1)}
+                    value={tempLabelWidth}
                     onChange={(e) => {
                       const value = e.target.value;
                       // 允许空值、整数、或最多1位小数的数字
                       if (value === '' || /^(\d+(\.\d{0,1})?)?$/.test(value)) {
-                        setEditLabelWidth(value === '' ? 0 : parseFloat(value));
+                        setTempLabelWidth(value);
                       }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        const numValue = parseFloat(editLabelWidth.toString());
+                        const numValue = parseFloat(tempLabelWidth);
                         if (!isNaN(numValue)) {
                           setEditLabelWidth(parseFloat(numValue.toFixed(1)));
+                          setTempLabelWidth(numValue.toFixed(1));
                         }
                       }
                     }}
                     onBlur={() => {
-                      const numValue = parseFloat(editLabelWidth.toString());
+                      const numValue = parseFloat(tempLabelWidth);
                       if (!isNaN(numValue)) {
                         setEditLabelWidth(parseFloat(numValue.toFixed(1)));
+                        setTempLabelWidth(numValue.toFixed(1));
                       }
                     }}
                     className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
@@ -1363,26 +1371,28 @@ export default function ProjectList() {
                     id="edit-label-height"
                     type="text"
                     placeholder=""
-                    value={editLabelHeight.toFixed(1)}
+                    value={tempLabelHeight}
                     onChange={(e) => {
                       const value = e.target.value;
                       // 允许空值、整数、或最多1位小数的数字
                       if (value === '' || /^(\d+(\.\d{0,1})?)?$/.test(value)) {
-                        setEditLabelHeight(value === '' ? 0 : parseFloat(value));
+                        setTempLabelHeight(value);
                       }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        const numValue = parseFloat(editLabelHeight.toString());
+                        const numValue = parseFloat(tempLabelHeight);
                         if (!isNaN(numValue)) {
                           setEditLabelHeight(parseFloat(numValue.toFixed(1)));
+                          setTempLabelHeight(numValue.toFixed(1));
                         }
                       }
                     }}
                     onBlur={() => {
-                      const numValue = parseFloat(editLabelHeight.toString());
+                      const numValue = parseFloat(tempLabelHeight);
                       if (!isNaN(numValue)) {
                         setEditLabelHeight(parseFloat(numValue.toFixed(1)));
+                        setTempLabelHeight(numValue.toFixed(1));
                       }
                     }}
                     className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
