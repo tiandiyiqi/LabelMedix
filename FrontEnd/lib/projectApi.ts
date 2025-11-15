@@ -19,6 +19,10 @@ interface Project {
     countryCount: number;
     translationCount: number;
   };
+  is_wrapped?: boolean;
+  label_width?: number;
+  label_height?: number;
+  label_category?: string;
 }
 
 interface TranslationItem {
@@ -64,6 +68,7 @@ interface CreateProjectData {
   is_wrapped?: boolean;
   label_width?: number;
   label_height?: number;
+  label_category?: string;
 }
 
 /**

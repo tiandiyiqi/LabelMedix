@@ -141,12 +141,16 @@ exports.createProject = async (req, res) => {
   const transaction = await db.sequelize.transaction();
 
   try {
-    const { job_name, job_description, user_id, coze_result } = req.body;
+    const { job_name, job_description, user_id, coze_result, is_wrapped, label_width, label_height, label_category } = req.body;
 
     // 添加调试日志
     console.log("📥 创建项目请求数据:");
     console.log("  job_name:", job_name);
     console.log("  job_description:", job_description);
+    console.log("  is_wrapped:", is_wrapped);
+    console.log("  label_width:", label_width);
+    console.log("  label_height:", label_height);
+    console.log("  label_category:", label_category);
     console.log("  coze_result:", JSON.stringify(coze_result, null, 2));
 
     // 验证必需字段
@@ -186,6 +190,10 @@ exports.createProject = async (req, res) => {
           job_description: job_description || project.job_description,
           status:
             coze_result && coze_result.data ? "processing" : project.status,
+          is_wrapped: is_wrapped !== undefined ? is_wrapped : project.is_wrapped,
+          label_width: label_width !== undefined ? label_width : project.label_width,
+          label_height: label_height !== undefined ? label_height : project.label_height,
+          label_category: label_category || project.label_category,
         },
         { transaction }
       );
@@ -198,6 +206,10 @@ exports.createProject = async (req, res) => {
           user_id,
           status: coze_result && coze_result.data ? "processing" : "draft",
           total_files: 0,
+          is_wrapped: is_wrapped !== undefined ? is_wrapped : false,
+          label_width: label_width !== undefined ? label_width : 100.0,
+          label_height: label_height !== undefined ? label_height : 60.0,
+          label_category: label_category || "阶梯标",
         },
         { transaction }
       );
@@ -436,7 +448,7 @@ exports.createProject = async (req, res) => {
 exports.updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { job_name, job_description, status } = req.body;
+    const { job_name, job_description, status, label_width, label_height, label_category, is_wrapped } = req.body;
 
     const project = await Project.findByPk(id);
 
@@ -454,6 +466,10 @@ exports.updateProject = async (req, res) => {
           ? job_description
           : project.job_description,
       status: status || project.status,
+      label_width: label_width !== undefined ? label_width : project.label_width,
+      label_height: label_height !== undefined ? label_height : project.label_height,
+      label_category: label_category !== undefined ? label_category : project.label_category,
+      is_wrapped: is_wrapped !== undefined ? is_wrapped : project.is_wrapped,
     });
 
     res.json({

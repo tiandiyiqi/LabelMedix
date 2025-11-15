@@ -2,6 +2,7 @@
 
 import { useState, useContext, useEffect } from "react"
 import { Search, Plus, Edit, Trash2, Save, GripVertical, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Checkbox } from '@/components/ui/checkbox'
 import { ThemeContext } from "./Layout"
 import { useLabelContext } from "@/lib/context/LabelContext"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -32,6 +33,10 @@ export default function ProjectList() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [editProjectName, setEditProjectName] = useState("")
+  const [editLabelWidth, setEditLabelWidth] = useState<number>(100.0)
+  const [editLabelHeight, setEditLabelHeight] = useState<number>(100.0)
+  const [editLabelCategory, setEditLabelCategory] = useState("")
+  const [editIsWrapped, setEditIsWrapped] = useState(false)
   const [countryGroups, setCountryGroups] = useState<Array<{ id: number; country_code: string; sequence_number: number; total_items: number }>>([])
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [selectedCountryCode, setSelectedCountryCode] = useState<string | null>(null)
@@ -172,6 +177,10 @@ export default function ProjectList() {
       const projectDetail = await getProjectById(project.id)
       setEditingProject(projectDetail)
       setEditProjectName(projectDetail.job_name)
+      setEditLabelWidth(projectDetail.label_width ? Number(projectDetail.label_width) : 0)
+        setEditLabelHeight(projectDetail.label_height ? Number(projectDetail.label_height) : 0)
+      setEditLabelCategory(projectDetail.label_category || '')
+      setEditIsWrapped(projectDetail.is_wrapped || false)
       
       // 按序号排序国别翻译组
       const sortedGroups = (projectDetail.translationGroups || [])
@@ -231,9 +240,13 @@ export default function ProjectList() {
     if (!editingProject) return
     
     try {
-      // 1. 更新项目名称
+      // 1. 更新项目名称和标签参数
       await updateProject(editingProject.id, {
         job_name: editProjectName,
+        label_width: editLabelWidth,
+        label_height: editLabelHeight,
+        label_category: editLabelCategory,
+        is_wrapped: editIsWrapped,
       })
       
       // 2. 更新国别顺序
@@ -591,6 +604,7 @@ export default function ProjectList() {
         is_wrapped: isWrapped,
         label_width: labelWidth,
         label_height: labelHeight,
+        label_category: projectType,
       })
       
       // console.log('✅ 项目创建响应:', createdProject)
@@ -791,6 +805,7 @@ export default function ProjectList() {
         is_wrapped: isWrapped,
         label_width: labelWidth,
         label_height: labelHeight,
+        label_category: projectType,
       })
       
       // 更新项目列表
@@ -1271,6 +1286,109 @@ export default function ProjectList() {
                 onChange={(e) => setEditProjectName(e.target.value)}
                 className="mt-1 h-8 text-sm placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
+            </div>
+
+            {/* 标签参数设置 */}
+            <div className="px-4 py-3 border-b bg-gray-50 flex-shrink-0">
+              <div className="flex space-x-3">
+                {/* 标签分类 */}
+                <div className="flex items-center space-x-2 flex-1">
+                  <Label htmlFor="edit-label-category" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签分类</Label>
+                  <Select
+                    value={editLabelCategory}
+                    onValueChange={setEditLabelCategory}
+                  >
+                    <SelectTrigger className="w-full h-8 bg-white focus:ring-2 focus:ring-blue-500 transition-all rounded-md px-3 py-2 !border-[1px] !border-solid !border-gray-200 text-sm text-gray-900">
+                      <SelectValue placeholder="请选择标签类型" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
+                      <SelectItem value="阶梯型" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯型</SelectItem>
+                      <SelectItem value="单页左右1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右1</SelectItem>
+                      <SelectItem value="单页左右2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右2</SelectItem>
+                      <SelectItem value="单页上下1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下1</SelectItem>
+                      <SelectItem value="单页上下2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 缠绕标 */}
+                <div className="flex items-center space-x-2 flex-1">
+                  <input
+                    type="checkbox"
+                    id="edit-is-wrapped"
+                    checked={editIsWrapped}
+                    onChange={(e) => setEditIsWrapped(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <Label htmlFor="edit-is-wrapped" className="text-base font-semibold text-gray-800 whitespace-nowrap">缠绕标</Label>
+                </div>
+
+                {/* 标签宽度 */}
+                <div className="flex items-center space-x-2 flex-1">
+                  <Label htmlFor="edit-label-width" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签宽度</Label>
+                  <Input
+                    id="edit-label-width"
+                    type="text"
+                    placeholder=""
+                    value={editLabelWidth.toFixed(1)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // 允许空值、整数、或最多1位小数的数字
+                      if (value === '' || /^(\d+(\.\d{0,1})?)?$/.test(value)) {
+                        setEditLabelWidth(value === '' ? 0 : parseFloat(value));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const numValue = parseFloat(editLabelWidth.toString());
+                        if (!isNaN(numValue)) {
+                          setEditLabelWidth(parseFloat(numValue.toFixed(1)));
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      const numValue = parseFloat(editLabelWidth.toString());
+                      if (!isNaN(numValue)) {
+                        setEditLabelWidth(parseFloat(numValue.toFixed(1)));
+                      }
+                    }}
+                    className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
+                  />
+                </div>
+
+                {/* 标签高度 */}
+                <div className="flex items-center space-x-2 flex-1">
+                  <Label htmlFor="edit-label-height" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签高度</Label>
+                  <Input
+                    id="edit-label-height"
+                    type="text"
+                    placeholder=""
+                    value={editLabelHeight.toFixed(1)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // 允许空值、整数、或最多1位小数的数字
+                      if (value === '' || /^(\d+(\.\d{0,1})?)?$/.test(value)) {
+                        setEditLabelHeight(value === '' ? 0 : parseFloat(value));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const numValue = parseFloat(editLabelHeight.toString());
+                        if (!isNaN(numValue)) {
+                          setEditLabelHeight(parseFloat(numValue.toFixed(1)));
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      const numValue = parseFloat(editLabelHeight.toString());
+                      if (!isNaN(numValue)) {
+                        setEditLabelHeight(parseFloat(numValue.toFixed(1)));
+                      }
+                    }}
+                    className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* 左右分栏布局 */}
