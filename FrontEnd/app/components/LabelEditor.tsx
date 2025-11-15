@@ -15,7 +15,7 @@ export default function LabelEditor() {
   const { theme } = themeContext
 
   const { labelData, updateLabelData, setSelectedProject } = useLabelContext()
-  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName } = labelData
+  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, labelCategory } = labelData
 
   const [selectedNumberState, setSelectedNumberState] = useState<number>(Number(selectedNumber))
   
@@ -3050,7 +3050,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         <Edit3 className="mr-2" size={24} />
         标签编辑器
       </h2>
-      <div className="mb-4">
+      <div className="mb-4" key={`category-controls-${labelData.labelCategory}`}>
         <div className="grid grid-cols-2 gap-4">
           <div className="flex items-center border border-[#30B8D6] rounded-md">
             <label className="text-base font-medium px-3 py-2 min-w-[120px]" style={{ color: theme.text }}>
@@ -3062,10 +3062,10 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 onChange={handleNumberChange}
                 className="w-full px-3 py-2 focus:outline-none appearance-none"
                 style={{
-                  color: theme.text,
-                  backgroundColor: "white",
+                  color: labelData.labelCategory === "阶梯标" ? theme.text : "#999",
+                  backgroundColor: labelData.labelCategory === "阶梯标" ? "white" : "#f5f5f5",
                 }}
-                disabled={availableSequences.length === 0}
+                disabled={labelData.labelCategory !== "阶梯标"}
               >
                 {availableSequences.length === 0 ? (
                   <option value="">无可用序号</option>
@@ -3088,11 +3088,11 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               onChange={handleLanguageChange}
               className="block w-full pl-3 pr-10 py-2 text-base rounded-md appearance-none focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-md border"
               style={{
-                borderColor: theme.border,
-                color: theme.text,
-                backgroundColor: "white",
+                borderColor: labelData.labelCategory === "阶梯标" ? theme.border : "#ccc",
+                color: labelData.labelCategory === "阶梯标" ? theme.text : "#999",
+                backgroundColor: labelData.labelCategory === "阶梯标" ? "white" : "#f5f5f5",
               }}
-              disabled={availableCountries.length === 0}
+              disabled={labelData.labelCategory !== "阶梯标"}
             >
               {availableCountries.length === 0 ? (
                 <option value="">无可用国别</option>

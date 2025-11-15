@@ -263,10 +263,18 @@ export default function ProjectList() {
       
       await updateCountrySequence(editingProject.id, sequenceUpdates)
       
-      // 3. 刷新项目列表
+      // 3. 同步更新 LabelContext 中的标签参数
+      updateLabelData({
+        labelWidth: editLabelWidth,
+        labelHeight: editLabelHeight,
+        labelCategory: editLabelCategory,
+        isWrapped: editIsWrapped,
+      })
+      
+      // 4. 刷新项目列表
       await loadProjects()
       
-      // 4. 关闭对话框
+      // 5. 关闭对话框
       setIsEditDialogOpen(false)
       setEditingProject(null)
       setCountryGroups([])
@@ -1089,7 +1097,7 @@ export default function ProjectList() {
                           <SelectValue placeholder="请选择标签类型" />
                         </SelectTrigger>
                         <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
-                          <SelectItem value="阶梯型" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯型</SelectItem>
+                          <SelectItem value="阶梯标" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯标</SelectItem>
                           <SelectItem value="单页左右1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右1</SelectItem>
                           <SelectItem value="单页左右2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右2</SelectItem>
                           <SelectItem value="单页上下1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下1</SelectItem>
@@ -1308,7 +1316,7 @@ export default function ProjectList() {
                       <SelectValue placeholder="请选择标签类型" />
                     </SelectTrigger>
                     <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
-                      <SelectItem value="阶梯型" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯型</SelectItem>
+                      <SelectItem value="阶梯标" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯标</SelectItem>
                       <SelectItem value="单页左右1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右1</SelectItem>
                       <SelectItem value="单页左右2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右2</SelectItem>
                       <SelectItem value="单页上下1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下1</SelectItem>

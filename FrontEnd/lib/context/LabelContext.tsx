@@ -134,28 +134,8 @@ export function LabelProvider({ children }: { children: React.ReactNode }) {
   const [labelData, setLabelData] = useState<LabelData>(defaultLabelData)
 
   const updateLabelData = (data: Partial<LabelData>) => {
-    // console.log('🔍 [LabelContext.updateLabelData] 更新前状态:', {
-    //   prevLabelWidth: labelData.labelWidth,
-    //   prevLabelHeight: labelData.labelHeight,
-    //   prevCurrentWidth: labelData.currentWidth,
-    //   timestamp: new Date().toISOString()
-    // });
-    // console.log('🔍 [LabelContext.updateLabelData] 接收到的更新数据:', {
-    //   labelWidth: data.labelWidth,
-    //   labelHeight: data.labelHeight,
-    //   currentWidth: data.currentWidth,
-    //   timestamp: new Date().toISOString()
-    // });
-    // 打印调用栈，找出是谁调用的
-    // console.log('🔍 [LabelContext.updateLabelData] 调用栈:', new Error().stack);
     setLabelData(prev => {
       const newData = { ...prev, ...data };
-      // console.log('🔍 [LabelContext.updateLabelData] 更新后状态:', {
-      //   newLabelWidth: newData.labelWidth,
-      //   newLabelHeight: newData.labelHeight,
-      //   newCurrentWidth: newData.currentWidth,
-      //   timestamp: new Date().toISOString()
-      // });
       return newData;
     })
   }
