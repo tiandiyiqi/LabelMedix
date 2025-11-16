@@ -1568,17 +1568,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     let toastMessage = ''
 
     if (nextFormatState === 1) {
-      // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '药品名称分为一行（已替换XX为罗马数字）'
-    } else if (nextFormatState === 2) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '药品名称分为两行（已替换XX为罗马数字）'
-    } else if (nextFormatState === 3) {
+    } else if (nextFormatState === 2) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -1586,7 +1582,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '药品名称分为三行（已替换XX为罗马数字）'
-    } else if (nextFormatState === 4) {
+    } else if (nextFormatState === 3) {
       // 分为四行
       const sentencesPerLine = Math.ceil(sentenceCount / 4)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -1595,7 +1591,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const fourthLine = sentences.slice(sentencesPerLine * 3).join(' ')
       formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '药品名称分为四行（已替换XX为罗马数字）'
-    } else {
+    } else if (nextFormatState === 4) {
       // 分为五行
       const sentencesPerLine = Math.ceil(sentenceCount / 5)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -1605,6 +1601,10 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const fifthLine = sentences.slice(sentencesPerLine * 4).join(' ')
       formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '药品名称分为五行（已替换XX为罗马数字）'
+    } else {
+      // 状态0：原始状态（不格式化）
+      formattedText = variableControlledText
+      toastMessage = '药品名称已恢复为原始状态（已替换XX为罗马数字）'
     }
 
     // 更新对应字段的内容（同时更新 ref 和 state）
@@ -1660,17 +1660,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     let toastMessage = ''
 
     if (nextFormatState === 1) {
-      // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '片数分为一行（已替换XX为罗马数字）'
-    } else if (nextFormatState === 2) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '片数分为两行（已替换XX为罗马数字）'
-    } else if (nextFormatState === 3) {
+    } else if (nextFormatState === 2) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -1678,7 +1674,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '片数分为三行（已替换XX为罗马数字）'
-    } else if (nextFormatState === 4) {
+    } else if (nextFormatState === 3) {
       // 分为四行
       const sentencesPerLine = Math.ceil(sentenceCount / 4)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -1687,7 +1683,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const fourthLine = sentences.slice(sentencesPerLine * 3).join(' ')
       formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '片数分为四行（已替换XX为罗马数字）'
-    } else {
+    } else if (nextFormatState === 4) {
       // 分为五行
       const sentencesPerLine = Math.ceil(sentenceCount / 5)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -1697,6 +1693,10 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const fifthLine = sentences.slice(sentencesPerLine * 4).join(' ')
       formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '片数分为五行（已替换XX为罗马数字）'
+    } else {
+      // 状态0：原始状态（不格式化）
+      formattedText = variableControlledText
+      toastMessage = '片数已恢复为原始状态（已替换XX为罗马数字）'
     }
 
     // 更新对应字段的内容（同时更新 ref 和 state）
@@ -1871,23 +1871,19 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
     // 获取当前格式化状态并计算下一个状态
     const currentFormatState = formatStates.companyName || 0
-    const nextFormatState = (currentFormatState + 1) % 3
+    const nextFormatState = (currentFormatState + 1) % 5
 
     let formattedText = ''
     let toastMessage = ''
 
     if (nextFormatState === 1) {
-      // 分为一行
-      formattedText = sentences.join(' ')
-      toastMessage = '公司名称分为一行'
-    } else if (nextFormatState === 2) {
       // 分为两行
       const sentencesPerLine = Math.ceil(sentenceCount / 2)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
       const secondLine = sentences.slice(sentencesPerLine).join(' ')
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '公司名称分为两行'
-    } else {
+    } else if (nextFormatState === 2) {
       // 分为三行
       const sentencesPerLine = Math.ceil(sentenceCount / 3)
       const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
@@ -1895,6 +1891,29 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const thirdLine = sentences.slice(sentencesPerLine * 2).join(' ')
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = '公司名称分为三行'
+    } else if (nextFormatState === 3) {
+      // 分为四行
+      const sentencesPerLine = Math.ceil(sentenceCount / 4)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3).join(' ')
+      const fourthLine = sentences.slice(sentencesPerLine * 3).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '公司名称分为四行'
+    } else if (nextFormatState === 4) {
+      // 分为五行
+      const sentencesPerLine = Math.ceil(sentenceCount / 5)
+      const firstLine = sentences.slice(0, sentencesPerLine).join(' ')
+      const secondLine = sentences.slice(sentencesPerLine, sentencesPerLine * 2).join(' ')
+      const thirdLine = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3).join(' ')
+      const fourthLine = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4).join(' ')
+      const fifthLine = sentences.slice(sentencesPerLine * 4).join(' ')
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
+      toastMessage = '公司名称分为五行'
+    } else {
+      // 状态0：原始状态（不格式化）
+      formattedText = originalText
+      toastMessage = '公司名称已恢复为原始状态'
     }
 
     // 更新对应字段的内容（同时更新 ref 和 state）
