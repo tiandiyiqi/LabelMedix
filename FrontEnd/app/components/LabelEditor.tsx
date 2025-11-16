@@ -871,9 +871,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     drugDescription?: string
     companyName?: string
   }) => {
-    if (!selectedProject || !selectedLanguage) { 
-      showToast('请先选择项目和国别', 'info')
-      return 
+    // 判断是否为阶梯标模式
+    const isLadderMode = labelData.labelCategory === "阶梯标"
+    
+    // 前置检查：阶梯标模式需要检查项目和国别，非阶梯标模式只需要项目
+    if (!selectedProject) {
+      showToast('请先选择项目', 'info')
+      return
+    }
+    
+    if (isLadderMode && !selectedLanguage) {
+      showToast('请先选择国别', 'info')
+      return
     }
 
     try {
@@ -906,10 +915,15 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // 创建包含6个字段的JSON格式原始状态（传递导入的数据）
       const originalSummaryJson = createOriginalSummary(importedData)
       
+      // 根据标签分类决定保存到哪个国别码
+      // 阶梯标模式：保存到当前选中的国别码
+      // 非阶梯标模式：保存到特殊国别码 "all"
+      const targetCountryCode = isLadderMode ? selectedLanguage : "all"
+      
       // 保存原始状态到数据库
       await updateFormattedSummary(
         selectedProject.id,
-        selectedLanguage,
+        targetCountryCode,
         undefined, // 不更新formatted_summary
         undefined, // 不更新字体设置
         originalSummaryJson // 保存JSON格式的原始状态
@@ -921,10 +935,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         originalSummary: originalSummaryJson
       })
       
-      showToast('6个字段的原始状态已初始化保存', 'success')
+      if (isLadderMode) {
+        showToast('6个字段的原始状态已初始化保存', 'success')
+      } else {
+        showToast(`6个字段的原始状态已初始化保存到国别码"all"`, 'success')
+      }
       
     } catch (error) {
-      // console.error('初始化失败:', error)
+      console.error('初始化失败:', error)
       showToast('初始化失败，请重试', 'error')
     } finally {
       setIsInitializing(false)
@@ -2276,6 +2294,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   const handleResetToFormatted = async () => {
     if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
 
+    // 根据标签分类执行不同功能
+    if (labelData.labelCategory !== "阶梯标") {
+      showToast(`当前标签分类：${labelData.labelCategory}，功能开发中...`, 'info')
+      return
+    }
+
     try {
       setIsResetting(true)
       
@@ -2315,6 +2339,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 重置到原始状态
   const handleResetToOriginal = async () => {
     if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
+
+    // 根据标签分类执行不同功能
+    if (labelData.labelCategory !== "阶梯标") {
+      showToast(`当前标签分类：${labelData.labelCategory}，功能开发中...`, 'info')
+      return
+    }
 
     try {
       setIsResetting(true)
@@ -2368,87 +2398,214 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     try {
       setIsImporting(true)
       
-      // 获取当前国别的翻译详情
-      const translationGroup = await getTranslationsByCountry(selectedProject.id, selectedLanguage)
-      
-      if (!translationGroup.items || translationGroup.items.length === 0) {
-        showToast('该国别暂无翻译内容', 'info')
-        return
-      }
+      // 判断是"阶梯标"还是其他类型
+      if (labelData.labelCategory === "阶梯标") {
+        // ========== 阶梯标模式：导入当前国别的翻译内容 ==========
+        
+        // 获取当前国别的翻译详情
+        const translationGroup = await getTranslationsByCountry(selectedProject.id, selectedLanguage)
+        
+        if (!translationGroup.items || translationGroup.items.length === 0) {
+          showToast('该国别暂无翻译内容', 'info')
+          return
+        }
 
-      // 按 item_order 排序
-      const sortedItems = translationGroup.items.sort((a, b) => a.item_order - b.item_order)
-      
-      // 根据字段类型分类内容
-      const fieldTypeGroups = {
-        basic_info: [] as string[],
-        number_field: [] as string[],
-        drug_name: [] as string[],
-        number_of_sheets: [] as string[],
-        drug_description: [] as string[],
-        company_name: [] as string[]
-      }
-      
-      // 分类翻译内容
-      sortedItems.forEach(item => {
-        const text = item.translated_text || item.original_text
-        const fieldType = item.field_type
+        // 按 item_order 排序
+        const sortedItems = translationGroup.items.sort((a, b) => a.item_order - b.item_order)
         
-        if (fieldType && fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups]) {
-          fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups].push(text)
-        } else {
-          // 未分类的内容放入药品说明
-          fieldTypeGroups.drug_description.push(text)
+        // 根据字段类型分类内容
+        const fieldTypeGroups = {
+          basic_info: [] as string[],
+          number_field: [] as string[],
+          drug_name: [] as string[],
+          number_of_sheets: [] as string[],
+          drug_description: [] as string[],
+          company_name: [] as string[]
         }
-      })
-      
-      // 根据当前语言自动选择字体
-      const autoFonts = getAutoFontsByLanguage(selectedLanguage)
-      
-      // 准备导入的数据（直接使用，不依赖状态更新）
-      const importedData = {
-        basicInfo: fieldTypeGroups.basic_info.join('\n'),
-        numberField: fieldTypeGroups.number_field.join('\n'),
-        drugName: fieldTypeGroups.drug_name.join('\n'),
-        numberOfSheets: fieldTypeGroups.number_of_sheets.join('\n'),
-        drugDescription: fieldTypeGroups.drug_description.join('\n'),
-        companyName: fieldTypeGroups.company_name.join('\n')
-      }
-      
-      // 更新到对应的字段类型区域，同时更新字体
-      updateLabelData({
-        ...importedData,
-        fontFamily: autoFonts.fontFamily,
-        secondaryFontFamily: autoFonts.secondaryFontFamily
-      })
-      
-      // 重置所有格式化状态为0
-      setFormatStates({
-        basicInfo: 0,
-        numberField: 0,
-        drugName: 0,
-        numberOfSheets: 0,
-        drugDescription: 0,
-        companyName: 0
-      })
-      
-      showToast('翻译内容已按字段类型分类导入', 'success')
-      
-      // 导入完成后，检查是否需要初始化
-      if (selectedProject && selectedLanguage) {
-        // 检查数据库是否已初始化
-        const isInitialized = await checkIfInitialized(selectedProject.id, selectedLanguage)
         
-        if (!isInitialized) {
-          // 直接传递导入的数据，不依赖状态更新
-          setTimeout(() => {
-            handleInitializeWithChain(importedData) // 传递导入的实际数据
-          }, 300)
+        // 分类翻译内容
+        sortedItems.forEach(item => {
+          const text = item.translated_text || item.original_text
+          const fieldType = item.field_type
+          
+          if (fieldType && fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups]) {
+            fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups].push(text)
+          } else {
+            // 未分类的内容放入药品说明
+            fieldTypeGroups.drug_description.push(text)
+          }
+        })
+        
+        // 根据当前语言自动选择字体
+        const autoFonts = getAutoFontsByLanguage(selectedLanguage)
+        
+        // 准备导入的数据（直接使用，不依赖状态更新）
+        const importedData = {
+          basicInfo: fieldTypeGroups.basic_info.join('\n'),
+          numberField: fieldTypeGroups.number_field.join('\n'),
+          drugName: fieldTypeGroups.drug_name.join('\n'),
+          numberOfSheets: fieldTypeGroups.number_of_sheets.join('\n'),
+          drugDescription: fieldTypeGroups.drug_description.join('\n'),
+          companyName: fieldTypeGroups.company_name.join('\n')
         }
+        
+        // 更新到对应的字段类型区域，同时更新字体
+        updateLabelData({
+          ...importedData,
+          fontFamily: autoFonts.fontFamily,
+          secondaryFontFamily: autoFonts.secondaryFontFamily
+        })
+        
+        // 重置所有格式化状态为0
+        setFormatStates({
+          basicInfo: 0,
+          numberField: 0,
+          drugName: 0,
+          numberOfSheets: 0,
+          drugDescription: 0,
+          companyName: 0
+        })
+        
+        showToast('翻译内容已按字段类型分类导入', 'success')
+        
+        // 导入完成后，检查是否需要初始化
+        if (selectedProject && selectedLanguage) {
+          // 检查数据库是否已初始化
+          const isInitialized = await checkIfInitialized(selectedProject.id, selectedLanguage)
+          
+          if (!isInitialized) {
+            // 直接传递导入的数据，不依赖状态更新
+            setTimeout(() => {
+              handleInitializeWithChain(importedData) // 传递导入的实际数据
+            }, 300)
+          }
+        }
+        
+      } else {
+        // ========== 非阶梯标模式：导入所有国别（除"all"）的翻译内容并合并 ==========
+        
+        // 获取项目完整信息（包含所有国别翻译组）
+        const projectDetail = await getProjectById(selectedProject.id)
+        
+        if (!projectDetail.translationGroups || projectDetail.translationGroups.length === 0) {
+          showToast('该项目暂无翻译内容', 'info')
+          return
+        }
+        
+        // 过滤掉国别码为"all"的翻译组，并按序号排序
+        const validGroups = projectDetail.translationGroups
+          .filter(group => group.country_code.toLowerCase() !== 'all')
+          .sort((a, b) => a.sequence_number - b.sequence_number)
+        
+        if (validGroups.length === 0) {
+          showToast('没有可用的国别翻译内容', 'info')
+          return
+        }
+        
+        // 存储所有翻译内容，按 original_text 分组
+        // key: original_text, value: 按序号排序的翻译文本数组
+        const translationsByOriginal = new Map<string, { sequence: number; text: string; fieldType: string | null }[]>()
+        
+        // 获取每个国别的翻译详情并合并
+        for (const group of validGroups) {
+          try {
+            const translationGroup = await getTranslationsByCountry(selectedProject.id, group.country_code)
+            
+            if (translationGroup.items && translationGroup.items.length > 0) {
+              // 按 item_order 排序
+              const sortedItems = translationGroup.items.sort((a, b) => a.item_order - b.item_order)
+              
+              sortedItems.forEach(item => {
+                const originalText = item.original_text
+                const translatedText = item.translated_text || item.original_text
+                const fieldType = item.field_type || null
+                
+                if (!translationsByOriginal.has(originalText)) {
+                  translationsByOriginal.set(originalText, [])
+                }
+                
+                translationsByOriginal.get(originalText)!.push({
+                  sequence: group.sequence_number,
+                  text: translatedText,
+                  fieldType: fieldType
+                })
+              })
+            }
+          } catch (error) {
+            console.error(`获取国别 ${group.country_code} 的翻译失败:`, error)
+          }
+        }
+        
+        // 将合并后的翻译按字段类型分类
+        const fieldTypeGroups = {
+          basic_info: [] as string[],
+          number_field: [] as string[],
+          drug_name: [] as string[],
+          number_of_sheets: [] as string[],
+          drug_description: [] as string[],
+          company_name: [] as string[]
+        }
+        
+        // 遍历每个原文，合并其翻译
+        translationsByOriginal.forEach((translations, originalText) => {
+          // 按序号排序
+          translations.sort((a, b) => a.sequence - b.sequence)
+          
+          // 用 " / " 连接所有翻译
+          const mergedText = translations.map(t => t.text).join(' / ')
+          
+          // 获取字段类型（使用第一个翻译的字段类型）
+          const fieldType = translations[0].fieldType
+          
+          // 分类到对应字段组
+          if (fieldType && fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups]) {
+            fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups].push(mergedText)
+          } else {
+            // 未分类的内容放入药品说明
+            fieldTypeGroups.drug_description.push(mergedText)
+          }
+        })
+        
+        // 使用默认字体（多语言混合，使用 Arial Unicode）
+        const autoFonts = {
+          fontFamily: 'Arial Unicode',
+          secondaryFontFamily: 'Arial'
+        }
+        
+        // 准备导入的数据
+        const importedData = {
+          basicInfo: fieldTypeGroups.basic_info.join('\n'),
+          numberField: fieldTypeGroups.number_field.join('\n'),
+          drugName: fieldTypeGroups.drug_name.join('\n'),
+          numberOfSheets: fieldTypeGroups.number_of_sheets.join('\n'),
+          drugDescription: fieldTypeGroups.drug_description.join('\n'),
+          companyName: fieldTypeGroups.company_name.join('\n')
+        }
+        
+        // 更新到对应的字段类型区域，同时更新字体
+        updateLabelData({
+          ...importedData,
+          fontFamily: autoFonts.fontFamily,
+          secondaryFontFamily: autoFonts.secondaryFontFamily
+        })
+        
+        // 重置所有格式化状态为0
+        setFormatStates({
+          basicInfo: 0,
+          numberField: 0,
+          drugName: 0,
+          numberOfSheets: 0,
+          drugDescription: 0,
+          companyName: 0
+        })
+        
+        showToast(`已导入 ${validGroups.length} 个国别的翻译内容`, 'success')
+        
+        // 注意：非阶梯标模式不自动初始化
       }
       
     } catch (error) {
-      // console.error('导入失败:', error)
+      console.error('导入失败:', error)
       showToast('导入失败，请重试', 'error')
     } finally {
       setIsImporting(false)
@@ -2523,6 +2680,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
   // 格式化按钮处理器（供UI按钮使用，不接受参数）
   const handleFormatButton = async () => {
+    // 根据标签分类执行不同功能
+    if (labelData.labelCategory !== "阶梯标") {
+      showToast(`当前标签分类：${labelData.labelCategory}，功能开发中...`, 'info')
+      return
+    }
+    
     await handleFormat()
   }
 
@@ -2563,6 +2726,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     if (!selectedProject) { 
       showToast('请先选择一个项目', 'info'); 
       return 
+    }
+
+    // 根据标签分类执行不同功能
+    if (labelData.labelCategory !== "阶梯标") {
+      showToast(`当前标签分类：${labelData.labelCategory}，功能开发中...`, 'info')
+      return
     }
 
     try {

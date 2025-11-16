@@ -130,7 +130,7 @@ module.exports = (sequelize) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         validate: {
-          min: 1,
+          min: 0, // 允许 0，用于表示特殊的合并记录（如 country_code = "all"）
         },
       },
       total_items: {

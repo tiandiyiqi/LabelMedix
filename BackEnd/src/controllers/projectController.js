@@ -141,7 +141,16 @@ exports.createProject = async (req, res) => {
   const transaction = await db.sequelize.transaction();
 
   try {
-    const { job_name, job_description, user_id, coze_result, is_wrapped, label_width, label_height, label_category } = req.body;
+    const {
+      job_name,
+      job_description,
+      user_id,
+      coze_result,
+      is_wrapped,
+      label_width,
+      label_height,
+      label_category,
+    } = req.body;
 
     // 添加调试日志
     console.log("📥 创建项目请求数据:");
@@ -190,9 +199,12 @@ exports.createProject = async (req, res) => {
           job_description: job_description || project.job_description,
           status:
             coze_result && coze_result.data ? "processing" : project.status,
-          is_wrapped: is_wrapped !== undefined ? is_wrapped : project.is_wrapped,
-          label_width: label_width !== undefined ? label_width : project.label_width,
-          label_height: label_height !== undefined ? label_height : project.label_height,
+          is_wrapped:
+            is_wrapped !== undefined ? is_wrapped : project.is_wrapped,
+          label_width:
+            label_width !== undefined ? label_width : project.label_width,
+          label_height:
+            label_height !== undefined ? label_height : project.label_height,
           label_category: label_category || project.label_category,
         },
         { transaction }
@@ -448,7 +460,15 @@ exports.createProject = async (req, res) => {
 exports.updateProject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { job_name, job_description, status, label_width, label_height, label_category, is_wrapped } = req.body;
+    const {
+      job_name,
+      job_description,
+      status,
+      label_width,
+      label_height,
+      label_category,
+      is_wrapped,
+    } = req.body;
 
     const project = await Project.findByPk(id);
 
@@ -466,9 +486,12 @@ exports.updateProject = async (req, res) => {
           ? job_description
           : project.job_description,
       status: status || project.status,
-      label_width: label_width !== undefined ? label_width : project.label_width,
-      label_height: label_height !== undefined ? label_height : project.label_height,
-      label_category: label_category !== undefined ? label_category : project.label_category,
+      label_width:
+        label_width !== undefined ? label_width : project.label_width,
+      label_height:
+        label_height !== undefined ? label_height : project.label_height,
+      label_category:
+        label_category !== undefined ? label_category : project.label_category,
       is_wrapped: is_wrapped !== undefined ? is_wrapped : project.is_wrapped,
     });
 
@@ -894,18 +917,47 @@ exports.updateFormattedSummary = async (req, res) => {
       });
     }
 
-    const group = await CountryTranslationGroup.findOne({
+    let group = await CountryTranslationGroup.findOne({
       where: {
         project_id: projectId,
         country_code: countryCode,
       },
     });
 
+    // 如果记录不存在，自动创建（特别是为 "all" 国别码）
     if (!group) {
-      return res.status(404).json({
-        success: false,
-        message: "国别翻译组不存在",
-      });
+      // 先验证项目是否存在
+      const project = await Project.findByPk(projectId);
+      if (!project) {
+        return res.status(404).json({
+          success: false,
+          message: "项目不存在",
+        });
+      }
+
+      // 为 "all" 或其他特殊国别码自动创建记录
+      // sequence_number 使用 0 表示这是合并数据或特殊记录
+      const sequenceNumber = countryCode === "all" ? 0 : 999;
+
+      try {
+        group = await CountryTranslationGroup.create({
+          project_id: projectId,
+          country_code: countryCode,
+          sequence_number: sequenceNumber,
+          total_items: 0,
+        });
+
+        console.log(
+          `✅ 自动创建国别翻译组: project_id=${projectId}, country_code=${countryCode}, sequence_number=${sequenceNumber}`
+        );
+      } catch (createError) {
+        console.error("创建国别翻译组失败:", createError);
+        return res.status(500).json({
+          success: false,
+          message: "创建国别翻译组失败",
+          error: createError.message,
+        });
+      }
     }
 
     // 准备更新数据
