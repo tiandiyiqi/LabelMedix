@@ -804,6 +804,57 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     return result
   }
 
+  // ========== 非阶梯标变量规则系统 ==========
+  
+  // 变量规则配置（按优先级排序，优先级高的在前）
+  const VARIABLE_RULES = [
+    { keywords: ['Expiry', 'Date', 'Year', 'Month', 'Day'], variable: 'YYYY/MM/DD', priority: 1 },
+    { keywords: ['Expiry', 'Date', 'Month', 'Year'], variable: 'MM/YYYY', priority: 2 },
+    { keywords: ['Expiry'], variable: 'YYYY/MM/DD', priority: 3 },
+    { keywords: ['Protocol', 'No.'], variable: 'PPPPP-PPPPP-PPPPP', priority: 4 },
+    { keywords: ['Packaging', 'Lot'], variable: 'BBBBBBBBBBBB', priority: 5 },
+    { keywords: ['Batch', 'No.'], variable: 'BBBBBBBBBBBB', priority: 6 },
+    { keywords: ['Manufacturing', 'Lot'], variable: 'LLLLLLLLLLLL', priority: 7 },
+    { keywords: ['Kit', 'No.'], variable: 'XXXXXXXXXXXX', priority: 8 },
+    { keywords: ['Med', 'ID'], variable: 'XXXXXXXXXXXX', priority: 9 },
+    { keywords: ['Number', 'tablets', 'Bottle'], variable: 'TTT', priority: 10 },
+    { keywords: ['Strength'], variable: 'DDD', priority: 11 }
+  ]
+
+  // 从翻译文本中提取第一个语言的翻译（" / " 之前）
+  const getFirstTranslation = (translatedText: string): string => {
+    return translatedText.split(' / ')[0].trim()
+  }
+
+  // 根据 original_text 匹配变量规则
+  const matchVariableRule = (originalText: string): string | null => {
+    if (!originalText) return null
+    
+    // 遍历规则，检查是否所有关键词都存在于 originalText 中
+    for (const rule of VARIABLE_RULES) {
+      const allKeywordsMatch = rule.keywords.every(keyword => 
+        originalText.includes(keyword)
+      )
+      
+      if (allKeywordsMatch) {
+        console.log(`✅ 匹配到变量规则: ${originalText} -> ${rule.variable}`)
+        return rule.variable
+      }
+    }
+    
+    return null
+  }
+
+  // 获取原文（从 originalTextMap 中查找）
+  const getOriginalText = (translatedText: string): string | null => {
+    if (!labelData.originalTextMap) return null
+    
+    const firstTranslation = getFirstTranslation(translatedText)
+    const originalText = labelData.originalTextMap[firstTranslation]
+    
+    return originalText || null
+  }
+
   // 变量控制函数
   const applyVariableControl = (text: string, fieldType: 'basicInfo' | 'drugName' | 'numberOfSheets', startIndex: number = 1): { processedText: string, nextIndex: number } => {
     if (!text || text.trim() === '') {
@@ -2581,6 +2632,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           company_name: [] as string[]
         }
         
+        // 创建 originalTextMap（翻译文本 -> 原文的映射）
+        const originalTextMap: Record<string, string> = {}
+        
         // 遍历每个原文，合并其翻译
         translationsByOriginal.forEach((translations, originalText) => {
           // 按序号排序
@@ -2588,6 +2642,10 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           
           // 用 " / " 连接所有翻译
           const mergedText = translations.map(t => t.text).join(' / ')
+          
+          // 保存映射关系：第一个翻译 -> 原文
+          const firstTranslation = translations[0].text
+          originalTextMap[firstTranslation] = originalText
           
           // 获取字段类型（使用第一个翻译的字段类型）
           const fieldType = translations[0].fieldType
@@ -2600,6 +2658,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             fieldTypeGroups.drug_description.push(mergedText)
           }
         })
+        
+        console.log('📝 已创建 originalTextMap，共', Object.keys(originalTextMap).length, '条映射')
         
         // 使用默认字体（多语言混合，使用 Arial Unicode）
         const autoFonts = {
@@ -2617,11 +2677,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           companyName: fieldTypeGroups.company_name.join('\n')
         }
         
-        // 更新到对应的字段类型区域，同时更新字体
+        // 更新到对应的字段类型区域，同时更新字体和 originalTextMap
         updateLabelData({
           ...importedData,
           fontFamily: autoFonts.fontFamily,
-          secondaryFontFamily: autoFonts.secondaryFontFamily
+          secondaryFontFamily: autoFonts.secondaryFontFamily,
+          originalTextMap: originalTextMap,
+          variableMarkers: [] // 初始时清空变量标记
         })
         
         // 重置所有格式化状态为0
@@ -2647,10 +2709,233 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     }
   }
 
+  // ========== 非阶梯标格式化函数 ==========
+  const handleFormatNonLadder = () => {
+    try {
+      // 检查 originalTextMap 是否存在
+      if (!labelData.originalTextMap || Object.keys(labelData.originalTextMap).length === 0) {
+        showToast('请先导入翻译内容', 'info')
+        return
+      }
+
+      console.log('🎨 开始非阶梯标格式化...')
+      
+      // 变量标记数组
+      const variableMarkers: Array<{
+        fieldName: string
+        lineIndex: number
+        startPos: number
+        endPos: number
+        isVariable: boolean
+      }> = []
+      
+      let totalVariableCount = 0 // 累计变量数量
+      
+      // ===== 1. 处理 basicInfo 字段 =====
+      let formattedBasicInfo = labelData.basicInfo
+      if (labelData.basicInfo && labelData.basicInfo.trim()) {
+        const lines = labelData.basicInfo.split('\n')
+        const processedLines: string[] = []
+        
+        lines.forEach((line, lineIndex) => {
+          if (!line.trim()) {
+            processedLines.push(line)
+            return
+          }
+          
+          const originalText = getOriginalText(line)
+          if (originalText) {
+            const variable = matchVariableRule(originalText)
+            if (variable) {
+              const newLine = `${line} ${variable}`
+              processedLines.push(newLine)
+              
+              // 记录变量位置
+              variableMarkers.push({
+                fieldName: 'basicInfo',
+                lineIndex,
+                startPos: line.length + 1,
+                endPos: newLine.length,
+                isVariable: true
+              })
+              
+              totalVariableCount++
+              console.log(`  ✅ basicInfo[${lineIndex}]: 添加变量 ${variable}`)
+            } else {
+              processedLines.push(line)
+            }
+          } else {
+            processedLines.push(line)
+          }
+        })
+        
+        formattedBasicInfo = processedLines.join('\n')
+      }
+      
+      // ===== 2. 处理 drugName 字段 =====
+      let formattedDrugName = labelData.drugName
+      if (labelData.drugName && labelData.drugName.trim()) {
+        const lines = labelData.drugName.split('\n')
+        const processedLines: string[] = []
+        
+        lines.forEach((line, lineIndex) => {
+          if (!line.trim()) {
+            processedLines.push(line)
+            return
+          }
+          
+          const originalText = getOriginalText(line)
+          if (originalText) {
+            const variable = matchVariableRule(originalText)
+            if (variable) {
+              // 匹配现有规则：行末追加变量
+              const newLine = `${line} ${variable}`
+              processedLines.push(newLine)
+              
+              // 记录变量位置
+              variableMarkers.push({
+                fieldName: 'drugName',
+                lineIndex,
+                startPos: line.length + 1,
+                endPos: newLine.length,
+                isVariable: true
+              })
+              
+              totalVariableCount++
+              console.log(`  ✅ drugName[${lineIndex}]: 添加变量 ${variable}`)
+            } else if (originalText.includes('XXX') && originalText.includes('mg')) {
+              // 特殊规则：如果原文包含 "XXX mg"，在翻译文本中替换所有 XXX 为 DDD
+              let newLine = line
+              
+              // 查找所有 XXX 的位置并记录
+              const xxxRegex = /XXX/g
+              let match
+              const matches: Array<{ index: number }> = []
+              
+              // 先找到所有匹配位置（在替换前记录位置）
+              while ((match = xxxRegex.exec(line)) !== null) {
+                matches.push({ index: match.index })
+              }
+              
+              // 替换所有 XXX 为 DDD（因为长度相同，位置不会改变）
+              newLine = line.replace(/XXX/g, 'DDD')
+              
+              // 记录每个替换位置的变量标记
+              matches.forEach(({ index }) => {
+                variableMarkers.push({
+                  fieldName: 'drugName',
+                  lineIndex,
+                  startPos: index,
+                  endPos: index + 3, // DDD 也是3个字符
+                  isVariable: true
+                })
+                
+                totalVariableCount++
+                console.log(`  ✅ drugName[${lineIndex}]: 替换 XXX 为 DDD (位置: ${index})`)
+              })
+              
+              processedLines.push(newLine)
+            } else {
+              processedLines.push(line)
+            }
+          } else {
+            processedLines.push(line)
+          }
+        })
+        
+        formattedDrugName = processedLines.join('\n')
+      }
+      
+      // ===== 3. 处理 numberOfSheets 字段 =====
+      let formattedNumberOfSheets = labelData.numberOfSheets
+      if (labelData.numberOfSheets && labelData.numberOfSheets.trim()) {
+        const lines = labelData.numberOfSheets.split('\n')
+        const processedLines: string[] = []
+        
+        lines.forEach((line, lineIndex) => {
+          if (!line.trim()) {
+            processedLines.push(line)
+            return
+          }
+          
+          const originalText = getOriginalText(line)
+          if (originalText) {
+            const variable = matchVariableRule(originalText)
+            if (variable) {
+              const newLine = `${line} ${variable}`
+              processedLines.push(newLine)
+              
+              // 记录变量位置
+              variableMarkers.push({
+                fieldName: 'numberOfSheets',
+                lineIndex,
+                startPos: line.length + 1,
+                endPos: newLine.length,
+                isVariable: true
+              })
+              
+              totalVariableCount++
+              console.log(`  ✅ numberOfSheets[${lineIndex}]: 添加变量 ${variable}`)
+            } else {
+              processedLines.push(line)
+            }
+          } else {
+            processedLines.push(line)
+          }
+        })
+        
+        formattedNumberOfSheets = processedLines.join('\n')
+      }
+      
+      // ===== 4. 处理 drugDescription 字段（替换 XX/XXX 为罗马序号）=====
+      let formattedDrugDescription = labelData.drugDescription
+      let romanStartIndex = totalVariableCount + 1
+      
+      if (labelData.drugDescription && labelData.drugDescription.trim()) {
+        // 使用正则表达式匹配严格的 XX 或 XXX（前后有边界）
+        let currentRomanIndex = romanStartIndex
+        formattedDrugDescription = labelData.drugDescription.replace(/\bXX+\b/g, (match) => {
+          const roman = getRomanNumber(currentRomanIndex)
+          console.log(`  ✅ drugDescription: 替换 ${match} 为罗马数字 ${roman}`)
+          currentRomanIndex++
+          return roman
+        })
+      }
+      
+      console.log(`🎨 格式化完成：累计变量 ${totalVariableCount} 个，罗马序号从 ${romanStartIndex} 开始`)
+      
+      // 更新数据
+      updateLabelData({
+        basicInfo: formattedBasicInfo,
+        drugName: formattedDrugName,
+        numberOfSheets: formattedNumberOfSheets,
+        drugDescription: formattedDrugDescription,
+        variableMarkers: variableMarkers
+      })
+      
+      showToast(`非阶梯标格式化完成（变量：${totalVariableCount}，罗马序号：${romanStartIndex}起）`, 'success')
+      
+    } catch (error) {
+      console.error('非阶梯标格式化失败:', error)
+      showToast('格式化失败，请重试', 'error')
+    }
+  }
+
   // 格式化（可以接受 originalSummary 参数以避免状态更新延迟问题）
   const handleFormat = async (originalSummaryOverride?: string) => {
     try {
       setIsFormatting(true)
+      
+      // 判断是否为非阶梯标模式
+      const isNonLadderMode = labelData.labelCategory !== '阶梯标'
+      
+      if (isNonLadderMode) {
+        // 非阶梯标模式：使用新的格式化函数
+        handleFormatNonLadder()
+        return
+      }
+      
+      // ========== 以下是阶梯标模式的原有逻辑 ==========
       
       // 如果提供了 originalSummary 参数，临时设置到 labelData
       let originalSummaryToUse = originalSummaryOverride || labelData.originalSummary
@@ -2715,12 +3000,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
   // 格式化按钮处理器（供UI按钮使用，不接受参数）
   const handleFormatButton = async () => {
-    // 根据标签分类执行不同功能
-    if (labelData.labelCategory !== "阶梯标") {
-      showToast(`当前标签分类：${labelData.labelCategory}，功能开发中...`, 'info')
-      return
-    }
-    
+    // 调用格式化函数（内部会根据 labelCategory 判断使用哪种格式化方式）
     await handleFormat()
   }
 
@@ -2763,11 +3043,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       return 
     }
 
-    // 根据标签分类执行不同功能
-    if (labelData.labelCategory !== "阶梯标") {
-      showToast(`当前标签分类：${labelData.labelCategory}，功能开发中...`, 'info')
-      return
-    }
+    const isNonLadderMode = labelData.labelCategory !== "阶梯标"
 
     try {
       setIsSaving(true)
@@ -2776,12 +3052,28 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // formatStatesRef.current 已经在格式化函数中更新了，直接使用即可
       
       // 创建包含6个字段和格式化状态的JSON
-      const formattedSummaryJson = createFormattedSummary()
+      let formattedSummaryJson: string
       
-      // 调试：检查格式化状态是否为空
-      if (!formatStatesRef.current || Object.keys(formatStatesRef.current).length === 0) {
-        showToast('格式化状态为空，请先格式化', 'error')
-        return
+      if (isNonLadderMode) {
+        // 非阶梯标模式：保存字段内容和变量标记
+        formattedSummaryJson = JSON.stringify({
+          basicInfo: labelData.basicInfo,
+          numberField: labelData.numberField,
+          drugName: labelData.drugName,
+          numberOfSheets: labelData.numberOfSheets,
+          drugDescription: labelData.drugDescription,
+          companyName: labelData.companyName,
+          variableMarkers: labelData.variableMarkers || []
+        })
+      } else {
+        // 阶梯标模式：使用原有逻辑
+        formattedSummaryJson = createFormattedSummary()
+        
+        // 调试：检查格式化状态是否为空（仅阶梯标模式需要）
+        if (!formatStatesRef.current || Object.keys(formatStatesRef.current).length === 0) {
+          showToast('格式化状态为空，请先格式化', 'error')
+          return
+        }
       }
       
       // 同时保存合并的文本内容（用于PDF生成）和JSON格式的详细状态（使用 labelData 中的最新值）
@@ -2794,8 +3086,11 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         labelData.companyName
       ].filter(content => content && content.trim() !== '').join('\n')
       
+      // 确定保存时使用的国别码
+      const targetCountryCode = isNonLadderMode ? 'all' : selectedLanguage
+      
       // 1. 保存格式化翻译汇总和字体设置
-      await updateFormattedSummary(selectedProject.id, selectedLanguage, formattedSummaryJson, {
+      await updateFormattedSummary(selectedProject.id, targetCountryCode, formattedSummaryJson, {
         fontFamily: labelData.fontFamily,
         secondaryFontFamily: labelData.secondaryFontFamily,
         textAlign: labelData.textAlign,

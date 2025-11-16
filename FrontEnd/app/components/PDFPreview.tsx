@@ -543,6 +543,70 @@ export default function PDFPreview() {
     );
   }, [selectedLanguage, fontFamily, secondaryFontFamily]);
 
+  // 渲染带变量着色的文本（用于非阶梯标模式）
+  const renderTextWithVariables = useCallback((
+    text: string,
+    fieldName: string,
+    lineIndex: number,
+    style: any
+  ) => {
+    // 检查是否有变量标记
+    const variableMarkers = labelData.variableMarkers || []
+    const marker = variableMarkers.find(
+      m => m.fieldName === fieldName && m.lineIndex === lineIndex && m.isVariable
+    )
+    
+    if (!marker) {
+      // 没有变量标记，正常渲染
+      return (
+        <SmartMixedFontText
+          primaryFont={fontFamily}
+          secondaryFont={labelData.secondaryFontFamily}
+          style={style}
+        >
+          {text}
+        </SmartMixedFontText>
+      )
+    }
+    
+    // 有变量标记，分段渲染：原文（黑色）+ 变量（紫色）
+    const beforeVar = text.substring(0, marker.startPos)
+    const variable = text.substring(marker.startPos, marker.endPos)
+    const afterVar = text.substring(marker.endPos)
+    
+    return (
+      <>
+        {beforeVar && (
+          <SmartMixedFontText
+            primaryFont={fontFamily}
+            secondaryFont={labelData.secondaryFontFamily}
+            style={style}
+          >
+            {beforeVar}
+          </SmartMixedFontText>
+        )}
+        {variable && (
+          <SmartMixedFontText
+            primaryFont={fontFamily}
+            secondaryFont={labelData.secondaryFontFamily}
+            style={[style, { color: 'rgb(145, 0, 130)' }]}
+          >
+            {variable}
+          </SmartMixedFontText>
+        )}
+        {afterVar && (
+          <SmartMixedFontText
+            primaryFont={fontFamily}
+            secondaryFont={labelData.secondaryFontFamily}
+            style={style}
+          >
+            {afterVar}
+          </SmartMixedFontText>
+        )}
+      </>
+    )
+  }, [labelData.variableMarkers, fontFamily, labelData.secondaryFontFamily]);
+
   // 如果不是客户端环境，返回加载占位符
   if (!isClient) {
     return (
@@ -618,33 +682,72 @@ export default function PDFPreview() {
   // 处理编号栏信息字段（独立）
   const numberFieldLines = processFieldContent(numberField);
   
-  // 将药品名称、片数、药品说明、公司名称字段组合成一个文本域
-  const drugRelatedContent = [
-    drugName,
-    numberOfSheets,
-    drugDescription,
-    companyName
-  ].filter(content => content && content.trim() !== '').join('\n');
+  // 判断是否为非阶梯标模式（需要独立处理各字段以支持变量着色）
+  const isNonLadderMode = labelData.labelCategory !== '阶梯标'
   
-  // 处理组合后的药品相关字段内容
-  const drugRelatedFieldLines = processFieldContent(drugRelatedContent);
+  let drugRelatedFieldLines: string[] = []
+  let processedFields: FieldData[] = []
   
-  // 构建处理后的字段数组（三个独立分组）
-  const processedFields: FieldData[] = [];
-  
-  // 添加基本信息字段（如果有内容）
-  if (basicInfoField.length > 0) {
-    processedFields.push({ fieldName: 'basicInfo', lines: basicInfoField });
-  }
-  
-  // 添加编号栏信息字段（如果有内容）
-  if (numberFieldLines.length > 0) {
-    processedFields.push({ fieldName: 'numberField', lines: numberFieldLines });
-  }
-  
-  // 添加药品相关组合字段（如果有内容）
-  if (drugRelatedFieldLines.length > 0) {
-    processedFields.push({ fieldName: 'drugRelatedField', lines: drugRelatedFieldLines });
+  if (isNonLadderMode) {
+    // 非阶梯标模式：保持所有字段独立，以便正确应用变量标记
+    processedFields = []
+    
+    if (basicInfoField.length > 0) {
+      processedFields.push({ fieldName: 'basicInfo', lines: basicInfoField });
+    }
+    if (numberFieldLines.length > 0) {
+      processedFields.push({ fieldName: 'numberField', lines: numberFieldLines });
+    }
+    
+    const drugNameLines = processFieldContent(drugName);
+    if (drugNameLines.length > 0) {
+      processedFields.push({ fieldName: 'drugName', lines: drugNameLines });
+    }
+    
+    const numberOfSheetsLines = processFieldContent(numberOfSheets);
+    if (numberOfSheetsLines.length > 0) {
+      processedFields.push({ fieldName: 'numberOfSheets', lines: numberOfSheetsLines });
+    }
+    
+    const drugDescriptionLines = processFieldContent(drugDescription);
+    if (drugDescriptionLines.length > 0) {
+      processedFields.push({ fieldName: 'drugDescription', lines: drugDescriptionLines });
+    }
+    
+    const companyNameLines = processFieldContent(companyName);
+    if (companyNameLines.length > 0) {
+      processedFields.push({ fieldName: 'companyName', lines: companyNameLines });
+    }
+  } else {
+    // 阶梯标模式：保持原有逻辑，将药品相关字段合并
+    // 将药品名称、片数、药品说明、公司名称字段组合成一个文本域
+    const drugRelatedContent = [
+      drugName,
+      numberOfSheets,
+      drugDescription,
+      companyName
+    ].filter(content => content && content.trim() !== '').join('\n');
+    
+    // 处理组合后的药品相关字段内容
+    drugRelatedFieldLines = processFieldContent(drugRelatedContent);
+    
+    // 构建处理后的字段数组（三个独立分组）
+    processedFields = [];
+    
+    // 添加基本信息字段（如果有内容）
+    if (basicInfoField.length > 0) {
+      processedFields.push({ fieldName: 'basicInfo', lines: basicInfoField });
+    }
+    
+    // 添加编号栏信息字段（如果有内容）
+    if (numberFieldLines.length > 0) {
+      processedFields.push({ fieldName: 'numberField', lines: numberFieldLines });
+    }
+    
+    // 添加药品相关组合字段（如果有内容）
+    if (drugRelatedFieldLines.length > 0) {
+      processedFields.push({ fieldName: 'drugRelatedField', lines: drugRelatedFieldLines });
+    }
   }
 
   // 更新样式以使用动态参数
@@ -737,13 +840,19 @@ export default function PDFPreview() {
           <View key={`field-${fieldIndex}`} style={dynamicStyles.fieldContainer}>
             {field.lines.map((line, lineIndex) => (
               <View key={`line-${lineIndex}`} style={dynamicStyles.lineContainer}>
-                <SmartMixedFontText
-                  primaryFont={fontFamily}
-                  secondaryFont={labelData.secondaryFontFamily}
-                  style={dynamicStyles.fieldLine}
-                >
-                  {line}
-                </SmartMixedFontText>
+                {isNonLadderMode ? (
+                  // 非阶梯标模式：使用带变量着色的渲染
+                  renderTextWithVariables(line, field.fieldName, lineIndex, dynamicStyles.fieldLine)
+                ) : (
+                  // 阶梯标模式：正常渲染
+                  <SmartMixedFontText
+                    primaryFont={fontFamily}
+                    secondaryFont={labelData.secondaryFontFamily}
+                    style={dynamicStyles.fieldLine}
+                  >
+                    {line}
+                  </SmartMixedFontText>
+                )}
               </View>
             ))}
             {/* 在分组间添加1.5倍行距（即1.5/1.2的比例关系） */}

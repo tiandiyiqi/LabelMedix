@@ -49,6 +49,15 @@ interface LabelData {
   // 原始状态管理
   originalSummary?: string // 从数据库加载的原始状态
   formatted_summary?: string // 格式化后的汇总
+  // 非阶梯标专用字段
+  originalTextMap?: Record<string, string> // 翻译文本 -> 原文的映射关系
+  variableMarkers?: Array<{
+    fieldName: string
+    lineIndex: number
+    startPos: number
+    endPos: number
+    isVariable: boolean
+  }> // 变量位置标记
 }
 
 interface LabelContextType {
@@ -125,7 +134,10 @@ const defaultLabelData: LabelData = {
   companyName: '',
   // 原始状态管理默认值
   originalSummary: undefined,
-  formatted_summary: undefined
+  formatted_summary: undefined,
+  // 非阶梯标专用字段默认值
+  originalTextMap: undefined,
+  variableMarkers: undefined
 }
 
 const LabelContext = createContext<LabelContextType | undefined>(undefined)
