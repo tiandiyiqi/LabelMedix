@@ -2294,17 +2294,25 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   const handleResetToFormatted = async () => {
     if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
 
-    // 根据标签分类执行不同功能
-    if (labelData.labelCategory !== "阶梯标") {
-      showToast(`当前标签分类：${labelData.labelCategory}，功能开发中...`, 'info')
+    // 判断是否为阶梯标模式
+    const isLadderMode = labelData.labelCategory === "阶梯标"
+    
+    // 前置检查：阶梯标模式需要国别，非阶梯标模式不需要
+    if (isLadderMode && !selectedLanguage) {
+      showToast('请先选择国别', 'info')
       return
     }
 
     try {
       setIsResetting(true)
       
+      // 根据标签分类决定从哪个国别码获取数据
+      // 阶梯标模式：从当前选中的国别码获取
+      // 非阶梯标模式：从特殊国别码 "all" 获取
+      const targetCountryCode = isLadderMode ? selectedLanguage : "all"
+      
       // 获取该国别的详细信息
-      const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
+      const countryDetail = await getCountryDetails(selectedProject.id, targetCountryCode)
       
       // 尝试解析JSON格式的格式化状态
       const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
@@ -2329,7 +2337,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         showToast('未找到格式化状态', 'info')
       }
     } catch (error) {
-      // console.error('重置失败:', error)
+      console.error('重置失败:', error)
       showToast('重置失败，请重试', 'error')
     } finally {
       setIsResetting(false)
@@ -2340,17 +2348,25 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   const handleResetToOriginal = async () => {
     if (!selectedProject) { showToast('请先选择一个项目', 'info'); return }
 
-    // 根据标签分类执行不同功能
-    if (labelData.labelCategory !== "阶梯标") {
-      showToast(`当前标签分类：${labelData.labelCategory}，功能开发中...`, 'info')
+    // 判断是否为阶梯标模式
+    const isLadderMode = labelData.labelCategory === "阶梯标"
+    
+    // 前置检查：阶梯标模式需要国别，非阶梯标模式不需要
+    if (isLadderMode && !selectedLanguage) {
+      showToast('请先选择国别', 'info')
       return
     }
 
     try {
       setIsResetting(true)
       
+      // 根据标签分类决定从哪个国别码获取数据
+      // 阶梯标模式：从当前选中的国别码获取
+      // 非阶梯标模式：从特殊国别码 "all" 获取
+      const targetCountryCode = isLadderMode ? selectedLanguage : "all"
+      
       // 获取该国别的详细信息
-      const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
+      const countryDetail = await getCountryDetails(selectedProject.id, targetCountryCode)
       
       // 尝试解析JSON格式的原始状态
       const originalData = parseOriginalSummary(countryDetail.original_summary)
@@ -2383,7 +2399,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         showToast('未找到原始状态', 'info')
       }
     } catch (error) {
-      // console.error('重置失败:', error)
+      console.error('重置失败:', error)
       showToast('重置失败，请重试', 'error')
     } finally {
       setIsResetting(false)
