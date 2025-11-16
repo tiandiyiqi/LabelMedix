@@ -2710,15 +2710,117 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   }
 
   // ========== 非阶梯标格式化函数 ==========
-  const handleFormatNonLadder = () => {
+  const handleFormatNonLadder = async () => {
     try {
-      // 检查 originalTextMap 是否存在
-      if (!labelData.originalTextMap || Object.keys(labelData.originalTextMap).length === 0) {
-        showToast('请先导入翻译内容', 'info')
+      // 步骤1：检查是否已初始化（参考阶梯标模式的逻辑）
+      let originalSummaryToUse = labelData.originalSummary
+      
+      // 如果还没有，从数据库加载（非阶梯标模式使用 country_code = 'all'）
+      if (!originalSummaryToUse && selectedProject) {
+        try {
+          const countryDetail = await getCountryDetails(selectedProject.id, 'all')
+          if (countryDetail.original_summary) {
+            originalSummaryToUse = countryDetail.original_summary
+            // 更新状态
+            updateLabelData({
+              originalSummary: originalSummaryToUse
+            })
+          }
+        } catch (error) {
+          console.error('从数据库加载原始状态失败:', error)
+        }
+      }
+      
+      // 如果最终还是没有，无法格式化
+      if (!originalSummaryToUse) {
+        showToast('未找到原始状态，请先点击初始化', 'info')
         return
+      }
+      
+      // 更新 ref
+      originalSummaryRef.current = originalSummaryToUse
+      
+      // 步骤2：检查或构建 originalTextMap（用于变量规则匹配）
+      let originalTextMapToUse = labelData.originalTextMap
+      
+      // 如果没有 originalTextMap，从数据库重新获取并构建
+      if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
+        if (!selectedProject) {
+          showToast('请先选择项目', 'info')
+          return
+        }
+        
+        console.log('  📝 未找到 originalTextMap，从数据库重新获取...')
+        
+        try {
+          // 获取项目完整信息（包含所有国别翻译组）
+          const projectDetail = await getProjectById(selectedProject.id)
+          
+          if (!projectDetail.translationGroups || projectDetail.translationGroups.length === 0) {
+            showToast('该项目暂无翻译内容，无法构建变量映射', 'info')
+            return
+          }
+          
+          // 过滤掉国别码为"all"的翻译组，并按序号排序
+          const validGroups = projectDetail.translationGroups
+            .filter(group => group.country_code.toLowerCase() !== 'all')
+            .sort((a, b) => a.sequence_number - b.sequence_number)
+          
+          if (validGroups.length === 0) {
+            showToast('没有可用的国别翻译内容，无法构建变量映射', 'info')
+            return
+          }
+          
+          // 构建 originalTextMap
+          const originalTextMap: Record<string, string> = {}
+          
+          // 获取每个国别的翻译详情
+          for (const group of validGroups) {
+            try {
+              const translationGroup = await getTranslationsByCountry(selectedProject.id, group.country_code)
+              
+              if (translationGroup.items && translationGroup.items.length > 0) {
+                // 按 item_order 排序
+                const sortedItems = translationGroup.items.sort((a, b) => a.item_order - b.item_order)
+                
+                sortedItems.forEach(item => {
+                  const originalText = item.original_text
+                  const translatedText = item.translated_text || item.original_text
+                  
+                  // 只保存第一个翻译的映射关系（用于变量规则匹配）
+                  if (!originalTextMap[translatedText]) {
+                    originalTextMap[translatedText] = originalText
+                  }
+                })
+              }
+            } catch (error) {
+              console.error(`获取国别 ${group.country_code} 的翻译失败:`, error)
+            }
+          }
+          
+          originalTextMapToUse = originalTextMap
+          
+          // 保存到 labelData
+          updateLabelData({
+            originalTextMap: originalTextMapToUse
+          })
+          
+          console.log(`  ✅ 已构建 originalTextMap，共 ${Object.keys(originalTextMapToUse).length} 条映射`)
+        } catch (error) {
+          console.error('构建 originalTextMap 失败:', error)
+          showToast('无法构建变量映射，请先导入翻译内容', 'error')
+          return
+        }
       }
 
       console.log('🎨 开始非阶梯标格式化...')
+      
+      // 内部辅助函数：从 originalTextMapToUse 获取原文
+      const getOriginalTextInternal = (translatedText: string): string | null => {
+        if (!originalTextMapToUse) return null
+        const firstTranslation = getFirstTranslation(translatedText)
+        return originalTextMapToUse[firstTranslation] || null
+      }
       
       // 变量标记数组
       const variableMarkers: Array<{
@@ -2743,7 +2845,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             return
           }
           
-          const originalText = getOriginalText(line)
+          const originalText = getOriginalTextInternal(line)
           if (originalText) {
             const variable = matchVariableRule(originalText)
             if (variable) {
@@ -2784,7 +2886,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             return
           }
           
-          const originalText = getOriginalText(line)
+          const originalText = getOriginalTextInternal(line)
           if (originalText) {
             const variable = matchVariableRule(originalText)
             if (variable) {
@@ -2858,7 +2960,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             return
           }
           
-          const originalText = getOriginalText(line)
+          const originalText = getOriginalTextInternal(line)
           if (originalText) {
             const variable = matchVariableRule(originalText)
             if (variable) {
@@ -2887,22 +2989,150 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         formattedNumberOfSheets = processedLines.join('\n')
       }
       
-      // ===== 4. 处理 drugDescription 字段（替换 XX/XXX 为罗马序号）=====
+      // ===== 4. 处理 drugDescription 字段（按语言分类并执行智能组合算法）=====
       let formattedDrugDescription = labelData.drugDescription
-      let romanStartIndex = totalVariableCount + 1
       
       if (labelData.drugDescription && labelData.drugDescription.trim()) {
-        // 使用正则表达式匹配严格的 XX 或 XXX（前后有边界）
-        let currentRomanIndex = romanStartIndex
-        formattedDrugDescription = labelData.drugDescription.replace(/\bXX+\b/g, (match) => {
-          const roman = getRomanNumber(currentRomanIndex)
-          console.log(`  ✅ drugDescription: 替换 ${match} 为罗马数字 ${roman}`)
-          currentRomanIndex++
-          return roman
+        // 步骤1：按语言分类收集内容
+        const lines = labelData.drugDescription.split('\n').filter(line => line.trim() !== '')
+        const languageGroups: Map<number, string[]> = new Map() // key: 语言索引, value: 该语言的句子数组
+        
+        lines.forEach(line => {
+          // 按 " / " 分隔不同语言的翻译
+          const translations = line.split(' / ').map(t => t.trim()).filter(t => t !== '')
+          
+          translations.forEach((translation, langIndex) => {
+            if (!languageGroups.has(langIndex)) {
+              languageGroups.set(langIndex, [])
+            }
+            languageGroups.get(langIndex)!.push(translation)
+          })
         })
+        
+        console.log(`  📝 drugDescription: 检测到 ${languageGroups.size} 种语言`)
+        
+        // 步骤2：对每个语言组执行智能组合算法
+        // 计算容器宽度（用于智能组合算法）
+        const baseWidth = labelData.labelWidth
+        const margins = calculatePageMargins(Number(labelData.selectedNumber))
+        const effectiveWidth = baseWidth - margins.left - margins.right
+        const safetyMargin = 2
+        const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95))
+        
+        // 空格宽度
+        const spaceWidth = measureTextWidth(' ', labelData.fontSize, labelData.fontFamily)
+        
+        // 智能组合算法：最大化每行利用率
+        const optimizeCombination = (items: Array<{text: string, width: number}>): string[] => {
+          const result: string[] = []
+          const used = new Array(items.length).fill(false)
+
+          while (used.some(u => !u)) {
+            let bestCombination: number[] = []
+            let bestUtilization = 0
+
+            // 找到第一个未使用的句子作为起点
+            const startIndex = used.findIndex(u => !u)
+            if (startIndex === -1) break
+
+            const startWidth = items[startIndex].width
+            const startRequiredMultiplier = Math.ceil(startWidth / containerWidth)
+            
+            // 根据起始句子的长度确定该行的目标宽度
+            const targetMultiplier = startRequiredMultiplier
+            const maxTargetWidth = containerWidth * targetMultiplier
+            
+            // 从起始句子开始，尝试添加其他句子
+            let currentCombination = [startIndex]
+            let currentWidth = startWidth
+            let currentUtilization = currentWidth / maxTargetWidth
+            
+            // 尝试添加其他未使用的句子
+            for (let i = 0; i < items.length; i++) {
+              if (!used[i] && i !== startIndex) {
+                const newWidth = currentWidth + spaceWidth + items[i].width
+                
+                // 检查：添加后不能超过目标宽度
+                if (newWidth <= maxTargetWidth) {
+                  const newUtilization = newWidth / maxTargetWidth
+                  
+                  // 如果利用率提高，则添加这个句子
+                  if (newUtilization > currentUtilization) {
+                    currentCombination.push(i)
+                    currentWidth = newWidth
+                    currentUtilization = newUtilization
+                  }
+                }
+              }
+            }
+            
+            // 使用找到的组合
+            bestCombination = currentCombination
+
+            // 标记为已使用并添加到结果
+            if (bestCombination.length > 0) {
+              const combinedText = bestCombination.map(idx => items[idx].text).join(' ')
+              result.push(combinedText)
+              bestCombination.forEach(idx => {
+                used[idx] = true
+              })
+            } else {
+              // 如果没有找到合适的组合，直接使用当前句子
+              result.push(items[startIndex].text)
+              used[startIndex] = true
+            }
+          }
+
+          return result
+        }
+        
+        // 用分隔线连接各个语言组
+        const separator = '————————————————'
+        const result: string[] = []
+        
+        // 按语言索引排序处理
+        const sortedLangIndices = Array.from(languageGroups.keys()).sort((a, b) => a - b)
+        
+        // 计算罗马序号起始索引（从累计变量数+1开始）
+        const romanStartIndex = totalVariableCount + 1
+        
+        sortedLangIndices.forEach((langIndex, groupIndex) => {
+          const sentences = languageGroups.get(langIndex)!
+          const sentencesWithWidth = sentences.map((sentence: string) => ({
+            text: sentence,
+            width: measureTextWidth(sentence, labelData.fontSize, labelData.fontFamily)
+          }))
+          
+          // 执行智能组合算法
+          let optimizedLines = optimizeCombination(sentencesWithWidth)
+          
+          // 步骤3：对智能组合后的结果替换 XX/XXX 为罗马序号
+          // 每个语言组独立计算罗马序号（都从 totalVariableCount + 1 开始）
+          let currentRomanIndex = romanStartIndex
+          optimizedLines = optimizedLines.map(line => {
+            // 使用正则表达式匹配严格的 XX 或 XXX（前后有边界）
+            return line.replace(/\bXX+\b/g, (match) => {
+              const roman = getRomanNumber(currentRomanIndex)
+              console.log(`  ✅ drugDescription[语言${langIndex + 1}]: 替换 ${match} 为罗马数字 ${roman} (序号: ${currentRomanIndex})`)
+              currentRomanIndex++
+              return roman
+            })
+          })
+          
+          // 添加该语言组的格式化结果
+          result.push(...optimizedLines)
+          
+          // 如果不是最后一个语言组，添加分隔线
+          if (groupIndex < sortedLangIndices.length - 1) {
+            result.push(separator)
+          }
+        })
+        
+        formattedDrugDescription = result.join('\n')
+        console.log(`  ✅ drugDescription: 格式化完成，共 ${result.length} 行（包含分隔线），罗马序号从 ${romanStartIndex} 开始`)
       }
       
-      console.log(`🎨 格式化完成：累计变量 ${totalVariableCount} 个，罗马序号从 ${romanStartIndex} 开始`)
+      console.log(`🎨 格式化完成：累计变量 ${totalVariableCount} 个`)
       
       // 更新数据
       updateLabelData({
@@ -2913,7 +3143,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         variableMarkers: variableMarkers
       })
       
-      showToast(`非阶梯标格式化完成（变量：${totalVariableCount}，罗马序号：${romanStartIndex}起）`, 'success')
+      showToast(`非阶梯标格式化完成（变量：${totalVariableCount}）`, 'success')
       
     } catch (error) {
       console.error('非阶梯标格式化失败:', error)
@@ -2931,7 +3161,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       if (isNonLadderMode) {
         // 非阶梯标模式：使用新的格式化函数
-        handleFormatNonLadder()
+        await handleFormatNonLadder()
         return
       }
       
