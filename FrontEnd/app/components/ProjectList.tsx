@@ -103,8 +103,13 @@ export default function ProjectList() {
       
       // 如果有国别翻译组，选择序号为1的国别
       if (projectDetail.translationGroups && projectDetail.translationGroups.length > 0) {
-        // 按序号排序
-        const sortedGroups = projectDetail.translationGroups.sort((a, b) => 
+        // 过滤掉 country_code = "all" 的记录（非阶梯标模式使用的特殊记录）
+        const validGroups = projectDetail.translationGroups.filter(
+          group => group.country_code.toLowerCase() !== 'all'
+        )
+        
+        // 按序号排序（只包含有效国别）
+        const sortedGroups = validGroups.sort((a, b) => 
           a.sequence_number - b.sequence_number
         )
         
@@ -188,8 +193,9 @@ export default function ProjectList() {
       setEditLabelCategory(projectDetail.label_category || '')
       setEditIsWrapped(projectDetail.is_wrapped || false)
       
-      // 按序号排序国别翻译组
+      // 按序号排序国别翻译组（过滤掉 country_code = "all" 的记录）
       const sortedGroups = (projectDetail.translationGroups || [])
+        .filter(group => group.country_code.toLowerCase() !== 'all')  // 过滤掉非阶梯标模式使用的特殊记录
         .map(group => ({
           id: group.id,
           country_code: group.country_code,
@@ -255,13 +261,24 @@ export default function ProjectList() {
         is_wrapped: editIsWrapped,
       })
       
-      // 2. 更新国别顺序
-      const sequenceUpdates = countryGroups.map((group, index) => ({
-        group_id: group.id,
-        sequence_number: index + 1,
-      }))
-      
-      await updateCountrySequence(editingProject.id, sequenceUpdates)
+      // 2. 更新国别顺序（仅在阶梯标模式下执行，且确保有有效的国别记录）
+      // 非阶梯标模式不需要更新序号，因为使用的是 country_code = "all" 的特殊记录（序号固定为 0）
+      // 只有当标签分类为阶梯标，且存在有效的国别记录（排除 "all"）时，才更新序号
+      if (editLabelCategory === "阶梯标") {
+        // 再次过滤，确保不包含 "all" 记录
+        const validGroups = countryGroups.filter(
+          group => group.country_code.toLowerCase() !== 'all'
+        )
+        
+        if (validGroups.length > 0) {
+          const sequenceUpdates = validGroups.map((group, index) => ({
+            group_id: group.id,
+            sequence_number: index + 1,
+          }))
+          
+          await updateCountrySequence(editingProject.id, sequenceUpdates)
+        }
+      }
       
       // 3. 同步更新 LabelContext 中的标签参数
       updateLabelData({

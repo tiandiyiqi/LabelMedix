@@ -661,6 +661,27 @@ exports.updateCountrySequence = async (req, res) => {
       });
     }
 
+    // 过滤掉 country_code = "all" 的记录（序号固定为 0，不应该被更新）
+    const validGroups = groups.filter(
+      (group) => group.country_code.toLowerCase() !== "all"
+    );
+    const validSequenceUpdates = sequenceUpdates.filter((update) => {
+      const group = groups.find((g) => g.id === update.group_id);
+      return group && group.country_code.toLowerCase() !== "all";
+    });
+
+    if (validSequenceUpdates.length === 0) {
+      // 如果没有有效的更新（只有 "all" 记录），直接返回成功
+      await transaction.commit();
+      return res.json({
+        success: true,
+        message: "国别顺序更新成功（无有效记录需要更新）",
+      });
+    }
+
+    // 使用过滤后的更新列表
+    const finalSequenceUpdates = validSequenceUpdates;
+
     // 使用更安全的批量更新方式
     // 先获取当前最大序号，然后使用负数作为临时值
     const maxSequence =
@@ -672,8 +693,8 @@ exports.updateCountrySequence = async (req, res) => {
     console.log("📊 当前最大序号:", maxSequence);
 
     // 第一步：将所有需要更新的序号设置为负数临时值
-    for (let i = 0; i < sequenceUpdates.length; i++) {
-      const { group_id } = sequenceUpdates[i];
+    for (let i = 0; i < finalSequenceUpdates.length; i++) {
+      const { group_id } = finalSequenceUpdates[i];
       const tempSequence = -(i + 1); // 使用负数作为临时值
 
       await CountryTranslationGroup.update(
@@ -692,7 +713,7 @@ exports.updateCountrySequence = async (req, res) => {
     }
 
     // 第二步：将序号更新为目标值
-    for (const update of sequenceUpdates) {
+    for (const update of finalSequenceUpdates) {
       const { group_id, sequence_number } = update;
 
       await CountryTranslationGroup.update(

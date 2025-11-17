@@ -2081,14 +2081,19 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         try {
           const projectDetail = await getProjectById(selectedProject.id)
           if (projectDetail.translationGroups) {
-            // 提取所有序号并排序
-            const sequences = projectDetail.translationGroups
+            // 过滤掉 country_code = "all" 的记录（非阶梯标模式使用的特殊记录）
+            const validGroups = projectDetail.translationGroups.filter(
+              group => group.country_code.toLowerCase() !== 'all'
+            )
+            
+            // 提取所有序号并排序（只包含有效国别）
+            const sequences = validGroups
               .map(group => group.sequence_number)
               .sort((a, b) => a - b)
             setAvailableSequences(sequences)
 
-            // 提取所有国别码并按序号排序
-            const countries = projectDetail.translationGroups
+            // 提取所有国别码并按序号排序（只包含有效国别）
+            const countries = validGroups
               .sort((a, b) => a.sequence_number - b.sequence_number)
               .map(group => group.country_code)
             setAvailableCountries(countries)
@@ -2127,10 +2132,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         // 非阶梯标模式：使用 'all'
         const targetCountryCode = isLadderMode ? selectedLanguage : "all"
         
-        // 获取目标国别的详细信息
-        const countryDetail = await getCountryDetails(selectedProject.id, targetCountryCode)
-        
-        // 加载标签预览区参数设置
+        // 先加载标签预览区参数设置（不依赖国别详情）
         let labelDataFromSettings = null
         let backendSettingsExist = false
         
@@ -2191,6 +2193,50 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           } catch (projectConfigError) {
             console.warn('⚠️ [useEffect-AutoLoad] 获取项目级别配置失败:', projectConfigError)
           }
+        }
+        
+        // 获取目标国别的详细信息
+        let countryDetail = null
+        try {
+          countryDetail = await getCountryDetails(selectedProject.id, targetCountryCode)
+        } catch (error: any) {
+          // 非阶梯标模式：如果记录不存在（404），这是正常的（用户还没有初始化），静默处理
+          // 阶梯标模式：如果记录不存在，也应该静默处理，避免报错
+          if (error.message && error.message.includes('404')) {
+            console.log(`ℹ️ [useEffect-AutoLoad] 国别 ${targetCountryCode} 的记录不存在，跳过数据加载`)
+            // 清空字段，但保留标签设置（如果有）
+            if (labelDataFromSettings) {
+              const mergedData = {
+                ...labelDataFromSettings,
+                basicInfo: '',
+                numberField: '',
+                drugName: '',
+                numberOfSheets: '',
+                drugDescription: '',
+                companyName: '',
+                originalSummary: undefined,
+                formatted_summary: undefined
+              }
+              updateLabelData(mergedData)
+            }
+            setFormatStates({
+              basicInfo: 0,
+              numberField: 0,
+              drugName: 0,
+              numberOfSheets: 0,
+              drugDescription: 0,
+              companyName: 0
+            })
+            setDataLoadCompleted(true)
+            return
+          }
+          // 其他错误继续抛出
+          throw error
+        }
+        
+        // 如果记录不存在，直接返回
+        if (!countryDetail) {
+          return
         }
         
         // 尝试解析JSON格式的格式化状态
