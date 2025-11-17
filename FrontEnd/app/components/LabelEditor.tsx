@@ -3184,7 +3184,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         }
         
         // 用分隔线连接各个语言组
-        const separator = '————————————————'
+        // 根据页面宽度和"—"字符宽度动态计算分隔符长度
+        const dashChar = '—'
+        const dashWidth = measureTextWidth(dashChar, labelData.fontSize, labelData.fontFamily)
+        // 计算需要多少个"—"字符才能填满容器宽度（使用95%的容器宽度）
+        const separatorWidth = containerWidth * 0.95
+        const dashCount = Math.max(1, Math.floor(separatorWidth / dashWidth))
+        const separator = dashChar.repeat(dashCount)
         const result: string[] = []
         
         // 按语言索引排序处理
@@ -3239,6 +3245,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         drugDescription: formattedDrugDescription,
         variableMarkers: variableMarkers
       })
+      
+      // 设置格式化状态（非阶梯标模式：所有字段设置为 1，表示已格式化）
+      const newFormatStates = {
+        basicInfo: 1,
+        numberField: 0, // numberField 在非阶梯标模式下不格式化
+        drugName: 1,
+        numberOfSheets: 1,
+        drugDescription: 1,
+        companyName: 0 // companyName 在非阶梯标模式下不格式化
+      }
+      formatStatesRef.current = newFormatStates
+      setFormatStates(newFormatStates)
       
       showToast(`非阶梯标格式化完成（变量：${totalVariableCount}）`, 'success')
       
@@ -3381,8 +3399,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // 创建包含6个字段和格式化状态的JSON
       let formattedSummaryJson: string
       
+      // 检查格式化状态是否为空（两种模式都需要）
+      if (!formatStatesRef.current || Object.keys(formatStatesRef.current).length === 0) {
+        showToast('格式化状态为空，请先格式化', 'error')
+        return
+      }
+      
       if (isNonLadderMode) {
-        // 非阶梯标模式：保存字段内容和变量标记
+        // 非阶梯标模式：保存字段内容、变量标记和格式化状态
         formattedSummaryJson = JSON.stringify({
           basicInfo: labelData.basicInfo,
           numberField: labelData.numberField,
@@ -3390,17 +3414,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           numberOfSheets: labelData.numberOfSheets,
           drugDescription: labelData.drugDescription,
           companyName: labelData.companyName,
-          variableMarkers: labelData.variableMarkers || []
+          variableMarkers: labelData.variableMarkers || [],
+          formatStates: formatStatesRef.current
         })
       } else {
         // 阶梯标模式：使用原有逻辑
         formattedSummaryJson = createFormattedSummary()
-        
-        // 调试：检查格式化状态是否为空（仅阶梯标模式需要）
-        if (!formatStatesRef.current || Object.keys(formatStatesRef.current).length === 0) {
-          showToast('格式化状态为空，请先格式化', 'error')
-          return
-        }
       }
       
       // 同时保存合并的文本内容（用于PDF生成）和JSON格式的详细状态（使用 labelData 中的最新值）
@@ -3426,29 +3445,34 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         lineHeight: labelData.lineHeight
       })
 
-      // 2. 保存标签预览区参数设置到数据库
-      await saveLabelSettingsToDatabase(
-        selectedProject.id,
-        selectedLanguage,
-        parseInt(selectedNumber)
-      )
-      
       // 立即更新本地状态，确保后续操作可以访问到最新的格式化状态
       updateLabelData({
         formatted_summary: formattedSummaryJson
       })
       
-      // 3. 触发PDF生成和保存（使用合并的文本内容）
-      window.dispatchEvent(new CustomEvent('generate-and-save-pdf', {
-        detail: {
-          projectId: selectedProject.id,
-          countryCode: selectedLanguage,
-          sequenceNumber: selectedNumber,
-          content: combinedContent // 传递合并的文本内容用于PDF生成
-        }
-      }));
-      
-      showToast('标签设置和格式化状态已保存，PDF正在生成中...', 'success')
+      if (isNonLadderMode) {
+        // 非阶梯标模式：跳过标签预览区参数保存和PDF生成
+        showToast('标签设置和格式化状态已保存', 'success')
+      } else {
+        // 阶梯标模式：保存标签预览区参数设置到数据库
+        await saveLabelSettingsToDatabase(
+          selectedProject.id,
+          selectedLanguage,
+          parseInt(selectedNumber)
+        )
+        
+        // 触发PDF生成和保存（使用合并的文本内容）
+        window.dispatchEvent(new CustomEvent('generate-and-save-pdf', {
+          detail: {
+            projectId: selectedProject.id,
+            countryCode: selectedLanguage,
+            sequenceNumber: selectedNumber,
+            content: combinedContent // 传递合并的文本内容用于PDF生成
+          }
+        }));
+        
+        showToast('标签设置和格式化状态已保存，PDF正在生成中...', 'success')
+      }
       
     } catch (error) {
       showToast('保存标签失败，请重试', 'error')
