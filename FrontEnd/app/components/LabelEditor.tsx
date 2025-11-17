@@ -2170,7 +2170,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
                 ...labelDataFromSettings,
                 labelWidth: parseFloat(String(projectLabelConfig.label_width)) || labelDataFromSettings.labelWidth,
                 labelHeight: parseFloat(String(projectLabelConfig.label_height)) || labelDataFromSettings.labelHeight,
-                labelCategory: projectLabelConfig.label_category || labelDataFromSettings.labelCategory,
+                // 不覆盖 labelCategory，保留用户当前的选择
+                // labelCategory: projectLabelConfig.label_category || labelDataFromSettings.labelCategory,
                 isWrapped: projectLabelConfig.is_wrapped !== undefined ? projectLabelConfig.is_wrapped : labelDataFromSettings.isWrapped
               }
             }
@@ -2186,7 +2187,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               labelDataFromSettings = {
                 labelWidth: parseFloat(String(projectLabelConfig.label_width)) || labelData.labelWidth,
                 labelHeight: parseFloat(String(projectLabelConfig.label_height)) || labelData.labelHeight,
-                labelCategory: projectLabelConfig.label_category || labelData.labelCategory,
+                // 不覆盖 labelCategory，保留用户当前的选择
+                // labelCategory: projectLabelConfig.label_category || labelData.labelCategory,
                 isWrapped: projectLabelConfig.is_wrapped !== undefined ? projectLabelConfig.is_wrapped : labelData.isWrapped
               }
             }
@@ -2208,6 +2210,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             if (labelDataFromSettings) {
               const mergedData = {
                 ...labelDataFromSettings,
+                labelCategory: labelData.labelCategory,  // 保留当前的 labelCategory，不被数据库值覆盖
                 basicInfo: '',
                 numberField: '',
                 drugName: '',
@@ -2246,6 +2249,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           // 如果有JSON格式的格式化状态，加载6个字段和格式化状态
           const mergedData = {
             ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
+            labelCategory: labelData.labelCategory,  // 保留当前的 labelCategory，不被数据库值覆盖
             basicInfo: formattedData.basicInfo || '',
             numberField: formattedData.numberField || '',
             drugName: formattedData.drugName || '',
@@ -2271,6 +2275,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
           if (originalData) {
             const mergedData = {
               ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
+              labelCategory: labelData.labelCategory,  // 保留当前的 labelCategory，不被数据库值覆盖
               basicInfo: originalData.basicInfo || '',
               numberField: originalData.numberField || '',
               drugName: originalData.drugName || '',
@@ -2299,6 +2304,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             // 如果既没有格式化数据也没有原始数据，清空所有字段（但保留标签设置）
             const mergedData = {
               ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
+              labelCategory: labelData.labelCategory,  // 保留当前的 labelCategory，不被数据库值覆盖
               basicInfo: '',
               numberField: '',
               drugName: '',
@@ -2352,6 +2358,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       } catch (error) {
         // 出错时也清空字段，避免显示错误的旧数据
         updateLabelData({ 
+          labelCategory: labelData.labelCategory,  // 保留当前的 labelCategory，不被覆盖
           basicInfo: '',
           numberField: '',
           drugName: '',
