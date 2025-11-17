@@ -955,13 +955,15 @@ export default function PDFPreview() {
       case '阶梯标':
         return renderStepLayout();
       case '单页左右1':
-        return renderLeftRight1Layout();
+        // 使用 renderStepLayout()，它会自动检测到 isNonLadderMode = true
+        // 从而使用非阶梯标渲染方式（字段独立、变量着色）
+        return renderStepLayout();
       case '单页左右2':
-        return renderLeftRight2Layout();
+        return renderLeftRight2Layout(); // 保持现有不变（占位函数）
       case '单页上下1':
-        return renderTopBottom1Layout();
+        return renderTopBottom1Layout(); // 保持现有不变（占位函数）
       case '单页上下2':
-        return renderTopBottom2Layout();
+        return renderTopBottom2Layout(); // 保持现有不变（占位函数）
       default:
         return renderStepLayout();
     }
