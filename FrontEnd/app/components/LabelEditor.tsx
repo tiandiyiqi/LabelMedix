@@ -2114,14 +2114,28 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 当项目被选中时，自动加载格式化内容到6个字段
   useEffect(() => {
     const loadFormattedContent = async () => {
-      if (selectedProject && selectedLanguage) {
-        try {
-          // 获取该国别的详细信息
-          const countryDetail = await getCountryDetails(selectedProject.id, selectedLanguage)
-          
-          // 加载标签预览区参数设置
-          let labelDataFromSettings = null
-          let backendSettingsExist = false
+      // 判断是否为阶梯标模式
+      const isLadderMode = labelData.labelCategory === "阶梯标"
+      
+      // 条件检查：阶梯标模式需要 selectedLanguage，非阶梯标模式只需要 selectedProject
+      if (!selectedProject) return
+      if (isLadderMode && !selectedLanguage) return
+      
+      try {
+        // 根据标签类型决定目标国别码
+        // 阶梯标模式：使用 selectedLanguage
+        // 非阶梯标模式：使用 'all'
+        const targetCountryCode = isLadderMode ? selectedLanguage : "all"
+        
+        // 获取目标国别的详细信息
+        const countryDetail = await getCountryDetails(selectedProject.id, targetCountryCode)
+        
+        // 加载标签预览区参数设置
+        let labelDataFromSettings = null
+        let backendSettingsExist = false
+        
+        // 标签设置加载：阶梯标模式需要加载特定国别的设置，非阶梯标模式可以跳过或使用默认值
+        if (isLadderMode && selectedLanguage) {
           try {
             const shortCountryCode = extractShortCountryCode(selectedLanguage)
             const sequence = selectedProject.currentSequence || 1
@@ -2162,143 +2176,159 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
             // console.warn('⚠️ [useEffect-AutoLoad] 加载标签设置失败，使用默认设置:', labelError)
             setBackendDataExists(false)
           }
+        } else {
+          // 非阶梯标模式：尝试获取项目级别的标签配置
+          try {
+            const projectLabelConfig = await getProjectLabelConfig(selectedProject.id)
+            if (projectLabelConfig) {
+              labelDataFromSettings = {
+                labelWidth: parseFloat(String(projectLabelConfig.label_width)) || labelData.labelWidth,
+                labelHeight: parseFloat(String(projectLabelConfig.label_height)) || labelData.labelHeight,
+                labelCategory: projectLabelConfig.label_category || labelData.labelCategory,
+                isWrapped: projectLabelConfig.is_wrapped !== undefined ? projectLabelConfig.is_wrapped : labelData.isWrapped
+              }
+            }
+          } catch (projectConfigError) {
+            console.warn('⚠️ [useEffect-AutoLoad] 获取项目级别配置失败:', projectConfigError)
+          }
+        }
+        
+        // 尝试解析JSON格式的格式化状态
+        const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
+        
+        if (formattedData && formattedData.formatStates) {
+          // 如果有JSON格式的格式化状态，加载6个字段和格式化状态
+          const mergedData = {
+            ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
+            basicInfo: formattedData.basicInfo || '',
+            numberField: formattedData.numberField || '',
+            drugName: formattedData.drugName || '',
+            numberOfSheets: formattedData.numberOfSheets || '',
+            drugDescription: formattedData.drugDescription || '',
+            companyName: formattedData.companyName || '',
+            originalSummary: countryDetail.original_summary,
+            formatted_summary: countryDetail.formatted_summary
+          }
           
-          // 尝试解析JSON格式的格式化状态
-          const formattedData = parseFormattedSummary(countryDetail.formatted_summary)
+          updateLabelData(mergedData)
           
-          if (formattedData && formattedData.formatStates) {
-            // 如果有JSON格式的格式化状态，加载6个字段和格式化状态
+          // 恢复格式化状态
+          setFormatStates(formattedData.formatStates)
+          
+          // 标记数据加载完成
+          setDataLoadCompleted(true)
+          
+        } else {
+          // 如果没有格式化状态，尝试加载原始状态
+          const originalData = parseOriginalSummary(countryDetail.original_summary)
+          
+          if (originalData) {
             const mergedData = {
               ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
-              basicInfo: formattedData.basicInfo || '',
-              numberField: formattedData.numberField || '',
-              drugName: formattedData.drugName || '',
-              numberOfSheets: formattedData.numberOfSheets || '',
-              drugDescription: formattedData.drugDescription || '',
-              companyName: formattedData.companyName || '',
+              basicInfo: originalData.basicInfo || '',
+              numberField: originalData.numberField || '',
+              drugName: originalData.drugName || '',
+              numberOfSheets: originalData.numberOfSheets || '',
+              drugDescription: originalData.drugDescription || '',
+              companyName: originalData.companyName || '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
             }
-            
             updateLabelData(mergedData)
             
-            // 恢复格式化状态
-            setFormatStates(formattedData.formatStates)
+            // 重置格式化状态为0
+            setFormatStates({
+              basicInfo: 0,
+              numberField: 0,
+              drugName: 0,
+              numberOfSheets: 0,
+              drugDescription: 0,
+              companyName: 0
+            })
             
             // 标记数据加载完成
             setDataLoadCompleted(true)
             
           } else {
-            // 如果没有格式化状态，尝试加载原始状态
-            const originalData = parseOriginalSummary(countryDetail.original_summary)
-            
-            if (originalData) {
-              const mergedData = {
-                ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
-                basicInfo: originalData.basicInfo || '',
-                numberField: originalData.numberField || '',
-                drugName: originalData.drugName || '',
-                numberOfSheets: originalData.numberOfSheets || '',
-                drugDescription: originalData.drugDescription || '',
-                companyName: originalData.companyName || '',
-                originalSummary: countryDetail.original_summary,
-                formatted_summary: countryDetail.formatted_summary
-              }
-              updateLabelData(mergedData)
-              
-              // 重置格式化状态为0
-              setFormatStates({
-                basicInfo: 0,
-                numberField: 0,
-                drugName: 0,
-                numberOfSheets: 0,
-                drugDescription: 0,
-                companyName: 0
-              })
-              
-              // 标记数据加载完成
-              setDataLoadCompleted(true)
-              
-            } else {
-              // 如果既没有格式化数据也没有原始数据，清空所有字段（但保留标签设置）
-              const mergedData = {
-                ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
-                basicInfo: '',
-                numberField: '',
-                drugName: '',
-                numberOfSheets: '',
-                drugDescription: '',
-                companyName: '',
-                originalSummary: undefined,
-                formatted_summary: undefined
-              }
-              updateLabelData(mergedData)
-              
-              // 重置格式化状态为0
-              setFormatStates({
-                basicInfo: 0,
-                numberField: 0,
-                drugName: 0,
-                numberOfSheets: 0,
-                drugDescription: 0,
-                companyName: 0
-              })
-              
-              // 标记数据加载完成
-              setDataLoadCompleted(true)
-              
-              // 检查字段是否为空，如果为空则自动触发导入
-              // 延迟执行，确保数据加载完成
-              setTimeout(async () => {
-                const allFieldsEmpty = [
-                  labelData.basicInfo,
-                  labelData.numberField,
-                  labelData.drugName,
-                  labelData.numberOfSheets,
-                  labelData.drugDescription,
-                  labelData.companyName
-                ].every(content => !content || content.trim() === '')
-                
-                // 检查数据库是否已初始化（双重检查）
-                const isInitialized = await checkIfInitialized(selectedProject.id, selectedLanguage)
-                const isFormatted = await checkIfFormatted(selectedProject.id, selectedLanguage)
-                
-                // 如果字段为空且数据库也没有初始化和格式化数据，则自动导入
-                if (allFieldsEmpty && !isInitialized && !isFormatted) {
-                  showToast('检测到空白内容，开始自动导入...', 'info')
-                  await handleImport() // 这会自动触发后续的链式调用
-                }
-              }, 500)
-              
+            // 如果既没有格式化数据也没有原始数据，清空所有字段（但保留标签设置）
+            const mergedData = {
+              ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
+              basicInfo: '',
+              numberField: '',
+              drugName: '',
+              numberOfSheets: '',
+              drugDescription: '',
+              companyName: '',
+              originalSummary: undefined,
+              formatted_summary: undefined
             }
+            updateLabelData(mergedData)
+            
+            // 重置格式化状态为0
+            setFormatStates({
+              basicInfo: 0,
+              numberField: 0,
+              drugName: 0,
+              numberOfSheets: 0,
+              drugDescription: 0,
+              companyName: 0
+            })
+            
+            // 标记数据加载完成
+            setDataLoadCompleted(true)
+            
+            // 检查字段是否为空，如果为空则自动触发导入
+            // 延迟执行，确保数据加载完成
+            setTimeout(async () => {
+              const allFieldsEmpty = [
+                labelData.basicInfo,
+                labelData.numberField,
+                labelData.drugName,
+                labelData.numberOfSheets,
+                labelData.drugDescription,
+                labelData.companyName
+              ].every(content => !content || content.trim() === '')
+              
+              // 检查数据库是否已初始化（双重检查）
+              // 使用正确的目标国别码
+              const isInitialized = await checkIfInitialized(selectedProject.id, targetCountryCode)
+              const isFormatted = await checkIfFormatted(selectedProject.id, targetCountryCode)
+              
+              // 如果字段为空且数据库也没有初始化和格式化数据，则自动导入
+              if (allFieldsEmpty && !isInitialized && !isFormatted) {
+                showToast('检测到空白内容，开始自动导入...', 'info')
+                await handleImport() // 这会自动触发后续的链式调用
+              }
+            }, 500)
+            
           }
-        } catch (error) {
-          // 出错时也清空字段，避免显示错误的旧数据
-          updateLabelData({ 
-            basicInfo: '',
-            numberField: '',
-            drugName: '',
-            numberOfSheets: '',
-            drugDescription: '',
-            companyName: '',
-            originalSummary: undefined,
-            formatted_summary: undefined
-          })
-          setFormatStates({
-            basicInfo: 0,
-            numberField: 0,
-            drugName: 0,
-            numberOfSheets: 0,
-            drugDescription: 0,
-            companyName: 0
-          })
         }
+      } catch (error) {
+        // 出错时也清空字段，避免显示错误的旧数据
+        updateLabelData({ 
+          basicInfo: '',
+          numberField: '',
+          drugName: '',
+          numberOfSheets: '',
+          drugDescription: '',
+          companyName: '',
+          originalSummary: undefined,
+          formatted_summary: undefined
+        })
+        setFormatStates({
+          basicInfo: 0,
+          numberField: 0,
+          drugName: 0,
+          numberOfSheets: 0,
+          drugDescription: 0,
+          companyName: 0
+        })
       }
     }
 
     loadFormattedContent()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedProject, selectedLanguage])
+  }, [selectedProject, selectedLanguage, labelCategory])
 
 
   const fonts = [
@@ -2712,23 +2742,29 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // ========== 非阶梯标格式化函数 ==========
   const handleFormatNonLadder = async () => {
     try {
-      // 步骤1：检查是否已初始化（参考阶梯标模式的逻辑）
-      let originalSummaryToUse = labelData.originalSummary
+      // 步骤1：检查是否已初始化（参考非阶梯标初始化按钮的功能）
+      // 非阶梯标模式：必须从 country_code = 'all' 加载数据，而不是使用内存中的 originalSummary
+      // 因为内存中的 originalSummary 可能是某个特定国别的数据（如序号1）
+      if (!selectedProject) {
+        showToast('请先选择项目', 'info')
+        return
+      }
       
-      // 如果还没有，从数据库加载（非阶梯标模式使用 country_code = 'all'）
-      if (!originalSummaryToUse && selectedProject) {
-        try {
-          const countryDetail = await getCountryDetails(selectedProject.id, 'all')
-          if (countryDetail.original_summary) {
-            originalSummaryToUse = countryDetail.original_summary
-            // 更新状态
-            updateLabelData({
-              originalSummary: originalSummaryToUse
-            })
-          }
-        } catch (error) {
-          console.error('从数据库加载原始状态失败:', error)
+      let originalSummaryToUse: string | undefined = undefined
+      
+      // 强制从数据库加载 country_code = 'all' 的数据
+      try {
+        const countryDetail = await getCountryDetails(selectedProject.id, 'all')
+        if (countryDetail.original_summary) {
+          originalSummaryToUse = countryDetail.original_summary
+          // 更新状态和 ref
+          originalSummaryRef.current = originalSummaryToUse
+          updateLabelData({
+            originalSummary: originalSummaryToUse
+          })
         }
+      } catch (error) {
+        console.error('从数据库加载原始状态失败:', error)
       }
       
       // 如果最终还是没有，无法格式化
@@ -2736,9 +2772,6 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         showToast('未找到原始状态，请先点击初始化', 'info')
         return
       }
-      
-      // 更新 ref
-      originalSummaryRef.current = originalSummaryToUse
       
       // 步骤2：检查或构建 originalTextMap（用于变量规则匹配）
       let originalTextMapToUse = labelData.originalTextMap
@@ -2815,6 +2848,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
 
       console.log('🎨 开始非阶梯标格式化...')
       
+      // 步骤3：解析原始状态（使用 originalSummary，而不是 labelData 中的当前值）
+      const originalData: any = parseOriginalSummary(originalSummaryToUse)
+      if (!originalData) {
+        showToast('无法解析原始状态数据', 'error')
+        return
+      }
+      
       // 内部辅助函数：从 originalTextMapToUse 获取原文
       const getOriginalTextInternal = (translatedText: string): string | null => {
         if (!originalTextMapToUse) return null
@@ -2834,12 +2874,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       let totalVariableCount = 0 // 累计变量数量
       
       // ===== 1. 处理 basicInfo 字段 =====
-      let formattedBasicInfo = labelData.basicInfo
-      if (labelData.basicInfo && labelData.basicInfo.trim()) {
-        const lines = labelData.basicInfo.split('\n')
+      // 使用原始状态中的数据，而不是 labelData 中的当前值
+      let formattedBasicInfo = originalData.basicInfo || ''
+      if (formattedBasicInfo && formattedBasicInfo.trim()) {
+        const lines = formattedBasicInfo.split('\n')
         const processedLines: string[] = []
         
-        lines.forEach((line, lineIndex) => {
+        lines.forEach((line: string, lineIndex: number) => {
           if (!line.trim()) {
             processedLines.push(line)
             return
@@ -2875,12 +2916,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       }
       
       // ===== 2. 处理 drugName 字段 =====
-      let formattedDrugName = labelData.drugName
-      if (labelData.drugName && labelData.drugName.trim()) {
-        const lines = labelData.drugName.split('\n')
+      // 使用原始状态中的数据，而不是 labelData 中的当前值
+      let formattedDrugName = originalData.drugName || ''
+      if (formattedDrugName && formattedDrugName.trim()) {
+        const lines = formattedDrugName.split('\n')
         const processedLines: string[] = []
         
-        lines.forEach((line, lineIndex) => {
+        lines.forEach((line: string, lineIndex: number) => {
           if (!line.trim()) {
             processedLines.push(line)
             return
@@ -2949,12 +2991,13 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       }
       
       // ===== 3. 处理 numberOfSheets 字段 =====
-      let formattedNumberOfSheets = labelData.numberOfSheets
-      if (labelData.numberOfSheets && labelData.numberOfSheets.trim()) {
-        const lines = labelData.numberOfSheets.split('\n')
+      // 使用原始状态中的数据，而不是 labelData 中的当前值
+      let formattedNumberOfSheets = originalData.numberOfSheets || ''
+      if (formattedNumberOfSheets && formattedNumberOfSheets.trim()) {
+        const lines = formattedNumberOfSheets.split('\n')
         const processedLines: string[] = []
         
-        lines.forEach((line, lineIndex) => {
+        lines.forEach((line: string, lineIndex: number) => {
           if (!line.trim()) {
             processedLines.push(line)
             return
@@ -2990,18 +3033,19 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       }
       
       // ===== 4. 处理 drugDescription 字段（按语言分类并执行智能组合算法）=====
-      let formattedDrugDescription = labelData.drugDescription
+      // 使用原始状态中的数据，而不是 labelData 中的当前值
+      let formattedDrugDescription = originalData.drugDescription || ''
       
-      if (labelData.drugDescription && labelData.drugDescription.trim()) {
+      if (formattedDrugDescription && formattedDrugDescription.trim()) {
         // 步骤1：按语言分类收集内容
-        const lines = labelData.drugDescription.split('\n').filter(line => line.trim() !== '')
+        const lines = formattedDrugDescription.split('\n').filter((line: string) => line.trim() !== '')
         const languageGroups: Map<number, string[]> = new Map() // key: 语言索引, value: 该语言的句子数组
         
-        lines.forEach(line => {
+        lines.forEach((line: string) => {
           // 按 " / " 分隔不同语言的翻译
-          const translations = line.split(' / ').map(t => t.trim()).filter(t => t !== '')
+          const translations = line.split(' / ').map((t: string) => t.trim()).filter((t: string) => t !== '')
           
-          translations.forEach((translation, langIndex) => {
+          translations.forEach((translation: string, langIndex: number) => {
             if (!languageGroups.has(langIndex)) {
               languageGroups.set(langIndex, [])
             }
