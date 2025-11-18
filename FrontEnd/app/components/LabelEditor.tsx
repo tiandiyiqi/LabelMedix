@@ -1005,6 +1005,365 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     await handleInitializeInternal()
   }
 
+  // ========== 闪电图标格式化路由函数（根据标签类型调用对应函数）==========
+  
+  // 基本信息字段格式化路由函数
+  const handleFormatBasicInfoButton = async () => {
+    const isLadderMode = labelData.labelCategory === '阶梯标'
+    if (isLadderMode) {
+      handleFormatBasicInfo()
+    } else {
+      // 非阶梯标模式：调用非阶梯标格式化函数
+      if (!selectedProject) {
+        showToast('请先选择项目', 'info')
+        return
+      }
+      
+      // 加载 'all' 数据
+      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
+      if (!originalSummaryToUse) {
+        showToast('未找到原始状态，请先点击初始化', 'info')
+        return
+      }
+      
+      // 解析原始状态
+      const originalData: any = parseOriginalSummary(originalSummaryToUse)
+      if (!originalData) {
+        showToast('无法解析原始状态数据', 'error')
+        return
+      }
+      
+      // 获取或构建 originalTextMap
+      let originalTextMapToUse = labelData.originalTextMap
+      if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
+        try {
+          originalTextMapToUse = await buildOriginalTextMapForNonLadder(selectedProject.id)
+          updateLabelData({ originalTextMap: originalTextMapToUse })
+        } catch (error: any) {
+          showToast(error.message || '无法构建变量映射，请先导入翻译内容', 'error')
+          return
+        }
+      }
+      
+      // 准备变量标记和累计变量数量
+      const variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}> = []
+      const totalVariableCount = { value: 0 }
+      
+      // 调用非阶梯标格式化函数
+      const formattedText = handleFormatBasicInfoNonLadder(
+        originalData.basicInfo || '',
+        originalTextMapToUse,
+        variableMarkers,
+        totalVariableCount
+      )
+      
+      // 更新状态
+      formattedFieldsRef.current.basicInfo = formattedText
+      // 合并变量标记（只保留当前字段的标记，因为每个字段格式化是独立的）
+      const existingMarkers = (labelData.variableMarkers || []).filter(m => m.fieldName !== 'basicInfo')
+      updateLabelData({ 
+        basicInfo: formattedText,
+        variableMarkers: [...existingMarkers, ...variableMarkers]
+      })
+      
+      // 更新格式化状态
+      const newStates = {
+        ...formatStatesRef.current,
+        basicInfo: 1
+      }
+      formatStatesRef.current = newStates
+      setFormatStates(newStates)
+      
+      showToast(`基本信息格式化完成（变量：${totalVariableCount.value}）`, 'success')
+    }
+  }
+
+  // 编号栏字段格式化路由函数
+  const handleFormatNumberFieldButton = async () => {
+    const isLadderMode = labelData.labelCategory === '阶梯标'
+    if (isLadderMode) {
+      handleFormatNumberField()
+    } else {
+      // 非阶梯标模式：调用非阶梯标格式化函数
+      if (!selectedProject) {
+        showToast('请先选择项目', 'info')
+        return
+      }
+      
+      // 加载 'all' 数据
+      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
+      if (!originalSummaryToUse) {
+        showToast('未找到原始状态，请先点击初始化', 'info')
+        return
+      }
+      
+      // 解析原始状态
+      const originalData: any = parseOriginalSummary(originalSummaryToUse)
+      if (!originalData) {
+        showToast('无法解析原始状态数据', 'error')
+        return
+      }
+      
+      // 调用非阶梯标格式化函数（非阶梯标模式下不格式化，返回原文本）
+      const formattedText = handleFormatNumberFieldNonLadder(originalData.numberField || '')
+      
+      // 更新状态
+      formattedFieldsRef.current.numberField = formattedText
+      updateLabelData({ numberField: formattedText })
+      
+      // 更新格式化状态
+      const newStates = {
+        ...formatStatesRef.current,
+        numberField: 0
+      }
+      formatStatesRef.current = newStates
+      setFormatStates(newStates)
+      
+      showToast('编号栏字段（非阶梯标模式下不格式化）', 'info')
+    }
+  }
+
+  // 药品名称字段格式化路由函数
+  const handleFormatDrugNameButton = async () => {
+    const isLadderMode = labelData.labelCategory === '阶梯标'
+    if (isLadderMode) {
+      handleFormatDrugName()
+    } else {
+      // 非阶梯标模式：调用非阶梯标格式化函数
+      if (!selectedProject) {
+        showToast('请先选择项目', 'info')
+        return
+      }
+      
+      // 加载 'all' 数据
+      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
+      if (!originalSummaryToUse) {
+        showToast('未找到原始状态，请先点击初始化', 'info')
+        return
+      }
+      
+      // 解析原始状态
+      const originalData: any = parseOriginalSummary(originalSummaryToUse)
+      if (!originalData) {
+        showToast('无法解析原始状态数据', 'error')
+        return
+      }
+      
+      // 获取或构建 originalTextMap
+      let originalTextMapToUse = labelData.originalTextMap
+      if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
+        try {
+          originalTextMapToUse = await buildOriginalTextMapForNonLadder(selectedProject.id)
+          updateLabelData({ originalTextMap: originalTextMapToUse })
+        } catch (error: any) {
+          showToast(error.message || '无法构建变量映射，请先导入翻译内容', 'error')
+          return
+        }
+      }
+      
+      // 准备变量标记和累计变量数量
+      const variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}> = []
+      const totalVariableCount = { value: 0 }
+      
+      // 调用非阶梯标格式化函数
+      const formattedText = handleFormatDrugNameNonLadder(
+        originalData.drugName || '',
+        originalTextMapToUse,
+        variableMarkers,
+        totalVariableCount
+      )
+      
+      // 更新状态
+      formattedFieldsRef.current.drugName = formattedText
+      // 合并变量标记（只保留当前字段的标记，因为每个字段格式化是独立的）
+      const existingMarkers = (labelData.variableMarkers || []).filter(m => m.fieldName !== 'drugName')
+      updateLabelData({ 
+        drugName: formattedText,
+        variableMarkers: [...existingMarkers, ...variableMarkers]
+      })
+      
+      // 更新格式化状态
+      const newStates = {
+        ...formatStatesRef.current,
+        drugName: 1
+      }
+      formatStatesRef.current = newStates
+      setFormatStates(newStates)
+      
+      showToast(`药品名称格式化完成（变量：${totalVariableCount.value}）`, 'success')
+    }
+  }
+
+  // 片数字段格式化路由函数
+  const handleFormatNumberOfSheetsButton = async () => {
+    const isLadderMode = labelData.labelCategory === '阶梯标'
+    if (isLadderMode) {
+      handleFormatNumberOfSheets()
+    } else {
+      // 非阶梯标模式：调用非阶梯标格式化函数
+      if (!selectedProject) {
+        showToast('请先选择项目', 'info')
+        return
+      }
+      
+      // 加载 'all' 数据
+      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
+      if (!originalSummaryToUse) {
+        showToast('未找到原始状态，请先点击初始化', 'info')
+        return
+      }
+      
+      // 解析原始状态
+      const originalData: any = parseOriginalSummary(originalSummaryToUse)
+      if (!originalData) {
+        showToast('无法解析原始状态数据', 'error')
+        return
+      }
+      
+      // 获取或构建 originalTextMap
+      let originalTextMapToUse = labelData.originalTextMap
+      if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
+        try {
+          originalTextMapToUse = await buildOriginalTextMapForNonLadder(selectedProject.id)
+          updateLabelData({ originalTextMap: originalTextMapToUse })
+        } catch (error: any) {
+          showToast(error.message || '无法构建变量映射，请先导入翻译内容', 'error')
+          return
+        }
+      }
+      
+      // 准备变量标记和累计变量数量
+      const variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}> = []
+      const totalVariableCount = { value: 0 }
+      
+      // 调用非阶梯标格式化函数
+      const formattedText = handleFormatNumberOfSheetsNonLadder(
+        originalData.numberOfSheets || '',
+        originalTextMapToUse,
+        variableMarkers,
+        totalVariableCount
+      )
+      
+      // 更新状态
+      formattedFieldsRef.current.numberOfSheets = formattedText
+      // 合并变量标记（只保留当前字段的标记，因为每个字段格式化是独立的）
+      const existingMarkers = (labelData.variableMarkers || []).filter(m => m.fieldName !== 'numberOfSheets')
+      updateLabelData({ 
+        numberOfSheets: formattedText,
+        variableMarkers: [...existingMarkers, ...variableMarkers]
+      })
+      
+      // 更新格式化状态
+      const newStates = {
+        ...formatStatesRef.current,
+        numberOfSheets: 1
+      }
+      formatStatesRef.current = newStates
+      setFormatStates(newStates)
+      
+      showToast(`片数格式化完成（变量：${totalVariableCount.value}）`, 'success')
+    }
+  }
+
+  // 药品说明字段格式化路由函数
+  const handleFormatDrugDescriptionButton = async () => {
+    const isLadderMode = labelData.labelCategory === '阶梯标'
+    if (isLadderMode) {
+      handleFormatDrugDescription()
+    } else {
+      // 非阶梯标模式：调用非阶梯标格式化函数
+      if (!selectedProject) {
+        showToast('请先选择项目', 'info')
+        return
+      }
+      
+      // 加载 'all' 数据
+      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
+      if (!originalSummaryToUse) {
+        showToast('未找到原始状态，请先点击初始化', 'info')
+        return
+      }
+      
+      // 解析原始状态
+      const originalData: any = parseOriginalSummary(originalSummaryToUse)
+      if (!originalData) {
+        showToast('无法解析原始状态数据', 'error')
+        return
+      }
+      
+      // 计算累计变量数量（从其他字段的变量标记中获取）
+      const existingVariableCount = (labelData.variableMarkers || []).filter(m => m.isVariable).length
+      const totalVariableCount = { value: existingVariableCount }
+      
+      // 调用非阶梯标格式化函数
+      const formattedText = handleFormatDrugDescriptionNonLadder(
+        originalData.drugDescription || '',
+        totalVariableCount
+      )
+      
+      // 更新状态
+      formattedFieldsRef.current.drugDescription = formattedText
+      updateLabelData({ drugDescription: formattedText })
+      
+      // 更新格式化状态
+      const newStates = {
+        ...formatStatesRef.current,
+        drugDescription: 1
+      }
+      formatStatesRef.current = newStates
+      setFormatStates(newStates)
+      
+      showToast('药品说明格式化完成', 'success')
+    }
+  }
+
+  // 公司名称字段格式化路由函数
+  const handleFormatCompanyNameButton = async () => {
+    const isLadderMode = labelData.labelCategory === '阶梯标'
+    if (isLadderMode) {
+      handleFormatCompanyName()
+    } else {
+      // 非阶梯标模式：调用非阶梯标格式化函数
+      if (!selectedProject) {
+        showToast('请先选择项目', 'info')
+        return
+      }
+      
+      // 加载 'all' 数据
+      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
+      if (!originalSummaryToUse) {
+        showToast('未找到原始状态，请先点击初始化', 'info')
+        return
+      }
+      
+      // 解析原始状态
+      const originalData: any = parseOriginalSummary(originalSummaryToUse)
+      if (!originalData) {
+        showToast('无法解析原始状态数据', 'error')
+        return
+      }
+      
+      // 调用非阶梯标格式化函数（非阶梯标模式下不格式化，返回原文本）
+      const formattedText = handleFormatCompanyNameNonLadder(originalData.companyName || '')
+      
+      // 更新状态
+      formattedFieldsRef.current.companyName = formattedText
+      updateLabelData({ companyName: formattedText })
+      
+      // 更新格式化状态
+      const newStates = {
+        ...formatStatesRef.current,
+        companyName: 0
+      }
+      formatStatesRef.current = newStates
+      setFormatStates(newStates)
+      
+      showToast('公司名称字段（非阶梯标模式下不格式化）', 'info')
+    }
+  }
+
+  // ========== 阶梯标格式化函数（保持不变）==========
+  
   // 基于原始状态的格式化功能 - 基本信息
   const handleFormatBasicInfo = () => {
     // 解析原始状态JSON（优先使用 ref，避免闭包问题）
@@ -2792,35 +3151,889 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     }
   }
 
+  // ========== 非阶梯标格式化辅助函数 ==========
+  
+  // 从数据库加载 'all' 国别码的原始状态数据
+  const loadAllCountryDataForNonLadder = async (projectId: number): Promise<string | undefined> => {
+    try {
+      const countryDetail = await getCountryDetails(projectId, 'all')
+      if (countryDetail.original_summary) {
+        // 更新状态和 ref
+        originalSummaryRef.current = countryDetail.original_summary
+        updateLabelData({
+          originalSummary: countryDetail.original_summary
+        })
+        return countryDetail.original_summary
+      }
+    } catch (error) {
+      console.error('从数据库加载原始状态失败:', error)
+    }
+    return undefined
+  }
+
+  // 构建 originalTextMap（用于变量规则匹配）
+  const buildOriginalTextMapForNonLadder = async (projectId: number): Promise<Record<string, string>> => {
+    // 获取项目完整信息（包含所有国别翻译组）
+    const projectDetail = await getProjectById(projectId)
+    
+    if (!projectDetail.translationGroups || projectDetail.translationGroups.length === 0) {
+      throw new Error('该项目暂无翻译内容，无法构建变量映射')
+    }
+    
+    // 过滤掉国别码为"all"的翻译组，并按序号排序
+    const validGroups = projectDetail.translationGroups
+      .filter(group => group.country_code.toLowerCase() !== 'all')
+      .sort((a, b) => a.sequence_number - b.sequence_number)
+    
+    if (validGroups.length === 0) {
+      throw new Error('没有可用的国别翻译内容，无法构建变量映射')
+    }
+    
+    // 构建 originalTextMap
+    const originalTextMap: Record<string, string> = {}
+    
+    // 获取每个国别的翻译详情
+    for (const group of validGroups) {
+      try {
+        const translationGroup = await getTranslationsByCountry(projectId, group.country_code)
+        
+        if (translationGroup.items && translationGroup.items.length > 0) {
+          // 按 item_order 排序
+          const sortedItems = translationGroup.items.sort((a, b) => a.item_order - b.item_order)
+          
+          sortedItems.forEach(item => {
+            const originalText = item.original_text
+            const translatedText = item.translated_text || item.original_text
+            
+            // 只保存第一个翻译的映射关系（用于变量规则匹配）
+            if (!originalTextMap[translatedText]) {
+              originalTextMap[translatedText] = originalText
+            }
+          })
+        }
+      } catch (error) {
+        console.error(`获取国别 ${group.country_code} 的翻译失败:`, error)
+      }
+    }
+    
+    console.log(`  ✅ 已构建 originalTextMap，共 ${Object.keys(originalTextMap).length} 条映射`)
+    return originalTextMap
+  }
+
+  // 从 originalTextMap 中获取原文
+  const getOriginalTextFromMap = (translatedText: string, originalTextMap: Record<string, string>): string | null => {
+    if (!originalTextMap) return null
+    const firstTranslation = getFirstTranslation(translatedText)
+    return originalTextMap[firstTranslation] || null
+  }
+
+  // 智能组合算法：最大化每行利用率
+  const optimizeCombinationForNonLadder = (
+    items: Array<{text: string, width: number}>,
+    containerWidth: number,
+    spaceWidth: number
+  ): string[] => {
+    const result: string[] = []
+    const used = new Array(items.length).fill(false)
+
+    while (used.some(u => !u)) {
+      let bestCombination: number[] = []
+      let bestUtilization = 0
+
+      // 找到第一个未使用的句子作为起点
+      const startIndex = used.findIndex(u => !u)
+      if (startIndex === -1) break
+
+      const startWidth = items[startIndex].width
+      const startRequiredMultiplier = Math.ceil(startWidth / containerWidth)
+      
+      // 根据起始句子的长度确定该行的目标宽度
+      const targetMultiplier = startRequiredMultiplier
+      const maxTargetWidth = containerWidth * targetMultiplier
+      
+      // 从起始句子开始，尝试添加其他句子
+      let currentCombination = [startIndex]
+      let currentWidth = startWidth
+      let currentUtilization = currentWidth / maxTargetWidth
+      
+      // 尝试添加其他未使用的句子
+      for (let i = 0; i < items.length; i++) {
+        if (!used[i] && i !== startIndex) {
+          const newWidth = currentWidth + spaceWidth + items[i].width
+          
+          // 检查：添加后不能超过目标宽度
+          if (newWidth <= maxTargetWidth) {
+            const newUtilization = newWidth / maxTargetWidth
+            
+            // 如果利用率提高，则添加这个句子
+            if (newUtilization > currentUtilization) {
+              currentCombination.push(i)
+              currentWidth = newWidth
+              currentUtilization = newUtilization
+            }
+          }
+        }
+      }
+      
+      // 使用找到的组合
+      bestCombination = currentCombination
+
+      // 标记为已使用并添加到结果
+      if (bestCombination.length > 0) {
+        const combinedText = bestCombination.map(idx => items[idx].text).join(' ')
+        result.push(combinedText)
+        bestCombination.forEach(idx => {
+          used[idx] = true
+        })
+      } else {
+        // 如果没有找到合适的组合，直接使用当前句子
+        result.push(items[startIndex].text)
+        used[startIndex] = true
+      }
+    }
+
+    return result
+  }
+
+  // ========== 非阶梯标字段格式化函数 ==========
+  
+  // 处理 basicInfo 字段的非阶梯标格式化（包含变量添加、行数控制和对齐功能）
+  const handleFormatBasicInfoNonLadder = (
+    originalText: string,
+    originalTextMap: Record<string, string>,
+    variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}>,
+    totalVariableCount: { value: number }
+  ): string => {
+    if (!originalText || !originalText.trim()) {
+      return originalText
+    }
+
+    // 步骤1：先执行变量添加逻辑（保持现有功能）
+    const lines = originalText.split('\n')
+    const processedLines: string[] = []
+    
+    lines.forEach((line: string, lineIndex: number) => {
+      if (!line.trim()) {
+        processedLines.push(line)
+        return
+      }
+      
+      const originalTextFromMap = getOriginalTextFromMap(line, originalTextMap)
+      if (originalTextFromMap) {
+        const variable = matchVariableRule(originalTextFromMap)
+        if (variable) {
+          const newLine = `${line} ${variable}`
+          processedLines.push(newLine)
+          
+          // 记录变量位置（注意：这里的 lineIndex 是原始行索引，后续行数控制后需要调整）
+          variableMarkers.push({
+            fieldName: 'basicInfo',
+            lineIndex,
+            startPos: line.length + 1,
+            endPos: newLine.length,
+            isVariable: true
+          })
+          
+          totalVariableCount.value++
+          console.log(`  ✅ basicInfo[${lineIndex}]: 添加变量 ${variable}`)
+        } else {
+          processedLines.push(line)
+        }
+      } else {
+        processedLines.push(line)
+      }
+    })
+    
+    // 步骤2：应用行数控制和对齐功能（参考 handleFormatBasicInfo）
+    // 【已禁用】行数控制和对齐功能已禁用，仅保留变量添加功能
+    // 如需启用，请删除下面的 return 语句
+    return processedLines.join('\n')
+    
+    /* ========== 以下代码已禁用，但保留供将来使用 ==========
+    const textWithVariables = processedLines.join('\n')
+    const sentences = textWithVariables.split('\n').filter((line: string) => line.trim() !== '')
+    const sentenceCount = sentences.length
+
+    if (sentenceCount === 0) {
+      return textWithVariables
+    }
+
+    // 获取当前格式化状态并计算下一个状态
+    const currentFormatState = formatStates.basicInfo || 0
+    const nextFormatState = (currentFormatState + 1) % 5
+
+    let formattedText = ''
+
+    // 计算容器宽度（使用基础标签宽度，减去边距）
+    const baseWidth = labelData.labelWidth
+    const margins = calculatePageMargins(Number(labelData.selectedNumber))
+    const effectiveWidth = baseWidth - margins.left - margins.right
+    const safetyMargin = 2
+    const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95))
+
+    if (nextFormatState === 1) {
+      // 分为两行
+      const sentencesPerLine = Math.ceil(sentenceCount / 2)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine)
+      
+      // 第一行使用与alignColumnsToFirstLine函数完全一致的计算方式
+      const firstLineElementWidths = firstLineSentences.map(text => measureTextWidth(text, labelData.fontSize, labelData.fontFamily))
+      const firstLineTotalWidth = firstLineElementWidths.reduce((sum, width) => sum + width, 0)
+      const firstLineAvailableSpace = containerWidth - firstLineTotalWidth
+      const firstLineNumberOfGaps = firstLineSentences.length - 1
+      const firstLineSpacing = firstLineNumberOfGaps > 0 ? Math.max(firstLineAvailableSpace / firstLineNumberOfGaps, mmToPt(1)) : 0
+      
+      // 使用与alignColumnsToFirstLineWithUnderscores函数相同的下划线计算逻辑
+      const underscoreWidth = labelData.fontSize * 0.5
+      const firstLineActualUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineActualSpacing = firstLineActualUnderscores * underscoreWidth
+      
+      // 计算第一行每列的起始位置和结束位置
+      const firstLineStartPositions: number[] = []
+      const firstLineEndPositions: number[] = []
+      let currentX = 0
+      
+      for (let i = 0; i < firstLineSentences.length; i++) {
+        firstLineStartPositions.push(currentX)
+        const textEndPosition = currentX + firstLineElementWidths[i]
+        const columnEndPosition = textEndPosition + firstLineActualSpacing
+        firstLineEndPositions.push(columnEndPosition)
+        currentX = columnEndPosition
+      }
+      
+      // 构建第一行
+      const firstLineColumns: string[] = []
+      for (let i = 0; i < firstLineSentences.length; i++) {
+        const currentText = firstLineSentences[i]
+        const currentWidth = firstLineElementWidths[i]
+        
+        // 计算前导下划线
+        let leadingUnderscores = 0
+        if (i > 0) {
+          let previousTotalWidth = 0
+          for (let j = 0; j < i; j++) {
+            const prevText = firstLineSentences[j]
+            const prevWidth = firstLineElementWidths[j]
+            
+            let prevLeadingUnderscores = 0
+            if (j > 0) {
+              const requiredPrevLeadingSpacing = firstLineStartPositions[j] - previousTotalWidth
+              if (requiredPrevLeadingSpacing > 0) {
+                prevLeadingUnderscores = Math.max(0, Math.floor(requiredPrevLeadingSpacing / underscoreWidth))
+                const actualPrevSpacing = prevLeadingUnderscores * underscoreWidth
+                const prevSpacingDiff = requiredPrevLeadingSpacing - actualPrevSpacing
+                if (prevSpacingDiff > underscoreWidth / 2) {
+                  prevLeadingUnderscores += 1
+                }
+              }
+            }
+            
+            let prevTrailingUnderscores = 0
+            const prevFirstLineColumnWidth = firstLineEndPositions[j] - firstLineStartPositions[j]
+            const prevRemainingSpace = prevFirstLineColumnWidth - prevWidth - (prevLeadingUnderscores * underscoreWidth)
+            
+            if (prevRemainingSpace > 0) {
+              prevTrailingUnderscores = Math.max(0, Math.floor(prevRemainingSpace / underscoreWidth))
+              const actualPrevSpacing = prevTrailingUnderscores * underscoreWidth
+              const prevSpacingDiff = prevRemainingSpace - actualPrevSpacing
+              if (prevSpacingDiff > underscoreWidth / 2) {
+                prevTrailingUnderscores += 1
+              }
+            }
+            
+            const prevColumnWidth = (prevLeadingUnderscores * underscoreWidth) + prevWidth + (prevTrailingUnderscores * underscoreWidth)
+            previousTotalWidth += prevColumnWidth
+          }
+          
+          const requiredLeadingSpacing = firstLineStartPositions[i] - previousTotalWidth
+          if (requiredLeadingSpacing > 0) {
+            leadingUnderscores = Math.max(0, Math.floor(requiredLeadingSpacing / underscoreWidth))
+            const actualSpacing = leadingUnderscores * underscoreWidth
+            const spacingDiff = requiredLeadingSpacing - actualSpacing
+            if (spacingDiff > underscoreWidth / 2) {
+              leadingUnderscores += 1
+            }
+          }
+        }
+        
+        // 计算尾随下划线
+        let trailingUnderscores = 0
+        const firstLineColumnWidth = firstLineEndPositions[i] - firstLineStartPositions[i]
+        const remainingSpace = firstLineColumnWidth - currentWidth - (leadingUnderscores * underscoreWidth)
+        
+        if (remainingSpace > 0) {
+          trailingUnderscores = Math.max(0, Math.floor(remainingSpace / underscoreWidth))
+          const actualSpacing = trailingUnderscores * underscoreWidth
+          const spacingDiff = remainingSpace - actualSpacing
+          if (spacingDiff > underscoreWidth / 2) {
+            trailingUnderscores += 1
+          }
+        }
+        
+        const columnContent = safeRepeat('_', leadingUnderscores) + currentText + safeRepeat('_', trailingUnderscores)
+        firstLineColumns.push(columnContent)
+      }
+      
+      const firstLine = firstLineColumns.join('')
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      
+      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
+    } else if (nextFormatState === 2) {
+      // 分为三行
+      const sentencesPerLine = Math.ceil(sentenceCount / 3)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2)
+      
+      const firstLineElementWidths = firstLineSentences.map(text => measureTextWidth(text, labelData.fontSize, labelData.fontFamily))
+      const firstLineTotalWidth = firstLineElementWidths.reduce((sum, width) => sum + width, 0)
+      const firstLineAvailableSpace = containerWidth - firstLineTotalWidth
+      const firstLineNumberOfGaps = firstLineSentences.length - 1
+      const firstLineSpacing = firstLineNumberOfGaps > 0 ? Math.max(firstLineAvailableSpace / firstLineNumberOfGaps, mmToPt(1)) : 0
+      
+      const underscoreWidth = labelData.fontSize * 0.5
+      const firstLineActualUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineActualSpacing = firstLineActualUnderscores * underscoreWidth
+      
+      const firstLineStartPositions: number[] = []
+      const firstLineEndPositions: number[] = []
+      let currentX = 0
+      
+      for (let i = 0; i < firstLineSentences.length; i++) {
+        firstLineStartPositions.push(currentX)
+        const textEndPosition = currentX + firstLineElementWidths[i]
+        const columnEndPosition = textEndPosition + firstLineActualSpacing
+        firstLineEndPositions.push(columnEndPosition)
+        currentX = columnEndPosition
+      }
+      
+      const firstLineColumns: string[] = []
+      for (let i = 0; i < firstLineSentences.length; i++) {
+        const currentText = firstLineSentences[i]
+        const currentWidth = firstLineElementWidths[i]
+        
+        let trailingUnderscores = 0
+        const firstLineColumnWidth = firstLineEndPositions[i] - firstLineStartPositions[i]
+        const remainingSpace = firstLineColumnWidth - currentWidth
+        
+        if (remainingSpace > 0) {
+          trailingUnderscores = Math.max(0, Math.floor(remainingSpace / underscoreWidth))
+          const actualSpacing = trailingUnderscores * underscoreWidth
+          const spacingDiff = remainingSpace - actualSpacing
+          if (spacingDiff > underscoreWidth / 2) {
+            trailingUnderscores += 1
+          }
+        }
+        
+        const columnContent = currentText + safeRepeat('_', trailingUnderscores)
+        firstLineColumns.push(columnContent)
+      }
+      
+      const firstLine = firstLineColumns.join('')
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      
+      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
+    } else if (nextFormatState === 3) {
+      // 分为四行
+      const sentencesPerLine = Math.ceil(sentenceCount / 4)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
+      const fourthLineSentences = sentences.slice(sentencesPerLine * 3)
+      
+      const firstLineElementWidths = firstLineSentences.map(text => measureTextWidth(text, labelData.fontSize, labelData.fontFamily))
+      const firstLineTotalWidth = firstLineElementWidths.reduce((sum, width) => sum + width, 0)
+      const firstLineAvailableSpace = containerWidth - firstLineTotalWidth
+      const firstLineNumberOfGaps = firstLineSentences.length - 1
+      const firstLineSpacing = firstLineNumberOfGaps > 0 ? Math.max(firstLineAvailableSpace / firstLineNumberOfGaps, mmToPt(1)) : 0
+      
+      const underscoreWidth = labelData.fontSize * 0.5
+      const firstLineActualUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineActualSpacing = firstLineActualUnderscores * underscoreWidth
+      
+      const firstLineStartPositions: number[] = []
+      const firstLineEndPositions: number[] = []
+      let currentX = 0
+      
+      for (let i = 0; i < firstLineSentences.length; i++) {
+        firstLineStartPositions.push(currentX)
+        const textEndPosition = currentX + firstLineElementWidths[i]
+        const columnEndPosition = textEndPosition + firstLineActualSpacing
+        firstLineEndPositions.push(columnEndPosition)
+        currentX = columnEndPosition
+      }
+      
+      const firstLineColumns: string[] = []
+      for (let i = 0; i < firstLineSentences.length; i++) {
+        const currentText = firstLineSentences[i]
+        const currentWidth = firstLineElementWidths[i]
+        
+        let trailingUnderscores = 0
+        const firstLineColumnWidth = firstLineEndPositions[i] - firstLineStartPositions[i]
+        const remainingSpace = firstLineColumnWidth - currentWidth
+        
+        if (remainingSpace > 0) {
+          trailingUnderscores = Math.max(0, Math.floor(remainingSpace / underscoreWidth))
+          const actualSpacing = trailingUnderscores * underscoreWidth
+          const spacingDiff = remainingSpace - actualSpacing
+          if (spacingDiff > underscoreWidth / 2) {
+            trailingUnderscores += 1
+          }
+        }
+        
+        const columnContent = currentText + safeRepeat('_', trailingUnderscores)
+        firstLineColumns.push(columnContent)
+      }
+      
+      const firstLine = firstLineColumns.join('')
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
+    } else if (nextFormatState === 4) {
+      // 分为五行
+      const sentencesPerLine = Math.ceil(sentenceCount / 5)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
+      const fourthLineSentences = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4)
+      const fifthLineSentences = sentences.slice(sentencesPerLine * 4)
+      
+      const firstLineElementWidths = firstLineSentences.map(text => measureTextWidth(text, labelData.fontSize, labelData.fontFamily))
+      const firstLineTotalWidth = firstLineElementWidths.reduce((sum, width) => sum + width, 0)
+      const firstLineAvailableSpace = containerWidth - firstLineTotalWidth
+      const firstLineNumberOfGaps = firstLineSentences.length - 1
+      const firstLineSpacing = firstLineNumberOfGaps > 0 ? Math.max(firstLineAvailableSpace / firstLineNumberOfGaps, mmToPt(1)) : 0
+      
+      const underscoreWidth = labelData.fontSize * 0.5
+      const firstLineActualUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineActualSpacing = firstLineActualUnderscores * underscoreWidth
+      
+      const firstLineStartPositions: number[] = []
+      const firstLineEndPositions: number[] = []
+      let currentX = 0
+      
+      for (let i = 0; i < firstLineSentences.length; i++) {
+        firstLineStartPositions.push(currentX)
+        const textEndPosition = currentX + firstLineElementWidths[i]
+        const columnEndPosition = textEndPosition + firstLineActualSpacing
+        firstLineEndPositions.push(columnEndPosition)
+        currentX = columnEndPosition
+      }
+      
+      const firstLineColumns: string[] = []
+      for (let i = 0; i < firstLineSentences.length; i++) {
+        const currentText = firstLineSentences[i]
+        const currentWidth = firstLineElementWidths[i]
+        
+        let trailingUnderscores = 0
+        const firstLineColumnWidth = firstLineEndPositions[i] - firstLineStartPositions[i]
+        const remainingSpace = firstLineColumnWidth - currentWidth
+        
+        if (remainingSpace > 0) {
+          trailingUnderscores = Math.max(0, Math.floor(remainingSpace / underscoreWidth))
+          const actualSpacing = trailingUnderscores * underscoreWidth
+          const spacingDiff = remainingSpace - actualSpacing
+          if (spacingDiff > underscoreWidth / 2) {
+            trailingUnderscores += 1
+          }
+        }
+        
+        const columnContent = currentText + safeRepeat('_', trailingUnderscores)
+        firstLineColumns.push(columnContent)
+      }
+      
+      const firstLine = firstLineColumns.join('')
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fifthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fifthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
+    } else {
+      // 分为一行
+      const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
+      const lineUnderscores = spacingToUnderscores(lineSpacing, labelData.fontSize, labelData.fontFamily, sentences.length)
+      formattedText = sentences.map((text: string) => text + safeRepeat('_', lineUnderscores)).join('')
+    }
+
+    // 将下划线替换为两个空格（保持相同视觉宽度）
+    formattedText = formattedText.replace(/_/g, '  ')
+    
+    return formattedText
+    ========== 行数控制和对齐功能代码结束 ========== */
+  }
+
+  // 处理 drugName 字段的非阶梯标格式化（包含 XXX mg 特殊规则）
+  const handleFormatDrugNameNonLadder = (
+    originalText: string,
+    originalTextMap: Record<string, string>,
+    variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}>,
+    totalVariableCount: { value: number }
+  ): string => {
+    if (!originalText || !originalText.trim()) {
+      return originalText
+    }
+
+    const lines = originalText.split('\n')
+    const processedLines: string[] = []
+    
+    lines.forEach((line: string, lineIndex: number) => {
+      if (!line.trim()) {
+        processedLines.push(line)
+        return
+      }
+      
+      const originalTextFromMap = getOriginalTextFromMap(line, originalTextMap)
+      if (originalTextFromMap) {
+        const variable = matchVariableRule(originalTextFromMap)
+        if (variable) {
+          // 匹配现有规则：行末追加变量
+          const newLine = `${line} ${variable}`
+          processedLines.push(newLine)
+          
+          // 记录变量位置
+          variableMarkers.push({
+            fieldName: 'drugName',
+            lineIndex,
+            startPos: line.length + 1,
+            endPos: newLine.length,
+            isVariable: true
+          })
+          
+          totalVariableCount.value++
+          console.log(`  ✅ drugName[${lineIndex}]: 添加变量 ${variable}`)
+        } else if (originalTextFromMap.includes('XXX') && originalTextFromMap.includes('mg')) {
+          // 特殊规则：如果原文包含 "XXX mg"，在翻译文本中替换所有 XXX 为 DDD
+          let newLine = line
+          
+          // 查找所有 XXX 的位置并记录
+          const xxxRegex = /XXX/g
+          let match
+          const matches: Array<{ index: number }> = []
+          
+          // 先找到所有匹配位置（在替换前记录位置）
+          while ((match = xxxRegex.exec(line)) !== null) {
+            matches.push({ index: match.index })
+          }
+          
+          // 替换所有 XXX 为 DDD（因为长度相同，位置不会改变）
+          newLine = line.replace(/XXX/g, 'DDD')
+          
+          // 记录每个替换位置的变量标记
+          matches.forEach(({ index }) => {
+            variableMarkers.push({
+              fieldName: 'drugName',
+              lineIndex,
+              startPos: index,
+              endPos: index + 3, // DDD 也是3个字符
+              isVariable: true
+            })
+            
+            totalVariableCount.value++
+            console.log(`  ✅ drugName[${lineIndex}]: 替换 XXX 为 DDD (位置: ${index})`)
+          })
+          
+          processedLines.push(newLine)
+        } else {
+          processedLines.push(line)
+        }
+      } else {
+        processedLines.push(line)
+      }
+    })
+    
+    return processedLines.join('\n')
+  }
+
+  // 处理 numberOfSheets 字段的非阶梯标格式化
+  const handleFormatNumberOfSheetsNonLadder = (
+    originalText: string,
+    originalTextMap: Record<string, string>,
+    variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}>,
+    totalVariableCount: { value: number }
+  ): string => {
+    if (!originalText || !originalText.trim()) {
+      return originalText
+    }
+
+    const lines = originalText.split('\n')
+    const processedLines: string[] = []
+    
+    lines.forEach((line: string, lineIndex: number) => {
+      if (!line.trim()) {
+        processedLines.push(line)
+        return
+      }
+      
+      const originalTextFromMap = getOriginalTextFromMap(line, originalTextMap)
+      if (originalTextFromMap) {
+        const variable = matchVariableRule(originalTextFromMap)
+        if (variable) {
+          const newLine = `${line} ${variable}`
+          processedLines.push(newLine)
+          
+          // 记录变量位置
+          variableMarkers.push({
+            fieldName: 'numberOfSheets',
+            lineIndex,
+            startPos: line.length + 1,
+            endPos: newLine.length,
+            isVariable: true
+          })
+          
+          totalVariableCount.value++
+          console.log(`  ✅ numberOfSheets[${lineIndex}]: 添加变量 ${variable}`)
+        } else {
+          processedLines.push(line)
+        }
+      } else {
+        processedLines.push(line)
+      }
+    })
+    
+    return processedLines.join('\n')
+  }
+
+  // 处理 drugDescription 字段的非阶梯标格式化（包含多语言分组、智能组合、罗马数字替换、分隔线）
+  const handleFormatDrugDescriptionNonLadder = (
+    originalText: string,
+    totalVariableCount: { value: number }
+  ): string => {
+    if (!originalText || !originalText.trim()) {
+      return originalText
+    }
+
+    // 步骤1：按语言分类收集内容
+    const lines = originalText.split('\n').filter((line: string) => line.trim() !== '')
+    const languageGroups: Map<number, string[]> = new Map() // key: 语言索引, value: 该语言的句子数组
+    
+    lines.forEach((line: string) => {
+      // 按 " / " 分隔不同语言的翻译
+      const translations = line.split(' / ').map((t: string) => t.trim()).filter((t: string) => t !== '')
+      
+      translations.forEach((translation: string, langIndex: number) => {
+        if (!languageGroups.has(langIndex)) {
+          languageGroups.set(langIndex, [])
+        }
+        languageGroups.get(langIndex)!.push(translation)
+      })
+    })
+    
+    console.log(`  📝 drugDescription: 检测到 ${languageGroups.size} 种语言`)
+    
+    // 步骤2：对每个语言组执行智能组合算法
+    // 计算容器宽度（用于智能组合算法）
+    const baseWidth = labelData.labelWidth
+    const margins = calculatePageMargins(Number(labelData.selectedNumber))
+    const effectiveWidth = baseWidth - margins.left - margins.right
+    const safetyMargin = 2
+    const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95))
+    
+    // 空格宽度
+    const spaceWidth = measureTextWidth(' ', labelData.fontSize, labelData.fontFamily)
+    
+    // 用分隔线连接各个语言组
+    // 根据页面宽度和"—"字符宽度动态计算分隔符长度
+    const dashChar = '—'
+    const dashWidth = measureTextWidth(dashChar, labelData.fontSize, labelData.fontFamily)
+    // 计算需要多少个"—"字符才能填满容器宽度（使用95%的容器宽度）
+    const separatorWidth = containerWidth * 0.95
+    const dashCount = Math.max(1, Math.floor(separatorWidth / dashWidth))
+    const separator = dashChar.repeat(dashCount)
+    const result: string[] = []
+    
+    // 按语言索引排序处理
+    const sortedLangIndices = Array.from(languageGroups.keys()).sort((a, b) => a - b)
+    
+    // 计算罗马序号起始索引（从累计变量数+1开始）
+    const romanStartIndex = totalVariableCount.value + 1
+    
+    sortedLangIndices.forEach((langIndex, groupIndex) => {
+      const sentences = languageGroups.get(langIndex)!
+      const sentencesWithWidth = sentences.map((sentence: string) => ({
+        text: sentence,
+        width: measureTextWidth(sentence, labelData.fontSize, labelData.fontFamily)
+      }))
+      
+      // 执行智能组合算法
+      let optimizedLines = optimizeCombinationForNonLadder(sentencesWithWidth, containerWidth, spaceWidth)
+      
+      // 步骤3：对智能组合后的结果替换 XX/XXX 为罗马序号
+      // 每个语言组独立计算罗马序号（都从 totalVariableCount + 1 开始）
+      let currentRomanIndex = romanStartIndex
+      optimizedLines = optimizedLines.map(line => {
+        // 使用正则表达式匹配严格的 XX 或 XXX（前后有边界）
+        return line.replace(/\bXX+\b/g, (match) => {
+          const roman = getRomanNumber(currentRomanIndex)
+          console.log(`  ✅ drugDescription[语言${langIndex + 1}]: 替换 ${match} 为罗马数字 ${roman} (序号: ${currentRomanIndex})`)
+          currentRomanIndex++
+          return roman
+        })
+      })
+      
+      // 添加该语言组的格式化结果
+      result.push(...optimizedLines)
+      
+      // 如果不是最后一个语言组，添加分隔线
+      if (groupIndex < sortedLangIndices.length - 1) {
+        result.push(separator)
+      }
+    })
+    
+    console.log(`  ✅ drugDescription: 格式化完成，共 ${result.length} 行（包含分隔线），罗马序号从 ${romanStartIndex} 开始`)
+    return result.join('\n')
+  }
+
+  // 处理 numberField 字段的非阶梯标格式化（包含行数控制和对齐功能）
+  const handleFormatNumberFieldNonLadder = (originalText: string): string => {
+    if (!originalText || !originalText.trim()) {
+      return originalText || ''
+    }
+
+    // 【已禁用】行数控制和对齐功能已禁用，仅返回原文本
+    // 如需启用，请删除下面的 return 语句，并取消注释下面的代码块
+    return originalText
+    
+    /* ========== 以下代码已禁用，但保留供将来使用 ==========
+    // 将原始状态按行分割为数组
+    const sentences = originalText.split('\n').filter((line: string) => line.trim() !== '')
+    const sentenceCount = sentences.length
+
+    if (sentenceCount === 0) {
+      return originalText
+    }
+
+    // 获取当前格式化状态并计算下一个状态
+    const currentFormatState = formatStates.numberField || 0
+    const nextFormatState = (currentFormatState + 1) % 5
+
+    let formattedText = ''
+
+    // 计算容器宽度（使用基础标签宽度，减去边距）
+    const baseWidth = labelData.labelWidth
+    const margins = calculatePageMargins(Number(labelData.selectedNumber))
+    const effectiveWidth = baseWidth - margins.left - margins.right
+    const safetyMargin = 2
+    const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95))
+
+    if (nextFormatState === 1) {
+      // 分为两行
+      const sentencesPerLine = Math.ceil(sentenceCount / 2)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine)
+      
+      // 第一行使用正常的间距计算
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 为第一行每个元素后面添加下划线
+      const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      
+      // 第二行使用第一行的列坐标对齐（使用下划线对齐）
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      
+      formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
+    } else if (nextFormatState === 2) {
+      // 分为三行
+      const sentencesPerLine = Math.ceil(sentenceCount / 3)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2)
+      
+      // 第一行使用正常的间距计算
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 为第一行每个元素后面添加下划线
+      const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      
+      // 第二行和第三行使用第一行的列坐标对齐（使用下划线对齐）
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      
+      formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
+    } else if (nextFormatState === 3) {
+      // 分为四行
+      const sentencesPerLine = Math.ceil(sentenceCount / 4)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
+      const fourthLineSentences = sentences.slice(sentencesPerLine * 3)
+      
+      // 第一行使用正常的间距计算
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 为第一行每个元素后面添加下划线
+      const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      
+      // 其他行使用第一行的列坐标对齐（使用下划线对齐）
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
+    } else if (nextFormatState === 4) {
+      // 分为五行
+      const sentencesPerLine = Math.ceil(sentenceCount / 5)
+      const firstLineSentences = sentences.slice(0, sentencesPerLine)
+      const secondLineSentences = sentences.slice(sentencesPerLine, sentencesPerLine * 2)
+      const thirdLineSentences = sentences.slice(sentencesPerLine * 2, sentencesPerLine * 3)
+      const fourthLineSentences = sentences.slice(sentencesPerLine * 3, sentencesPerLine * 4)
+      const fifthLineSentences = sentences.slice(sentencesPerLine * 4)
+      
+      // 第一行使用正常的间距计算
+      const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
+      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 为第一行每个元素后面添加下划线
+      const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      
+      // 其他行使用第一行的列坐标对齐（使用下划线对齐）
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const fifthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fifthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      
+      formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
+    } else {
+      // 分为一行
+      const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
+      const lineUnderscores = spacingToUnderscores(lineSpacing, labelData.fontSize, labelData.fontFamily, sentences.length)
+      
+      // 为每个元素后面添加下划线
+      formattedText = sentences.map((text: string) => text + safeRepeat('_', lineUnderscores)).join('')
+    }
+
+    // 在处理完对齐计算后，将结果中的下划线替换为两个空格（保持相同视觉宽度）
+    formattedText = formattedText.replace(/_/g, '  ')
+    
+    return formattedText
+    ========== 行数控制和对齐功能代码结束 ========== */
+  }
+
+  // 处理 companyName 字段的非阶梯标格式化（非阶梯标模式下通常不格式化，返回原文本）
+  const handleFormatCompanyNameNonLadder = (originalText: string): string => {
+    return originalText || ''
+  }
+
   // ========== 非阶梯标格式化函数 ==========
   const handleFormatNonLadder = async () => {
     try {
-      // 步骤1：检查是否已初始化（参考非阶梯标初始化按钮的功能）
+      // 步骤1：检查是否已初始化
       // 非阶梯标模式：必须从 country_code = 'all' 加载数据，而不是使用内存中的 originalSummary
-      // 因为内存中的 originalSummary 可能是某个特定国别的数据（如序号1）
       if (!selectedProject) {
         showToast('请先选择项目', 'info')
         return
       }
       
-      let originalSummaryToUse: string | undefined = undefined
+      // 使用辅助函数加载 'all' 数据
+      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
       
-      // 强制从数据库加载 country_code = 'all' 的数据
-      try {
-        const countryDetail = await getCountryDetails(selectedProject.id, 'all')
-        if (countryDetail.original_summary) {
-          originalSummaryToUse = countryDetail.original_summary
-          // 更新状态和 ref
-          originalSummaryRef.current = originalSummaryToUse
-          updateLabelData({
-            originalSummary: originalSummaryToUse
-          })
-        }
-      } catch (error) {
-        console.error('从数据库加载原始状态失败:', error)
-      }
-      
-      // 如果最终还是没有，无法格式化
       if (!originalSummaryToUse) {
         showToast('未找到原始状态，请先点击初始化', 'info')
         return
@@ -2831,70 +4044,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       // 如果没有 originalTextMap，从数据库重新获取并构建
       if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
-        if (!selectedProject) {
-          showToast('请先选择项目', 'info')
-          return
-        }
-        
         console.log('  📝 未找到 originalTextMap，从数据库重新获取...')
         
         try {
-          // 获取项目完整信息（包含所有国别翻译组）
-          const projectDetail = await getProjectById(selectedProject.id)
-          
-          if (!projectDetail.translationGroups || projectDetail.translationGroups.length === 0) {
-            showToast('该项目暂无翻译内容，无法构建变量映射', 'info')
-            return
-          }
-          
-          // 过滤掉国别码为"all"的翻译组，并按序号排序
-          const validGroups = projectDetail.translationGroups
-            .filter(group => group.country_code.toLowerCase() !== 'all')
-            .sort((a, b) => a.sequence_number - b.sequence_number)
-          
-          if (validGroups.length === 0) {
-            showToast('没有可用的国别翻译内容，无法构建变量映射', 'info')
-            return
-          }
-          
-          // 构建 originalTextMap
-          const originalTextMap: Record<string, string> = {}
-          
-          // 获取每个国别的翻译详情
-          for (const group of validGroups) {
-            try {
-              const translationGroup = await getTranslationsByCountry(selectedProject.id, group.country_code)
-              
-              if (translationGroup.items && translationGroup.items.length > 0) {
-                // 按 item_order 排序
-                const sortedItems = translationGroup.items.sort((a, b) => a.item_order - b.item_order)
-                
-                sortedItems.forEach(item => {
-                  const originalText = item.original_text
-                  const translatedText = item.translated_text || item.original_text
-                  
-                  // 只保存第一个翻译的映射关系（用于变量规则匹配）
-                  if (!originalTextMap[translatedText]) {
-                    originalTextMap[translatedText] = originalText
-                  }
-                })
-              }
-            } catch (error) {
-              console.error(`获取国别 ${group.country_code} 的翻译失败:`, error)
-            }
-          }
-          
-          originalTextMapToUse = originalTextMap
+          originalTextMapToUse = await buildOriginalTextMapForNonLadder(selectedProject.id)
           
           // 保存到 labelData
           updateLabelData({
             originalTextMap: originalTextMapToUse
           })
-          
-          console.log(`  ✅ 已构建 originalTextMap，共 ${Object.keys(originalTextMapToUse).length} 条映射`)
-        } catch (error) {
+        } catch (error: any) {
           console.error('构建 originalTextMap 失败:', error)
-          showToast('无法构建变量映射，请先导入翻译内容', 'error')
+          showToast(error.message || '无法构建变量映射，请先导入翻译内容', 'error')
           return
         }
       }
@@ -2908,13 +4069,6 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         return
       }
       
-      // 内部辅助函数：从 originalTextMapToUse 获取原文
-      const getOriginalTextInternal = (translatedText: string): string | null => {
-        if (!originalTextMapToUse) return null
-        const firstTranslation = getFirstTranslation(translatedText)
-        return originalTextMapToUse[firstTranslation] || null
-      }
-      
       // 变量标记数组
       const variableMarkers: Array<{
         fieldName: string
@@ -2924,325 +4078,54 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         isVariable: boolean
       }> = []
       
-      let totalVariableCount = 0 // 累计变量数量
+      // 累计变量数量（使用对象包装以便在函数内部修改）
+      const totalVariableCount = { value: 0 }
       
-      // ===== 1. 处理 basicInfo 字段 =====
-      // 使用原始状态中的数据，而不是 labelData 中的当前值
-      let formattedBasicInfo = originalData.basicInfo || ''
-      if (formattedBasicInfo && formattedBasicInfo.trim()) {
-        const lines = formattedBasicInfo.split('\n')
-        const processedLines: string[] = []
-        
-        lines.forEach((line: string, lineIndex: number) => {
-          if (!line.trim()) {
-            processedLines.push(line)
-            return
-          }
-          
-          const originalText = getOriginalTextInternal(line)
-          if (originalText) {
-            const variable = matchVariableRule(originalText)
-            if (variable) {
-              const newLine = `${line} ${variable}`
-              processedLines.push(newLine)
-              
-              // 记录变量位置
-              variableMarkers.push({
-                fieldName: 'basicInfo',
-                lineIndex,
-                startPos: line.length + 1,
-                endPos: newLine.length,
-                isVariable: true
-              })
-              
-              totalVariableCount++
-              console.log(`  ✅ basicInfo[${lineIndex}]: 添加变量 ${variable}`)
-            } else {
-              processedLines.push(line)
-            }
-          } else {
-            processedLines.push(line)
-          }
-        })
-        
-        formattedBasicInfo = processedLines.join('\n')
-      }
+      // 依次执行6个字段的非阶梯标格式化功能
+      const formattedBasicInfo = handleFormatBasicInfoNonLadder(
+        originalData.basicInfo || '',
+        originalTextMapToUse,
+        variableMarkers,
+        totalVariableCount
+      )
       
-      // ===== 2. 处理 drugName 字段 =====
-      // 使用原始状态中的数据，而不是 labelData 中的当前值
-      let formattedDrugName = originalData.drugName || ''
-      if (formattedDrugName && formattedDrugName.trim()) {
-        const lines = formattedDrugName.split('\n')
-        const processedLines: string[] = []
-        
-        lines.forEach((line: string, lineIndex: number) => {
-          if (!line.trim()) {
-            processedLines.push(line)
-            return
-          }
-          
-          const originalText = getOriginalTextInternal(line)
-          if (originalText) {
-            const variable = matchVariableRule(originalText)
-            if (variable) {
-              // 匹配现有规则：行末追加变量
-              const newLine = `${line} ${variable}`
-              processedLines.push(newLine)
-              
-              // 记录变量位置
-              variableMarkers.push({
-                fieldName: 'drugName',
-                lineIndex,
-                startPos: line.length + 1,
-                endPos: newLine.length,
-                isVariable: true
-              })
-              
-              totalVariableCount++
-              console.log(`  ✅ drugName[${lineIndex}]: 添加变量 ${variable}`)
-            } else if (originalText.includes('XXX') && originalText.includes('mg')) {
-              // 特殊规则：如果原文包含 "XXX mg"，在翻译文本中替换所有 XXX 为 DDD
-              let newLine = line
-              
-              // 查找所有 XXX 的位置并记录
-              const xxxRegex = /XXX/g
-              let match
-              const matches: Array<{ index: number }> = []
-              
-              // 先找到所有匹配位置（在替换前记录位置）
-              while ((match = xxxRegex.exec(line)) !== null) {
-                matches.push({ index: match.index })
-              }
-              
-              // 替换所有 XXX 为 DDD（因为长度相同，位置不会改变）
-              newLine = line.replace(/XXX/g, 'DDD')
-              
-              // 记录每个替换位置的变量标记
-              matches.forEach(({ index }) => {
-                variableMarkers.push({
-                  fieldName: 'drugName',
-                  lineIndex,
-                  startPos: index,
-                  endPos: index + 3, // DDD 也是3个字符
-                  isVariable: true
-                })
-                
-                totalVariableCount++
-                console.log(`  ✅ drugName[${lineIndex}]: 替换 XXX 为 DDD (位置: ${index})`)
-              })
-              
-              processedLines.push(newLine)
-            } else {
-              processedLines.push(line)
-            }
-          } else {
-            processedLines.push(line)
-          }
-        })
-        
-        formattedDrugName = processedLines.join('\n')
-      }
+      const formattedDrugName = handleFormatDrugNameNonLadder(
+        originalData.drugName || '',
+        originalTextMapToUse,
+        variableMarkers,
+        totalVariableCount
+      )
       
-      // ===== 3. 处理 numberOfSheets 字段 =====
-      // 使用原始状态中的数据，而不是 labelData 中的当前值
-      let formattedNumberOfSheets = originalData.numberOfSheets || ''
-      if (formattedNumberOfSheets && formattedNumberOfSheets.trim()) {
-        const lines = formattedNumberOfSheets.split('\n')
-        const processedLines: string[] = []
-        
-        lines.forEach((line: string, lineIndex: number) => {
-          if (!line.trim()) {
-            processedLines.push(line)
-            return
-          }
-          
-          const originalText = getOriginalTextInternal(line)
-          if (originalText) {
-            const variable = matchVariableRule(originalText)
-            if (variable) {
-              const newLine = `${line} ${variable}`
-              processedLines.push(newLine)
-              
-              // 记录变量位置
-              variableMarkers.push({
-                fieldName: 'numberOfSheets',
-                lineIndex,
-                startPos: line.length + 1,
-                endPos: newLine.length,
-                isVariable: true
-              })
-              
-              totalVariableCount++
-              console.log(`  ✅ numberOfSheets[${lineIndex}]: 添加变量 ${variable}`)
-            } else {
-              processedLines.push(line)
-            }
-          } else {
-            processedLines.push(line)
-          }
-        })
-        
-        formattedNumberOfSheets = processedLines.join('\n')
-      }
+      const formattedNumberOfSheets = handleFormatNumberOfSheetsNonLadder(
+        originalData.numberOfSheets || '',
+        originalTextMapToUse,
+        variableMarkers,
+        totalVariableCount
+      )
       
-      // ===== 4. 处理 drugDescription 字段（按语言分类并执行智能组合算法）=====
-      // 使用原始状态中的数据，而不是 labelData 中的当前值
-      let formattedDrugDescription = originalData.drugDescription || ''
+      const formattedDrugDescription = handleFormatDrugDescriptionNonLadder(
+        originalData.drugDescription || '',
+        totalVariableCount
+      )
       
-      if (formattedDrugDescription && formattedDrugDescription.trim()) {
-        // 步骤1：按语言分类收集内容
-        const lines = formattedDrugDescription.split('\n').filter((line: string) => line.trim() !== '')
-        const languageGroups: Map<number, string[]> = new Map() // key: 语言索引, value: 该语言的句子数组
-        
-        lines.forEach((line: string) => {
-          // 按 " / " 分隔不同语言的翻译
-          const translations = line.split(' / ').map((t: string) => t.trim()).filter((t: string) => t !== '')
-          
-          translations.forEach((translation: string, langIndex: number) => {
-            if (!languageGroups.has(langIndex)) {
-              languageGroups.set(langIndex, [])
-            }
-            languageGroups.get(langIndex)!.push(translation)
-          })
-        })
-        
-        console.log(`  📝 drugDescription: 检测到 ${languageGroups.size} 种语言`)
-        
-        // 步骤2：对每个语言组执行智能组合算法
-        // 计算容器宽度（用于智能组合算法）
-        const baseWidth = labelData.labelWidth
-        const margins = calculatePageMargins(Number(labelData.selectedNumber))
-        const effectiveWidth = baseWidth - margins.left - margins.right
-        const safetyMargin = 2
-        const containerWidth = mmToPt(Math.max(effectiveWidth - safetyMargin, effectiveWidth * 0.95))
-        
-        // 空格宽度
-        const spaceWidth = measureTextWidth(' ', labelData.fontSize, labelData.fontFamily)
-        
-        // 智能组合算法：最大化每行利用率
-        const optimizeCombination = (items: Array<{text: string, width: number}>): string[] => {
-          const result: string[] = []
-          const used = new Array(items.length).fill(false)
-
-          while (used.some(u => !u)) {
-            let bestCombination: number[] = []
-            let bestUtilization = 0
-
-            // 找到第一个未使用的句子作为起点
-            const startIndex = used.findIndex(u => !u)
-            if (startIndex === -1) break
-
-            const startWidth = items[startIndex].width
-            const startRequiredMultiplier = Math.ceil(startWidth / containerWidth)
-            
-            // 根据起始句子的长度确定该行的目标宽度
-            const targetMultiplier = startRequiredMultiplier
-            const maxTargetWidth = containerWidth * targetMultiplier
-            
-            // 从起始句子开始，尝试添加其他句子
-            let currentCombination = [startIndex]
-            let currentWidth = startWidth
-            let currentUtilization = currentWidth / maxTargetWidth
-            
-            // 尝试添加其他未使用的句子
-            for (let i = 0; i < items.length; i++) {
-              if (!used[i] && i !== startIndex) {
-                const newWidth = currentWidth + spaceWidth + items[i].width
-                
-                // 检查：添加后不能超过目标宽度
-                if (newWidth <= maxTargetWidth) {
-                  const newUtilization = newWidth / maxTargetWidth
-                  
-                  // 如果利用率提高，则添加这个句子
-                  if (newUtilization > currentUtilization) {
-                    currentCombination.push(i)
-                    currentWidth = newWidth
-                    currentUtilization = newUtilization
-                  }
-                }
-              }
-            }
-            
-            // 使用找到的组合
-            bestCombination = currentCombination
-
-            // 标记为已使用并添加到结果
-            if (bestCombination.length > 0) {
-              const combinedText = bestCombination.map(idx => items[idx].text).join(' ')
-              result.push(combinedText)
-              bestCombination.forEach(idx => {
-                used[idx] = true
-              })
-            } else {
-              // 如果没有找到合适的组合，直接使用当前句子
-              result.push(items[startIndex].text)
-              used[startIndex] = true
-            }
-          }
-
-          return result
-        }
-        
-        // 用分隔线连接各个语言组
-        // 根据页面宽度和"—"字符宽度动态计算分隔符长度
-        const dashChar = '—'
-        const dashWidth = measureTextWidth(dashChar, labelData.fontSize, labelData.fontFamily)
-        // 计算需要多少个"—"字符才能填满容器宽度（使用95%的容器宽度）
-        const separatorWidth = containerWidth * 0.95
-        const dashCount = Math.max(1, Math.floor(separatorWidth / dashWidth))
-        const separator = dashChar.repeat(dashCount)
-        const result: string[] = []
-        
-        // 按语言索引排序处理
-        const sortedLangIndices = Array.from(languageGroups.keys()).sort((a, b) => a - b)
-        
-        // 计算罗马序号起始索引（从累计变量数+1开始）
-        const romanStartIndex = totalVariableCount + 1
-        
-        sortedLangIndices.forEach((langIndex, groupIndex) => {
-          const sentences = languageGroups.get(langIndex)!
-          const sentencesWithWidth = sentences.map((sentence: string) => ({
-            text: sentence,
-            width: measureTextWidth(sentence, labelData.fontSize, labelData.fontFamily)
-          }))
-          
-          // 执行智能组合算法
-          let optimizedLines = optimizeCombination(sentencesWithWidth)
-          
-          // 步骤3：对智能组合后的结果替换 XX/XXX 为罗马序号
-          // 每个语言组独立计算罗马序号（都从 totalVariableCount + 1 开始）
-          let currentRomanIndex = romanStartIndex
-          optimizedLines = optimizedLines.map(line => {
-            // 使用正则表达式匹配严格的 XX 或 XXX（前后有边界）
-            return line.replace(/\bXX+\b/g, (match) => {
-              const roman = getRomanNumber(currentRomanIndex)
-              console.log(`  ✅ drugDescription[语言${langIndex + 1}]: 替换 ${match} 为罗马数字 ${roman} (序号: ${currentRomanIndex})`)
-              currentRomanIndex++
-              return roman
-            })
-          })
-          
-          // 添加该语言组的格式化结果
-          result.push(...optimizedLines)
-          
-          // 如果不是最后一个语言组，添加分隔线
-          if (groupIndex < sortedLangIndices.length - 1) {
-            result.push(separator)
-          }
-        })
-        
-        formattedDrugDescription = result.join('\n')
-        console.log(`  ✅ drugDescription: 格式化完成，共 ${result.length} 行（包含分隔线），罗马序号从 ${romanStartIndex} 开始`)
-      }
+      const formattedNumberField = handleFormatNumberFieldNonLadder(
+        originalData.numberField || ''
+      )
       
-      console.log(`🎨 格式化完成：累计变量 ${totalVariableCount} 个`)
+      const formattedCompanyName = handleFormatCompanyNameNonLadder(
+        originalData.companyName || ''
+      )
+      
+      console.log(`🎨 格式化完成：累计变量 ${totalVariableCount.value} 个`)
       
       // 更新数据
       updateLabelData({
         basicInfo: formattedBasicInfo,
+        numberField: formattedNumberField,
         drugName: formattedDrugName,
         numberOfSheets: formattedNumberOfSheets,
         drugDescription: formattedDrugDescription,
+        companyName: formattedCompanyName,
         variableMarkers: variableMarkers
       })
       
@@ -3258,7 +4141,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       formatStatesRef.current = newFormatStates
       setFormatStates(newFormatStates)
       
-      showToast(`非阶梯标格式化完成（变量：${totalVariableCount}）`, 'success')
+      showToast(`非阶梯标格式化完成（变量：${totalVariableCount.value}）`, 'success')
       
     } catch (error) {
       console.error('非阶梯标格式化失败:', error)
@@ -4082,7 +4965,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               />
               {/* 闪电图标 */}
               <button
-                onClick={handleFormatBasicInfo}
+                onClick={handleFormatBasicInfoButton}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -4123,7 +5006,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               />
               {/* 闪电图标 */}
               <button
-                onClick={handleFormatNumberField}
+                onClick={handleFormatNumberFieldButton}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -4164,7 +5047,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               />
               {/* 闪电图标 */}
               <button
-                onClick={handleFormatDrugName}
+                onClick={handleFormatDrugNameButton}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -4205,7 +5088,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               />
               {/* 闪电图标 */}
               <button
-                onClick={handleFormatNumberOfSheets}
+                onClick={handleFormatNumberOfSheetsButton}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -4246,7 +5129,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               />
               {/* 闪电图标 */}
               <button
-                onClick={handleFormatDrugDescription}
+                onClick={handleFormatDrugDescriptionButton}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
@@ -4287,7 +5170,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
               />
               {/* 闪电图标 */}
               <button
-                onClick={handleFormatCompanyName}
+                onClick={handleFormatCompanyNameButton}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded transition-colors bg-transparent border-none hover:bg-gray-100"
                 style={{ color: theme.accent, backgroundColor: 'transparent' }}
                 title="格式化此字段"
