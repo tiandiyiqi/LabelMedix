@@ -1343,8 +1343,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         return
       }
       
-      // 调用非阶梯标格式化函数（非阶梯标模式下不格式化，返回原文本）
-      const formattedText = handleFormatCompanyNameNonLadder(originalData.companyName || '')
+      // 获取当前格式化状态
+      const currentFormatState = formatStatesRef.current.companyName || 0
+      
+      // 调用非阶梯标格式化函数
+      const { formattedText, nextState, toastMessage } = handleFormatCompanyNameNonLadder(
+        originalData.companyName || '',
+        currentFormatState
+      )
       
       // 更新状态
       formattedFieldsRef.current.companyName = formattedText
@@ -1353,12 +1359,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // 更新格式化状态
       const newStates = {
         ...formatStatesRef.current,
-        companyName: 0
+        companyName: nextState
       }
       formatStatesRef.current = newStates
       setFormatStates(newStates)
       
-      showToast('公司名称字段（非阶梯标模式下不格式化）', 'info')
+      showToast(toastMessage, 'success')
     }
   }
 
@@ -3077,29 +3083,92 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         // 创建 originalTextMap（翻译文本 -> 原文的映射）
         const originalTextMap: Record<string, string> = {}
         
+        // 用于 company_name 字段的特殊处理：按 sequence 分组存储
+        // key: sequence, value: Map<originalText, translations[]>
+        const companyNameBySequence = new Map<number, Map<string, string[]>>()
+        
         // 遍历每个原文，合并其翻译
         translationsByOriginal.forEach((translations, originalText) => {
           // 按序号排序
           translations.sort((a, b) => a.sequence - b.sequence)
           
-          // 用 " / " 连接所有翻译
-          const mergedText = translations.map(t => t.text).join(' / ')
-          
-          // 保存映射关系：第一个翻译 -> 原文
-          const firstTranslation = translations[0].text
-          originalTextMap[firstTranslation] = originalText
-          
           // 获取字段类型（使用第一个翻译的字段类型）
           const fieldType = translations[0].fieldType
           
-          // 分类到对应字段组
-          if (fieldType && fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups]) {
-            fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups].push(mergedText)
+          // 保存映射关系：第一个翻译 -> 原文（所有字段都处理）
+          const firstTranslation = translations[0].text
+          originalTextMap[firstTranslation] = originalText
+          
+          // 对于 company_name 字段，使用特殊处理逻辑
+          if (fieldType === 'company_name') {
+            // 按 sequence 分组
+            translations.forEach(translation => {
+              const sequence = translation.sequence
+              
+              if (!companyNameBySequence.has(sequence)) {
+                companyNameBySequence.set(sequence, new Map())
+              }
+              
+              const sequenceMap = companyNameBySequence.get(sequence)!
+              if (!sequenceMap.has(originalText)) {
+                sequenceMap.set(originalText, [])
+              }
+              
+              sequenceMap.get(originalText)!.push(translation.text)
+            })
           } else {
-            // 未分类的内容放入药品说明
-            fieldTypeGroups.drug_description.push(mergedText)
+            // 其他字段：用 " / " 连接所有翻译
+            const mergedText = translations.map(t => t.text).join(' / ')
+            
+            // 分类到对应字段组
+            if (fieldType && fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups]) {
+              fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups].push(mergedText)
+            } else {
+              // 未分类的内容放入药品说明
+              fieldTypeGroups.drug_description.push(mergedText)
+            }
           }
         })
+        
+        // 处理 company_name 字段：按语言组分组，组内换行，组间空行
+        if (companyNameBySequence.size > 0) {
+          // 收集所有 company_name 的 original_text，保持顺序（使用 translationsByOriginal 的遍历顺序）
+          const companyNameOriginalTexts: string[] = []
+          translationsByOriginal.forEach((translations, originalText) => {
+            if (translations[0].fieldType === 'company_name') {
+              companyNameOriginalTexts.push(originalText)
+            }
+          })
+          
+          // 按 sequence 排序
+          const sortedSequences = Array.from(companyNameBySequence.keys()).sort((a, b) => a - b)
+          
+          const companyNameGroups: string[] = []
+          
+          sortedSequences.forEach((sequence) => {
+            const sequenceMap = companyNameBySequence.get(sequence)!
+            
+            // 每个语言组内的内容（按照统一的 original_text 顺序）
+            const groupLines: string[] = []
+            
+            // 按照统一的 original_text 顺序遍历
+            companyNameOriginalTexts.forEach(originalText => {
+              if (sequenceMap.has(originalText)) {
+                const texts = sequenceMap.get(originalText)!
+                // 相同 original_text 的翻译添加到组内（通常只有一个，但保留扩展性）
+                groupLines.push(...texts)
+              }
+            })
+            
+            // 添加该语言组的内容
+            if (groupLines.length > 0) {
+              companyNameGroups.push(groupLines.join('\n'))
+            }
+          })
+          
+          // 不同语言组之间用空行分隔
+          fieldTypeGroups.company_name = companyNameGroups
+        }
         
         console.log('📝 已创建 originalTextMap，共', Object.keys(originalTextMap).length, '条映射')
         
@@ -3110,13 +3179,14 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         }
         
         // 准备导入的数据
+        // company_name 字段：不同语言组之间用空行分隔
         const importedData = {
           basicInfo: fieldTypeGroups.basic_info.join('\n'),
           numberField: fieldTypeGroups.number_field.join('\n'),
           drugName: fieldTypeGroups.drug_name.join('\n'),
           numberOfSheets: fieldTypeGroups.number_of_sheets.join('\n'),
           drugDescription: fieldTypeGroups.drug_description.join('\n'),
-          companyName: fieldTypeGroups.company_name.join('\n')
+          companyName: fieldTypeGroups.company_name.join('\n\n') // 语言组之间用空行分隔
         }
         
         // 更新到对应的字段类型区域，同时更新字体和 originalTextMap
@@ -4016,9 +4086,202 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     ========== 行数控制和对齐功能代码结束 ========== */
   }
 
-  // 处理 companyName 字段的非阶梯标格式化（非阶梯标模式下通常不格式化，返回原文本）
-  const handleFormatCompanyNameNonLadder = (originalText: string): string => {
-    return originalText || ''
+  // 检测文本行的主要语言类型（中文或英文）
+  const detectLineLanguage = (line: string): 'chinese' | 'english' | 'mixed' => {
+    if (!line || !line.trim()) return 'mixed'
+    
+    let chineseCount = 0
+    let englishCount = 0
+    let totalChars = 0
+    
+    for (const char of line) {
+      const code = char.charCodeAt(0)
+      // 检测中文字符（CJK统一汉字）
+      if (code >= 0x4E00 && code <= 0x9FFF) {
+        chineseCount++
+        totalChars++
+      }
+      // 检测英文字母
+      else if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
+        englishCount++
+        totalChars++
+      }
+      // 其他字符（标点、数字等）不计入统计
+    }
+    
+    if (totalChars === 0) return 'mixed'
+    
+    // 如果中文字符占比超过30%，认为是中文
+    if (chineseCount / totalChars > 0.3) return 'chinese'
+    // 如果英文字符占比超过30%，认为是英文
+    if (englishCount / totalChars > 0.3) return 'english'
+    // 否则认为是混合
+    return 'mixed'
+  }
+
+  // 处理 companyName 字段的非阶梯标格式化
+  const handleFormatCompanyNameNonLadder = (
+    originalText: string,
+    currentFormatState: number
+  ): { formattedText: string; nextState: number; toastMessage: string } => {
+    if (!originalText || !originalText.trim()) {
+      return {
+        formattedText: originalText || '',
+        nextState: 0,
+        toastMessage: '公司名称字段为空'
+      }
+    }
+
+    // 计算下一个状态（循环：0 -> 1 -> 2 -> 0）
+    const nextFormatState = (currentFormatState + 1) % 3
+    let formattedText = ''
+    let toastMessage = ''
+
+    if (nextFormatState === 0) {
+      // 状态0：恢复为原始状态
+      formattedText = originalText
+      toastMessage = '公司名称已恢复为原始状态'
+    } else if (nextFormatState === 1) {
+      // 状态1：第一次格式化 - 将以冒号结尾的行与下一行合并
+      const lines = originalText.split('\n')
+      const result: string[] = []
+      let i = 0
+      
+      while (i < lines.length) {
+        const currentLine = lines[i].trim()
+        
+        // 如果当前行以冒号结尾，尝试与下一行合并
+        if (currentLine && (currentLine.endsWith(':') || currentLine.endsWith('：'))) {
+          // 检查下一行是否存在且非空
+          if (i + 1 < lines.length && lines[i + 1].trim()) {
+            // 合并当前行和下一行，中间用一个空格连接
+            result.push(currentLine + ' ' + lines[i + 1].trim())
+            i += 2 // 跳过下一行，因为已经合并了
+          } else {
+            // 下一行不存在或为空，保留当前行
+            result.push(currentLine)
+            i++
+          }
+        } else if (currentLine) {
+          // 当前行不以冒号结尾，直接保留
+          result.push(currentLine)
+          i++
+        } else {
+          // 空行，保留
+          result.push('')
+          i++
+        }
+      }
+      
+      formattedText = result.join('\n')
+      toastMessage = '公司名称已格式化（冒号行合并）'
+    } else if (nextFormatState === 2) {
+      // 状态2：第二次格式化 - 将同一种语言的行合并为一行
+      // 首先需要从原始状态进行第一次格式化，然后再进行第二次格式化
+      // 为了简化，我们假设输入已经是第一次格式化后的结果
+      // 如果输入是原始状态，先进行第一次格式化
+      let inputText = originalText
+      
+      // 检查是否需要进行第一次格式化（如果还有冒号行未合并）
+      const lines = originalText.split('\n')
+      let needsFirstFormat = false
+      for (let i = 0; i < lines.length - 1; i++) {
+        const line = lines[i].trim()
+        if (line && (line.endsWith(':') || line.endsWith('：')) && lines[i + 1].trim()) {
+          needsFirstFormat = true
+          break
+        }
+      }
+      
+      // 如果需要，先进行第一次格式化
+      if (needsFirstFormat) {
+        const firstFormatLines = originalText.split('\n')
+        const firstFormatResult: string[] = []
+        let j = 0
+        while (j < firstFormatLines.length) {
+          const currentLine = firstFormatLines[j].trim()
+          if (currentLine && (currentLine.endsWith(':') || currentLine.endsWith('：'))) {
+            if (j + 1 < firstFormatLines.length && firstFormatLines[j + 1].trim()) {
+              firstFormatResult.push(currentLine + ' ' + firstFormatLines[j + 1].trim())
+              j += 2
+            } else {
+              firstFormatResult.push(currentLine)
+              j++
+            }
+          } else if (currentLine) {
+            firstFormatResult.push(currentLine)
+            j++
+          } else {
+            firstFormatResult.push('')
+            j++
+          }
+        }
+        inputText = firstFormatResult.join('\n')
+      }
+      
+      // 进行第二次格式化：按语言分组并合并
+      const linesToProcess = inputText.split('\n')
+      const result: string[] = []
+      let currentGroup: string[] = []
+      let currentLanguage: 'chinese' | 'english' | 'mixed' | null = null as 'chinese' | 'english' | 'mixed' | null
+      
+      for (let i = 0; i < linesToProcess.length; i++) {
+        const line = linesToProcess[i].trim()
+        
+        if (!line) {
+          // 遇到空行，先处理当前组，然后添加空行
+          if (currentGroup.length > 0) {
+            result.push(currentGroup.join(' '))
+            currentGroup = []
+            currentLanguage = null
+          }
+          result.push('')
+          continue
+        }
+        
+        const lineLanguage = detectLineLanguage(line)
+        
+        // 如果语言类型匹配，加入当前组
+        if (currentLanguage === null) {
+          // 当前组为空，直接加入
+          currentGroup.push(line)
+          if (lineLanguage !== 'mixed') {
+            currentLanguage = lineLanguage
+          }
+        } else if (lineLanguage === 'mixed') {
+          // 混合语言行，可以加入任何组
+          currentGroup.push(line)
+        } else if (currentLanguage === 'mixed' as const) {
+          // 当前组是混合语言，可以加入任何行
+          currentGroup.push(line)
+          currentLanguage = lineLanguage
+        } else if (lineLanguage === currentLanguage) {
+          // 语言类型匹配
+          currentGroup.push(line)
+        } else {
+          // 语言类型不匹配，先处理当前组，然后开始新组
+          if (currentGroup.length > 0) {
+            result.push(currentGroup.join(' '))
+          }
+          currentGroup = [line]
+          currentLanguage = lineLanguage
+        }
+      }
+      
+      // 处理最后一组
+      if (currentGroup.length > 0) {
+        result.push(currentGroup.join(' '))
+      }
+      
+      formattedText = result.join('\n')
+      toastMessage = '公司名称已格式化（同语言行合并）'
+    }
+
+    return {
+      formattedText,
+      nextState: nextFormatState,
+      toastMessage
+    }
   }
 
   // ========== 非阶梯标格式化函数 ==========
@@ -4112,8 +4375,10 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         originalData.numberField || ''
       )
       
-      const formattedCompanyName = handleFormatCompanyNameNonLadder(
-        originalData.companyName || ''
+      // 批量格式化时，公司名称保持原始状态（状态0）
+      const { formattedText: formattedCompanyName } = handleFormatCompanyNameNonLadder(
+        originalData.companyName || '',
+        0
       )
       
       console.log(`🎨 格式化完成：累计变量 ${totalVariableCount.value} 个`)
