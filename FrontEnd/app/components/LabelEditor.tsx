@@ -1740,13 +1740,16 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       
       // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
-      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineUnderscoresRaw = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 应用调整规则
+      const firstLineUnderscores = applyUnderscoreAdjustment(firstLineUnderscoresRaw, firstLineUnderscoresRaw)
       
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       
       // 第二行使用第一行的列坐标对齐（使用下划线对齐）
-      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
       
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `编号栏分为两行（第一行每个字段后添加${firstLineUnderscores}下划线，第二行与第一行列对齐）`
@@ -1759,14 +1762,17 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       
       // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
-      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineUnderscoresRaw = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 应用调整规则
+      const firstLineUnderscores = applyUnderscoreAdjustment(firstLineUnderscoresRaw, firstLineUnderscoresRaw)
       
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       
       // 第二行和第三行使用第一行的列坐标对齐（使用下划线对齐）
-      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
       
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `编号栏分为三行（第一行每个字段后添加${firstLineUnderscores}下划线，其他行与第一行列对齐）`
@@ -1780,15 +1786,18 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       
       // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
-      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineUnderscoresRaw = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 应用调整规则
+      const firstLineUnderscores = applyUnderscoreAdjustment(firstLineUnderscoresRaw, firstLineUnderscoresRaw)
       
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       
       // 其他行使用第一行的列坐标对齐（使用下划线对齐）
-      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
       
       formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `编号栏分为四行（第一行每个字段后添加${firstLineUnderscores}下划线，其他行与第一行列对齐）`
@@ -1803,23 +1812,29 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       
       // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
-      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineUnderscoresRaw = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 应用调整规则
+      const firstLineUnderscores = applyUnderscoreAdjustment(firstLineUnderscoresRaw, firstLineUnderscoresRaw)
       
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       
       // 其他行使用第一行的列坐标对齐（使用下划线对齐）
-      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const fifthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fifthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const fifthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fifthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
       
       formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
       toastMessage = `编号栏分为五行（第一行每个字段后添加${firstLineUnderscores}下划线，其他行与第一行列对齐）`
     } else {
       // 分为一行
       const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
-      const lineUnderscores = spacingToUnderscores(lineSpacing, labelData.fontSize, labelData.fontFamily, sentences.length)
+      const lineUnderscoresRaw = spacingToUnderscores(lineSpacing, labelData.fontSize, labelData.fontFamily, sentences.length)
+      
+      // 应用调整规则
+      const lineUnderscores = applyUnderscoreAdjustment(lineUnderscoresRaw, lineUnderscoresRaw)
       
       // 为每个元素后面添加下划线
       formattedText = sentences.map((text: string) => text + safeRepeat('_', lineUnderscores)).join('')
