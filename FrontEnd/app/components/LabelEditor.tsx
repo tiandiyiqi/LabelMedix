@@ -446,7 +446,15 @@ export default function LabelEditor() {
     const firstLineTotalWidth = firstLineElementWidths.reduce((sum, width) => sum + width, 0)
     const firstLineAvailableSpace = containerWidth - firstLineTotalWidth
     const firstLineNumberOfGaps = firstLineSentences.length - 1
-    const firstLineSpacing = firstLineNumberOfGaps > 0 ? Math.max(firstLineAvailableSpace / firstLineNumberOfGaps, mmToPt(1)) : 0
+    
+    // 修复：如果只有一个元素，使用剩余空间；多个元素时使用缝隙间距
+    let firstLineSpacing: number
+    if (firstLineNumberOfGaps > 0) {
+      firstLineSpacing = Math.max(firstLineAvailableSpace / firstLineNumberOfGaps, mmToPt(1))
+    } else {
+      // 只有一个元素时，使用到行尾的剩余空间
+      firstLineSpacing = firstLineAvailableSpace > 0 ? firstLineAvailableSpace : 0
+    }
     
     // 计算第一行实际使用的下划线数量（基于间距计算）
     const underscoreWidth = fontSize * 0.5 // 下划线宽度估算
@@ -464,9 +472,16 @@ export default function LabelEditor() {
       
       // 结束位置（文本结束位置 + 下划线区域结束位置）
       const textEndPosition = currentX + firstLineElementWidths[i]
-      const columnEndPosition = textEndPosition + firstLineActualSpacing
-      firstLineEndPositions.push(columnEndPosition)
+      let columnEndPosition: number
       
+      // 关键修复：当只有一个元素时，列结束位置就是容器宽度
+      if (firstLineSentences.length === 1) {
+        columnEndPosition = containerWidth
+      } else {
+        columnEndPosition = textEndPosition + firstLineActualSpacing
+      }
+      
+      firstLineEndPositions.push(columnEndPosition)
       currentX = columnEndPosition
     }
     
@@ -516,11 +531,15 @@ export default function LabelEditor() {
       // 计算尾随下划线（用于填充列宽）- 动态调整基于第一行对应列
       let trailingUnderscores = 0
       
-      // 关键改进：使用第一行对应列的宽度作为基准，而不是当前列的宽度
-      const firstLineColumnWidth = firstLineEndPositions[i] - firstLineStartPositions[i]
-      
-      // 计算当前列应该占用的总宽度（基于第一行对应列的宽度比例）
-      const targetColumnWidth = firstLineColumnWidth
+      // 关键改进：当只有一个元素时，所有行都应该填充到容器宽度（行尾对齐）
+      let targetColumnWidth: number
+      if (firstLineSentences.length === 1) {
+        // 只有一个元素：目标是填充到容器宽度
+        targetColumnWidth = containerWidth
+      } else {
+        // 多个元素：使用第一行对应列的宽度
+        targetColumnWidth = firstLineEndPositions[i] - firstLineStartPositions[i]
+      }
       
       // 计算剩余空间（考虑前导下划线和当前文本宽度）
       const remainingSpace = targetColumnWidth - currentWidth - (leadingUnderscores * underscoreWidth)
@@ -534,6 +553,18 @@ export default function LabelEditor() {
         if (spacingDiff > underscoreWidth / 2) {
           trailingUnderscores += 1
         }
+      }
+      
+      // 详细调试
+      if (firstLineSentences.length === 1) {
+        console.log(`📝 第${i+1}列 [${currentText.substring(0, 25)}]:`, {
+          当前文本宽度: currentWidth.toFixed(2),
+          目标总宽度: targetColumnWidth.toFixed(2),
+          前导下划线: leadingUnderscores,
+          剩余空间: remainingSpace.toFixed(2),
+          尾随下划线数: trailingUnderscores,
+          下划线宽度: underscoreWidth
+        })
       }
       
       // 构建当前列的内容：前导下划线 + 文本 + 尾随下划线
@@ -579,11 +610,6 @@ export default function LabelEditor() {
       return 0; // 返回0间距
     }
 
-    // 如果只有一个元素，不需要内部间距
-    if (elements.length === 1) {
-      return 0;
-    }
-
     // 1. 计算所有元素的总宽度
     const elementsWidth = elements.map(text => {
       const width = measureTextWidth(text, fontSize, fontFamily);
@@ -595,7 +621,12 @@ export default function LabelEditor() {
     // 2. 从容器宽度中减去总宽度得到可用空间
     const availableSpace = containerWidth - totalContentWidth;
     
-    // 3. 计算需要分配间距的"缝隙"数量（N个元素有N-1个缝隙）
+    // 3. 如果只有一个元素，返回到行尾的剩余空间（用于添加尾随下划线）
+    if (elements.length === 1) {
+      return availableSpace > 0 ? availableSpace : 0;
+    }
+    
+    // 4. 计算需要分配间距的"缝隙"数量（N个元素有N-1个缝隙）
     const numberOfGaps = elements.length - 1;
 
     if (numberOfGaps <= 0) {
@@ -616,7 +647,8 @@ export default function LabelEditor() {
   // 安全的字符串重复函数
   const safeRepeat = (str: string, count: number): string => {
     // 确保count是有限的非负整数
-    const safeCount = Math.max(0, Math.min(Math.floor(count), 20));
+    // 增加限制以支持宽容器的下划线填充
+    const safeCount = Math.max(0, Math.min(Math.floor(count), 200));
     return str.repeat(safeCount);
   };
 
@@ -681,7 +713,8 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   const underscoresPerSentence = Math.floor(totalUnderscores / sentenceCount);
   
   // 限制每个句子的下划线数量在合理范围内（允许0个下划线）
-  return Math.max(0, Math.min(underscoresPerSentence, 20)); // 最少0个下划线，最多20个下划线
+  // 移除20个下划线的限制，改为更大的值以支持宽容器
+  return Math.max(0, Math.min(underscoresPerSentence, 200)); // 最少0个下划线，最多200个下划线
 };
 
   // ===== 数据库状态检查辅助函数 =====
@@ -3922,8 +3955,23 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
       const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
       
+      // 详细调试第1行计算
+      const firstLineText = firstLineSentences[0]
+      const firstLineTextWidth = measureTextWidth(firstLineText, labelData.fontSize, labelData.fontFamily)
+      console.log(`🎯 4行格式 - 第1行:`, {
+        容器宽度: containerWidth.toFixed(2),
+        字段数: firstLineSentences.length,
+        字段内容: firstLineText.substring(0, 30),
+        字段文本宽度: firstLineTextWidth.toFixed(2),
+        计算得到的间距: firstLineSpacing.toFixed(2),
+        下划线数: firstLineUnderscores,
+        下划线宽度估算: (labelData.fontSize * 0.5).toFixed(2)
+      })
+      
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
+      
+      console.log(`🔄 调用对齐函数 - 第2-4行`)
       
       // 其他行使用第一行的列坐标对齐（使用下划线对齐）
       const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
