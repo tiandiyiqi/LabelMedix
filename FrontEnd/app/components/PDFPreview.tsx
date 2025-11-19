@@ -183,6 +183,39 @@ const processFieldContent = (fieldContent: string): string[] => {
     .map(line => line.trim());
 };
 
+// 检测文本行的主要语言类型（中文或英文）
+const detectLineLanguage = (line: string): 'chinese' | 'english' | 'mixed' => {
+  if (!line || !line.trim()) return 'mixed'
+  
+  let chineseCount = 0
+  let englishCount = 0
+  let totalChars = 0
+  
+  for (const char of line) {
+    const code = char.charCodeAt(0)
+    // 检测中文字符（CJK统一汉字）
+    if (code >= 0x4E00 && code <= 0x9FFF) {
+      chineseCount++
+      totalChars++
+    }
+    // 检测英文字母
+    else if ((code >= 65 && code <= 90) || (code >= 97 && code <= 122)) {
+      englishCount++
+      totalChars++
+    }
+    // 其他字符（标点、数字等）不计入统计
+  }
+  
+  if (totalChars === 0) return 'mixed'
+  
+  // 如果中文字符占比超过30%，认为是中文
+  if (chineseCount / totalChars > 0.3) return 'chinese'
+  // 如果英文字符占比超过30%，认为是英文
+  if (englishCount / totalChars > 0.3) return 'english'
+  // 否则认为是混合
+  return 'mixed'
+};
+
 // 处理6个字段，返回字段数据结构
 interface FieldData {
   fieldName: string;
@@ -216,6 +249,112 @@ const processSixFields = (
       fields.push({ fieldName, lines });
     }
   });
+  
+  return fields;
+};
+
+// 处理6个字段（非阶梯标模式专用，使用不同的字段顺序）
+const processSixFieldsForNonLadder = (
+  drugName: string,
+  basicInfo: string,
+  numberOfSheets: string,
+  numberField: string,
+  drugDescription: string,
+  companyName: string
+): FieldData[] => {
+  const fields: FieldData[] = [];
+  
+  // 按非阶梯标模式的顺序处理字段
+  // 1. 药品名称
+  const drugNameLines = processFieldContent(drugName);
+  if (drugNameLines.length > 0) {
+    fields.push({ fieldName: 'drugName', lines: drugNameLines });
+  }
+  
+  // 2. 基本信息
+  const basicInfoLines = processFieldContent(basicInfo);
+  if (basicInfoLines.length > 0) {
+    fields.push({ fieldName: 'basicInfo', lines: basicInfoLines });
+  }
+  
+  // 3. 片数
+  const numberOfSheetsLines = processFieldContent(numberOfSheets);
+  if (numberOfSheetsLines.length > 0) {
+    fields.push({ fieldName: 'numberOfSheets', lines: numberOfSheetsLines });
+  }
+  
+  // 4. 编号栏
+  const numberFieldLines = processFieldContent(numberField);
+  if (numberFieldLines.length > 0) {
+    fields.push({ fieldName: 'numberField', lines: numberFieldLines });
+  }
+  
+  // 5. 药品说明和公司名称合并处理，并按语言分组
+  // 将 companyName 的内容合并到 drugDescription 中，然后按语言分组
+  let mergedDescription = drugDescription || '';
+  if (companyName && companyName.trim()) {
+    if (mergedDescription && mergedDescription.trim()) {
+      // 如果两个字段都有内容，用换行符连接
+      mergedDescription = mergedDescription + '\n' + companyName;
+    } else {
+      // 如果只有 companyName 有内容，直接使用
+      mergedDescription = companyName;
+    }
+  }
+  
+  // 按行分割内容，并过滤掉已有的分隔线
+  const allLines = mergedDescription.split('\n')
+    .map(line => line.trim())
+    .filter(line => {
+      // 过滤空行和分隔线（分隔线可能是全角或半角的横线）
+      if (!line) return false;
+      // 检查是否是分隔线（全角横线或半角横线组成的行）
+      const isSeparator = /^[—\-_]+$/.test(line) || line === '—————————————————————————';
+      return !isSeparator;
+    });
+  
+  if (allLines.length > 0) {
+    // 按语言分组：中文行和英文行分开
+    const chineseLines: string[] = [];
+    const englishLines: string[] = [];
+    const mixedLines: string[] = [];
+    
+    allLines.forEach(line => {
+      const lang = detectLineLanguage(line);
+      if (lang === 'chinese') {
+        chineseLines.push(line);
+      } else if (lang === 'english') {
+        englishLines.push(line);
+      } else {
+        mixedLines.push(line);
+      }
+    });
+    
+    // 构建最终的行数组：中文行（含混合行）-> 分隔线 -> 英文行
+    const finalLines: string[] = [];
+    
+    // 添加中文行和混合行（混合行放在中文组）
+    if (chineseLines.length > 0 || mixedLines.length > 0) {
+      finalLines.push(...chineseLines);
+      finalLines.push(...mixedLines);
+    }
+    
+    // 如果有中文行（或混合行）和英文行，添加分隔线
+    if ((chineseLines.length > 0 || mixedLines.length > 0) && englishLines.length > 0) {
+      finalLines.push('—————————————————————————');
+    }
+    
+    // 添加英文行
+    if (englishLines.length > 0) {
+      finalLines.push(...englishLines);
+    }
+    
+    if (finalLines.length > 0) {
+      // 使用 'drugDescription' 作为字段名，因为这是主要字段
+      // 变量标记仍然可以基于原始字段名进行匹配
+      fields.push({ fieldName: 'drugDescription', lines: finalLines });
+    }
+  }
   
   return fields;
 };
@@ -689,35 +828,16 @@ export default function PDFPreview() {
   let processedFields: FieldData[] = []
   
   if (isNonLadderMode) {
-    // 非阶梯标模式：保持所有字段独立，以便正确应用变量标记
-    processedFields = []
-    
-    if (basicInfoField.length > 0) {
-      processedFields.push({ fieldName: 'basicInfo', lines: basicInfoField });
-    }
-    if (numberFieldLines.length > 0) {
-      processedFields.push({ fieldName: 'numberField', lines: numberFieldLines });
-    }
-    
-    const drugNameLines = processFieldContent(drugName);
-    if (drugNameLines.length > 0) {
-      processedFields.push({ fieldName: 'drugName', lines: drugNameLines });
-    }
-    
-    const numberOfSheetsLines = processFieldContent(numberOfSheets);
-    if (numberOfSheetsLines.length > 0) {
-      processedFields.push({ fieldName: 'numberOfSheets', lines: numberOfSheetsLines });
-    }
-    
-    const drugDescriptionLines = processFieldContent(drugDescription);
-    if (drugDescriptionLines.length > 0) {
-      processedFields.push({ fieldName: 'drugDescription', lines: drugDescriptionLines });
-    }
-    
-    const companyNameLines = processFieldContent(companyName);
-    if (companyNameLines.length > 0) {
-      processedFields.push({ fieldName: 'companyName', lines: companyNameLines });
-    }
+    // 非阶梯标模式：使用专用函数处理，保持所有字段独立，以便正确应用变量标记
+    // 字段顺序：drugName -> basicInfo -> numberOfSheets -> numberField -> drugDescription -> companyName
+    processedFields = processSixFieldsForNonLadder(
+      drugName,
+      basicInfo,
+      numberOfSheets,
+      numberField,
+      drugDescription,
+      companyName
+    );
   } else {
     // 阶梯标模式：保持原有逻辑，将药品相关字段合并
     // 将药品名称、片数、药品说明、公司名称字段组合成一个文本域
@@ -910,21 +1030,75 @@ export default function PDFPreview() {
   // 4. 单页上下1布局
   const renderTopBottom1Layout = () => {
     return (
-      <View style={{
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
-        <Text style={{
-          fontSize: mmToPt(fontSize * 2),
-          fontFamily: fontFamily,
-          color: '#F59E0B',
-          fontWeight: 'bold',
-        }}>
-          单页上下1
-        </Text>
-      </View>
+      <>
+        {processedFields.map((field, fieldIndex) => (
+          <View key={`field-${fieldIndex}`} style={dynamicStyles.fieldContainer}>
+            {field.lines.map((line, lineIndex) => {
+              // 内联变量着色渲染逻辑（单页上下布局只支持非阶梯标模式）
+              const variableMarkers = labelData.variableMarkers || []
+              const marker = variableMarkers.find(
+                m => m.fieldName === field.fieldName && m.lineIndex === lineIndex && m.isVariable
+              )
+              
+              // 没有变量标记，正常渲染
+              if (!marker) {
+                return (
+                  <View key={`line-${lineIndex}`} style={dynamicStyles.lineContainer}>
+                    <SmartMixedFontText
+                      primaryFont={fontFamily}
+                      secondaryFont={labelData.secondaryFontFamily}
+                      style={dynamicStyles.fieldLine}
+                    >
+                      {line}
+                    </SmartMixedFontText>
+                  </View>
+                )
+              }
+              
+              // 有变量标记，分段渲染：原文（黑色）+ 变量（紫色）
+              const beforeVar = line.substring(0, marker.startPos)
+              const variable = line.substring(marker.startPos, marker.endPos)
+              const afterVar = line.substring(marker.endPos)
+              
+              return (
+                <View key={`line-${lineIndex}`} style={dynamicStyles.lineContainer}>
+                  {beforeVar && (
+                    <SmartMixedFontText
+                      primaryFont={fontFamily}
+                      secondaryFont={labelData.secondaryFontFamily}
+                      style={dynamicStyles.fieldLine}
+                    >
+                      {beforeVar}
+                    </SmartMixedFontText>
+                  )}
+                  {variable && (
+                    <SmartMixedFontText
+                      primaryFont={fontFamily}
+                      secondaryFont={labelData.secondaryFontFamily}
+                      style={[dynamicStyles.fieldLine, { color: 'rgb(145, 0, 130)' }]}
+                    >
+                      {variable}
+                    </SmartMixedFontText>
+                  )}
+                  {afterVar && (
+                    <SmartMixedFontText
+                      primaryFont={fontFamily}
+                      secondaryFont={labelData.secondaryFontFamily}
+                      style={dynamicStyles.fieldLine}
+                    >
+                      {afterVar}
+                    </SmartMixedFontText>
+                  )}
+                </View>
+              )
+            })}
+            {/* 在分组间添加1.5倍行距（即1.5/1.2的比例关系） */}
+            {fieldIndex < processedFields.length - 1 && (
+              <View style={{ height: mmToPt(spacing * 0.99) }} />
+            )}
+          </View>
+        ))}
+      </>
     );
   };
 
@@ -957,7 +1131,7 @@ export default function PDFPreview() {
       case '单页左右1':
         // 使用 renderStepLayout()，它会自动检测到 isNonLadderMode = true
         // 从而使用非阶梯标渲染方式（字段独立、变量着色）
-        return renderStepLayout();
+        return renderLeftRight1Layout();
       case '单页左右2':
         return renderLeftRight2Layout(); // 保持现有不变（占位函数）
       case '单页上下1':
@@ -988,16 +1162,30 @@ export default function PDFPreview() {
     } else {
       // 使用自动序号（原有逻辑）
       const numStr = selectedNumber || '1';
-      sequenceNum = parseInt(numStr);
+      // 序号从3开始：基础序号 + 2
+      sequenceNum = parseInt(numStr) + 2;
       
       // 将数字转换为带圆圈的数字（使用 Unicode 字符）
-      // ① = U+2460 (1), ② = U+2461 (2), ... ⑳ = U+2473 (20)
+      // 支持1-100的圆圈数字
       const getCircledNumber = (num: number) => {
         if (num >= 1 && num <= 20) {
           // Unicode 字符：①-⑳ (U+2460 到 U+2473)
           return String.fromCharCode(0x245F + num);
+        } else if (num >= 21 && num <= 35) {
+          // Unicode 字符：㉑-㉟ (U+3251 到 U+325F)
+          return String.fromCharCode(0x3250 + (num - 20));
+        } else if (num >= 36 && num <= 50) {
+          // Unicode 字符：㊱-㊿ (U+32B1 到 U+32BF)
+          return String.fromCharCode(0x32B0 + (num - 35));
+        } else if (num >= 51 && num <= 100) {
+          // 对于51-100，使用组合方式：圆圈符号 + 数字
+          // 使用全角圆圈符号（○）和数字组合
+          const numStr = num.toString();
+          // 将数字的每一位用圆圈包围，或者使用单个圆圈+数字
+          // 使用 U+25CB (○) 作为圆圈符号
+          return `○${numStr}`;
         }
-        // 如果超过20，返回原数字加括号
+        // 如果超过100，返回原数字加括号
         return `(${num})`;
       };
       
