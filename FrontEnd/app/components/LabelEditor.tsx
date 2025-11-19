@@ -556,28 +556,27 @@ export default function LabelEditor() {
         }
       }
       
-      // 关键改进：当只有一个元素且有第一行下划线数时，应用相同的调整规则
-      if (firstLineSentences.length === 1 && firstLineUnderscores > 0) {
+      // 关键改进：应用相同的调整规则（无论有几个元素）
+      if (firstLineUnderscores > 0) {
         // 根据第一行的下划线数量计算调整量
         const adjustment = Math.floor(firstLineUnderscores / 8) + 1
+        const originalTrailingUnderscores = trailingUnderscores
         // 从当前计算出的下划线数中减去调整量
         trailingUnderscores = Math.max(0, trailingUnderscores - adjustment)
-      }
-      
-      // 详细调试
-      if (firstLineSentences.length === 1) {
-        const adjustment = Math.floor(firstLineUnderscores / 8) + 1
-        const originalUnderscores = trailingUnderscores + adjustment
-        console.log(`📝 第${i+1}列 [${currentText.substring(0, 25)}]:`, {
-          当前文本宽度: currentWidth.toFixed(2),
-          目标总宽度: targetColumnWidth.toFixed(2),
-          前导下划线: leadingUnderscores,
-          剩余空间: remainingSpace.toFixed(2),
-          计算的原始下划线数: originalUnderscores,
-          调整量: adjustment,
-          最终下划线数: trailingUnderscores,
-          第1行下划线数: firstLineUnderscores
-        })
+        
+        // 详细调试（可选）
+        if (firstLineSentences.length === 1) {
+          console.log(`📝 第${i+1}列 [${currentText.substring(0, 25)}]:`, {
+            当前文本宽度: currentWidth.toFixed(2),
+            目标总宽度: targetColumnWidth.toFixed(2),
+            前导下划线: leadingUnderscores,
+            剩余空间: remainingSpace.toFixed(2),
+            计算的原始下划线数: originalTrailingUnderscores,
+            调整量: adjustment,
+            最终下划线数: trailingUnderscores,
+            第1行下划线数: firstLineUnderscores
+          })
+        }
       }
       
       // 构建当前列的内容：前导下划线 + 文本 + 尾随下划线
@@ -725,16 +724,20 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 将总下划线数量平均分配给每个句子
   const underscoresPerSentence = Math.floor(totalUnderscores / sentenceCount);
   
-  // 应用调整规则：每8个下划线减1
-  // 如果 < 8，结果 -1
-  // 如果 8-15，结果 -2
-  // 如果 16-23，结果 -3
-  // 公式：调整后数量 = 原数量 - (floor(原数量/8) + 1)
-  const adjustment = Math.floor(underscoresPerSentence / 8) + 1;
-  const adjustedUnderscores = underscoresPerSentence - adjustment;
-  
   // 限制每个句子的下划线数量在合理范围内（允许0个下划线）
-  return Math.max(0, Math.min(adjustedUnderscores, 200)); // 最少0个下划线，最多200个下划线
+  // 注意：调整规则不在这里应用，而是在各个格式化函数中应用
+  return Math.max(0, Math.min(underscoresPerSentence, 200)); // 最少0个下划线，最多200个下划线
+};
+
+// 应用下划线调整规则（基于第一行的下划线数量）
+const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: number): number => {
+  // 根据第一行的下划线数量计算调整量
+  // 如果 < 8，调整量 = 1
+  // 如果 8-15，调整量 = 2
+  // 如果 16-23，调整量 = 3
+  // 公式：调整量 = floor(firstLineUnderscores / 8) + 1
+  const adjustment = Math.floor(firstLineUnderscores / 8) + 1;
+  return Math.max(0, originalCount - adjustment);
 };
 
   // ===== 数据库状态检查辅助函数 =====
@@ -3935,13 +3938,16 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
-      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineUnderscoresRaw = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 应用调整规则
+      const firstLineUnderscores = applyUnderscoreAdjustment(firstLineUnderscoresRaw, firstLineUnderscoresRaw)
       
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       
       // 第二行使用第一行的列坐标对齐（使用下划线对齐）
-      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
       
       formattedText = [firstLine, secondLine].filter(line => line.trim() !== '').join('\n')
     } else if (nextFormatState === 2) {
@@ -3953,14 +3959,17 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
-      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineUnderscoresRaw = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 应用调整规则
+      const firstLineUnderscores = applyUnderscoreAdjustment(firstLineUnderscoresRaw, firstLineUnderscoresRaw)
       
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       
       // 第二行和第三行使用第一行的列坐标对齐（使用下划线对齐）
-      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
       
       formattedText = [firstLine, secondLine, thirdLine].filter(line => line.trim() !== '').join('\n')
     } else if (nextFormatState === 3) {
@@ -3973,19 +3982,24 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
-      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineUnderscoresRaw = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 应用调整规则
+      const firstLineUnderscores = applyUnderscoreAdjustment(firstLineUnderscoresRaw, firstLineUnderscoresRaw)
       
       // 详细调试第1行计算
       const firstLineText = firstLineSentences[0]
       const firstLineTextWidth = measureTextWidth(firstLineText, labelData.fontSize, labelData.fontFamily)
+      const adjustment = Math.floor(firstLineUnderscoresRaw / 8) + 1
       console.log(`🎯 4行格式 - 第1行:`, {
         容器宽度: containerWidth.toFixed(2),
         字段数: firstLineSentences.length,
         字段内容: firstLineText.substring(0, 30),
         字段文本宽度: firstLineTextWidth.toFixed(2),
         计算得到的间距: firstLineSpacing.toFixed(2),
-        下划线数: firstLineUnderscores,
-        下划线宽度估算: (labelData.fontSize * 0.5).toFixed(2)
+        原始下划线数: firstLineUnderscoresRaw,
+        调整量: adjustment,
+        最终下划线数: firstLineUnderscores
       })
       
       // 为第一行每个元素后面添加下划线
@@ -4010,22 +4024,28 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       
       // 第一行使用正常的间距计算
       const firstLineSpacing = calculateSpacing(containerWidth, firstLineSentences, labelData.fontSize, labelData.fontFamily)
-      const firstLineUnderscores = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      const firstLineUnderscoresRaw = spacingToUnderscores(firstLineSpacing, labelData.fontSize, labelData.fontFamily, firstLineSentences.length)
+      
+      // 应用调整规则
+      const firstLineUnderscores = applyUnderscoreAdjustment(firstLineUnderscoresRaw, firstLineUnderscoresRaw)
       
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       
       // 其他行使用第一行的列坐标对齐（使用下划线对齐）
-      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const fifthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fifthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const fifthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fifthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
       
       formattedText = [firstLine, secondLine, thirdLine, fourthLine, fifthLine].filter(line => line.trim() !== '').join('\n')
     } else {
       // 分为一行
       const lineSpacing = calculateSpacing(containerWidth, sentences, labelData.fontSize, labelData.fontFamily)
-      const lineUnderscores = spacingToUnderscores(lineSpacing, labelData.fontSize, labelData.fontFamily, sentences.length)
+      const lineUnderscoresRaw = spacingToUnderscores(lineSpacing, labelData.fontSize, labelData.fontFamily, sentences.length)
+      
+      // 应用调整规则
+      const lineUnderscores = applyUnderscoreAdjustment(lineUnderscoresRaw, lineUnderscoresRaw)
       
       // 为每个元素后面添加下划线
       formattedText = sentences.map((text: string) => text + safeRepeat('_', lineUnderscores)).join('')
