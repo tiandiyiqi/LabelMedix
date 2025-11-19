@@ -725,11 +725,12 @@ export default function PDFPreview() {
   ) => {
     // 检查是否有变量标记
     const variableMarkers = labelData.variableMarkers || []
-    const marker = variableMarkers.find(
-      m => m.fieldName === fieldName && m.lineIndex === lineIndex && m.isVariable
-    )
+    // 找到所有匹配的变量标记（同一行可能有多个变量）
+    const markers = variableMarkers
+      .filter(m => m.fieldName === fieldName && m.lineIndex === lineIndex && m.isVariable)
+      .sort((a, b) => a.startPos - b.startPos) // 按位置排序
     
-    if (!marker) {
+    if (markers.length === 0) {
       // 没有变量标记，正常渲染
       return (
         <SmartMixedFontText
@@ -743,39 +744,48 @@ export default function PDFPreview() {
     }
     
     // 有变量标记，分段渲染：原文（黑色）+ 变量（紫色）
-    const beforeVar = text.substring(0, marker.startPos)
-    const variable = text.substring(marker.startPos, marker.endPos)
-    const afterVar = text.substring(marker.endPos)
+    const segments: Array<{ text: string; isVariable: boolean }> = []
+    let lastPos = 0
     
+    markers.forEach((marker, index) => {
+      // 添加变量之前的文本
+      if (marker.startPos > lastPos) {
+        segments.push({
+          text: text.substring(lastPos, marker.startPos),
+          isVariable: false
+        })
+      }
+      
+      // 添加变量文本
+      segments.push({
+        text: text.substring(marker.startPos, marker.endPos),
+        isVariable: true
+      })
+      
+      lastPos = marker.endPos
+    })
+    
+    // 添加最后一个变量之后的文本
+    if (lastPos < text.length) {
+      segments.push({
+        text: text.substring(lastPos),
+        isVariable: false
+      })
+    }
+    
+    // 渲染所有分段
     return (
       <>
-        {beforeVar && (
+        {segments.map((segment, index) => (
           <SmartMixedFontText
+            key={index}
             primaryFont={fontFamily}
             secondaryFont={labelData.secondaryFontFamily}
-            style={style}
+            style={segment.isVariable ? [style, { color: 'rgb(145, 0, 130)' }] : style}
           >
-            {beforeVar}
+            {segment.text}
           </SmartMixedFontText>
-        )}
-        {variable && (
-          <SmartMixedFontText
-            primaryFont={fontFamily}
-            secondaryFont={labelData.secondaryFontFamily}
-            style={[style, { color: 'rgb(145, 0, 130)' }]}
-          >
-            {variable}
-          </SmartMixedFontText>
-        )}
-        {afterVar && (
-          <SmartMixedFontText
-            primaryFont={fontFamily}
-            secondaryFont={labelData.secondaryFontFamily}
-            style={style}
-          >
-            {afterVar}
-          </SmartMixedFontText>
-        )}
+        ))}
       </>
     )
   }, [labelData.variableMarkers, fontFamily, labelData.secondaryFontFamily]);
@@ -1069,13 +1079,36 @@ export default function PDFPreview() {
           <View key={`field-${fieldIndex}`} style={dynamicStyles.fieldContainer}>
             {field.lines.map((line, lineIndex) => {
               // 内联变量着色渲染逻辑（单页上下布局只支持非阶梯标模式）
+              // 支持同一行中的多个变量标记
               const variableMarkers = labelData.variableMarkers || []
-              const marker = variableMarkers.find(
-                m => m.fieldName === field.fieldName && m.lineIndex === lineIndex && m.isVariable
-              )
+              // 找到所有匹配的变量标记（同一行可能有多个变量）
+              // 注意：对于合并后的 drugDescription 字段，需要同时匹配 drugDescription 和 companyName 的标记
+              // 因为合并时可能包含了来自不同字段的内容
+              const markers = variableMarkers
+                .filter(m => {
+                  // 匹配当前字段名和行索引
+                  if (m.fieldName === field.fieldName && m.lineIndex === lineIndex && m.isVariable) {
+                    return true
+                  }
+                  // 特殊处理：如果当前字段是 drugDescription，也要匹配 drugDescription 和 companyName 的标记
+                  // 因为 drugDescription 是合并后的字段，可能包含来自这两个字段的内容
+                  if (field.fieldName === 'drugDescription') {
+                    // 匹配 drugDescription 和 companyName 的标记（行索引需要匹配）
+                    return (m.fieldName === 'drugDescription' || m.fieldName === 'companyName') && 
+                           m.lineIndex === lineIndex && 
+                           m.isVariable
+                  }
+                  return false
+                })
+                .sort((a, b) => a.startPos - b.startPos) // 按位置排序
+              
+              // 调试信息：检查匹配到的标记
+              if (markers.length > 0) {
+                console.log(`[PDFPreview] 字段 ${field.fieldName}, 行 ${lineIndex}: 找到 ${markers.length} 个变量标记`, markers)
+              }
               
               // 没有变量标记，正常渲染
-              if (!marker) {
+              if (markers.length === 0) {
                 return (
                   <View key={`line-${lineIndex}`} style={dynamicStyles.lineContainer}>
                     <SmartMixedFontText
@@ -1090,39 +1123,47 @@ export default function PDFPreview() {
               }
               
               // 有变量标记，分段渲染：原文（黑色）+ 变量（紫色）
-              const beforeVar = line.substring(0, marker.startPos)
-              const variable = line.substring(marker.startPos, marker.endPos)
-              const afterVar = line.substring(marker.endPos)
+              const segments: Array<{ text: string; isVariable: boolean }> = []
+              let lastPos = 0
+              
+              markers.forEach((marker) => {
+                // 添加变量之前的文本
+                if (marker.startPos > lastPos) {
+                  segments.push({
+                    text: line.substring(lastPos, marker.startPos),
+                    isVariable: false
+                  })
+                }
+                
+                // 添加变量文本
+                segments.push({
+                  text: line.substring(marker.startPos, marker.endPos),
+                  isVariable: true
+                })
+                
+                lastPos = marker.endPos
+              })
+              
+              // 添加最后一个变量之后的文本
+              if (lastPos < line.length) {
+                segments.push({
+                  text: line.substring(lastPos),
+                  isVariable: false
+                })
+              }
               
               return (
                 <View key={`line-${lineIndex}`} style={dynamicStyles.lineContainer}>
-                  {beforeVar && (
+                  {segments.map((segment, segIndex) => (
                     <SmartMixedFontText
+                      key={segIndex}
                       primaryFont={fontFamily}
                       secondaryFont={labelData.secondaryFontFamily}
-                      style={dynamicStyles.fieldLine}
+                      style={segment.isVariable ? [dynamicStyles.fieldLine, { color: 'rgb(145, 0, 130)' }] : dynamicStyles.fieldLine}
                     >
-                      {beforeVar}
+                      {segment.text}
                     </SmartMixedFontText>
-                  )}
-                  {variable && (
-                    <SmartMixedFontText
-                      primaryFont={fontFamily}
-                      secondaryFont={labelData.secondaryFontFamily}
-                      style={[dynamicStyles.fieldLine, { color: 'rgb(145, 0, 130)' }]}
-                    >
-                      {variable}
-                    </SmartMixedFontText>
-                  )}
-                  {afterVar && (
-                    <SmartMixedFontText
-                      primaryFont={fontFamily}
-                      secondaryFont={labelData.secondaryFontFamily}
-                      style={dynamicStyles.fieldLine}
-                    >
-                      {afterVar}
-                    </SmartMixedFontText>
-                  )}
+                  ))}
                 </View>
               )
             })}
