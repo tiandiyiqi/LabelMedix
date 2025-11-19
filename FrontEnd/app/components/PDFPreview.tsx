@@ -289,71 +289,105 @@ const processSixFieldsForNonLadder = (
     fields.push({ fieldName: 'numberField', lines: numberFieldLines });
   }
   
-  // 5. 药品说明和公司名称合并处理，并按语言分组
-  // 将 companyName 的内容合并到 drugDescription 中，然后按语言分组
-  let mergedDescription = drugDescription || '';
-  if (companyName && companyName.trim()) {
-    if (mergedDescription && mergedDescription.trim()) {
-      // 如果两个字段都有内容，用换行符连接
-      mergedDescription = mergedDescription + '\n' + companyName;
-    } else {
-      // 如果只有 companyName 有内容，直接使用
-      mergedDescription = companyName;
-    }
-  }
+  // 5. 药品说明和公司名称合并处理
+  // 按照对应关系合并：drugDescription[n] 对应 companyName[n]
+  // drugDescription 内部用 ————————————————————————— 分隔不同语言组
+  // companyName 内部用空行分隔不同语言组
+  let mergedDescriptionLines: string[] = [];
   
-  // 按行分割内容，并过滤掉已有的分隔线
-  const allLines = mergedDescription.split('\n')
-    .map(line => line.trim())
-    .filter(line => {
-      // 过滤空行和分隔线（分隔线可能是全角或半角的横线）
-      if (!line) return false;
-      // 检查是否是分隔线（全角横线或半角横线组成的行）
-      const isSeparator = /^[—\-_]+$/.test(line) || line === '—————————————————————————';
-      return !isSeparator;
-    });
-  
-  if (allLines.length > 0) {
-    // 按语言分组：中文行和英文行分开
-    const chineseLines: string[] = [];
-    const englishLines: string[] = [];
-    const mixedLines: string[] = [];
+  if (drugDescription && drugDescription.trim()) {
+    // 将 drugDescription 按分隔线分割成多个组，同时保留原始分隔线
+    // 分隔线可能是任意数量的全角横线（—）、半角横线（-）或下划线（_）
+    // 使用正则匹配连续的横线字符（至少2个字符，避免误判）
+    const separatorRegex = /([—\-_]{2,})/g;
     
-    allLines.forEach(line => {
-      const lang = detectLineLanguage(line);
-      if (lang === 'chinese') {
-        chineseLines.push(line);
-      } else if (lang === 'english') {
-        englishLines.push(line);
-      } else {
-        mixedLines.push(line);
+    // 使用 matchAll 或 split 来同时获取组和分隔线
+    // 先找到所有分隔线的位置和内容
+    const separators: string[] = [];
+    const parts: string[] = [];
+    let lastIndex = 0;
+    let match;
+    
+    // 重置正则表达式的 lastIndex
+    separatorRegex.lastIndex = 0;
+    
+    while ((match = separatorRegex.exec(drugDescription)) !== null) {
+      // 添加分隔线之前的内容
+      parts.push(drugDescription.substring(lastIndex, match.index).trim());
+      // 保存分隔线
+      separators.push(match[1]);
+      lastIndex = match.index + match[1].length;
+    }
+    // 添加最后一部分
+    parts.push(drugDescription.substring(lastIndex).trim());
+    
+    // 过滤空组
+    const drugDescriptionGroups = parts.filter(group => group);
+    
+    if (companyName && companyName.trim()) {
+      // 将 companyName 按空行分割成多个组
+      const companyNameGroups = companyName
+        .split(/\n\s*\n/) // 按空行分割（一个或多个换行符）
+        .map(group => group.trim())
+        .filter(group => group);
+      
+      // 按对应关系合并：drugDescription[i] 对应 companyName[i]
+      const maxGroups = Math.max(drugDescriptionGroups.length, companyNameGroups.length);
+      
+      for (let i = 0; i < maxGroups; i++) {
+        const drugGroup = drugDescriptionGroups[i] || '';
+        const companyGroup = companyNameGroups[i] || '';
+        
+        // 合并当前组
+        if (drugGroup && companyGroup) {
+          // 两个组都有内容，合并
+          const mergedGroup = drugGroup + '\n' + companyGroup;
+          mergedDescriptionLines.push(...processFieldContent(mergedGroup));
+        } else if (drugGroup) {
+          // 只有 drugDescription 有内容
+          mergedDescriptionLines.push(...processFieldContent(drugGroup));
+        } else if (companyGroup) {
+          // 只有 companyName 有内容
+          mergedDescriptionLines.push(...processFieldContent(companyGroup));
+        }
+        
+        // 如果不是最后一组，使用原始分隔线（如果存在），否则使用默认分隔线
+        if (i < maxGroups - 1 && (drugDescriptionGroups[i + 1] || companyNameGroups[i + 1])) {
+          const originalSeparator = separators[i] || '—————————————————————————';
+          mergedDescriptionLines.push(originalSeparator);
+        }
+      }
+    } else {
+      // 只有 drugDescription，保持原样（包括原始分隔线）
+      drugDescriptionGroups.forEach((group, index) => {
+        mergedDescriptionLines.push(...processFieldContent(group));
+        // 如果不是最后一组，使用原始分隔线（如果存在），否则使用默认分隔线
+        if (index < drugDescriptionGroups.length - 1) {
+          const originalSeparator = separators[index] || '—————————————————————————';
+          mergedDescriptionLines.push(originalSeparator);
+        }
+      });
+    }
+  } else if (companyName && companyName.trim()) {
+    // 只有 companyName，保持原样（按空行分组）
+    const companyNameGroups = companyName
+      .split(/\n\s*\n/)
+      .map(group => group.trim())
+      .filter(group => group);
+    
+    companyNameGroups.forEach((group, index) => {
+      mergedDescriptionLines.push(...processFieldContent(group));
+      // 如果不是最后一组，添加分隔线
+      if (index < companyNameGroups.length - 1) {
+        mergedDescriptionLines.push('—————————————————————————');
       }
     });
-    
-    // 构建最终的行数组：中文行（含混合行）-> 分隔线 -> 英文行
-    const finalLines: string[] = [];
-    
-    // 添加中文行和混合行（混合行放在中文组）
-    if (chineseLines.length > 0 || mixedLines.length > 0) {
-      finalLines.push(...chineseLines);
-      finalLines.push(...mixedLines);
-    }
-    
-    // 如果有中文行（或混合行）和英文行，添加分隔线
-    if ((chineseLines.length > 0 || mixedLines.length > 0) && englishLines.length > 0) {
-      finalLines.push('—————————————————————————');
-    }
-    
-    // 添加英文行
-    if (englishLines.length > 0) {
-      finalLines.push(...englishLines);
-    }
-    
-    if (finalLines.length > 0) {
-      // 使用 'drugDescription' 作为字段名，因为这是主要字段
-      // 变量标记仍然可以基于原始字段名进行匹配
-      fields.push({ fieldName: 'drugDescription', lines: finalLines });
-    }
+  }
+  
+  if (mergedDescriptionLines.length > 0) {
+    // 使用 'drugDescription' 作为字段名，因为这是主要字段
+    // 变量标记仍然可以基于原始字段名进行匹配
+    fields.push({ fieldName: 'drugDescription', lines: mergedDescriptionLines });
   }
   
   return fields;
