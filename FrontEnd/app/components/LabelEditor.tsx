@@ -438,7 +438,7 @@ export default function LabelEditor() {
   };
 
   // 使用下划线对齐的列对齐函数（专门用于numberField字段）
-  const alignColumnsToFirstLineWithUnderscores = (firstLineSentences: string[], otherLineSentences: string[], containerWidth: number, fontSize: number, fontFamily: string): string => {
+  const alignColumnsToFirstLineWithUnderscores = (firstLineSentences: string[], otherLineSentences: string[], containerWidth: number, fontSize: number, fontFamily: string, firstLineUnderscores: number = 0): string => {
     if (otherLineSentences.length === 0) return ''
     
     // 计算第一行每个元素的宽度
@@ -541,9 +541,10 @@ export default function LabelEditor() {
         targetColumnWidth = firstLineEndPositions[i] - firstLineStartPositions[i]
       }
       
-      // 计算剩余空间（考虑前导下划线和当前文本宽度）
+      // 计算剩余空间
       const remainingSpace = targetColumnWidth - currentWidth - (leadingUnderscores * underscoreWidth)
       
+      // 先按正常逻辑计算下划线数量
       if (remainingSpace > 0) {
         trailingUnderscores = Math.max(0, Math.floor(remainingSpace / underscoreWidth))
         
@@ -555,15 +556,27 @@ export default function LabelEditor() {
         }
       }
       
+      // 关键改进：当只有一个元素且有第一行下划线数时，应用相同的调整规则
+      if (firstLineSentences.length === 1 && firstLineUnderscores > 0) {
+        // 根据第一行的下划线数量计算调整量
+        const adjustment = Math.floor(firstLineUnderscores / 8) + 1
+        // 从当前计算出的下划线数中减去调整量
+        trailingUnderscores = Math.max(0, trailingUnderscores - adjustment)
+      }
+      
       // 详细调试
       if (firstLineSentences.length === 1) {
+        const adjustment = Math.floor(firstLineUnderscores / 8) + 1
+        const originalUnderscores = trailingUnderscores + adjustment
         console.log(`📝 第${i+1}列 [${currentText.substring(0, 25)}]:`, {
           当前文本宽度: currentWidth.toFixed(2),
           目标总宽度: targetColumnWidth.toFixed(2),
           前导下划线: leadingUnderscores,
           剩余空间: remainingSpace.toFixed(2),
-          尾随下划线数: trailingUnderscores,
-          下划线宽度: underscoreWidth
+          计算的原始下划线数: originalUnderscores,
+          调整量: adjustment,
+          最终下划线数: trailingUnderscores,
+          第1行下划线数: firstLineUnderscores
         })
       }
       
@@ -712,9 +725,16 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   // 将总下划线数量平均分配给每个句子
   const underscoresPerSentence = Math.floor(totalUnderscores / sentenceCount);
   
+  // 应用调整规则：每8个下划线减1
+  // 如果 < 8，结果 -1
+  // 如果 8-15，结果 -2
+  // 如果 16-23，结果 -3
+  // 公式：调整后数量 = 原数量 - (floor(原数量/8) + 1)
+  const adjustment = Math.floor(underscoresPerSentence / 8) + 1;
+  const adjustedUnderscores = underscoresPerSentence - adjustment;
+  
   // 限制每个句子的下划线数量在合理范围内（允许0个下划线）
-  // 移除20个下划线的限制，改为更大的值以支持宽容器
-  return Math.max(0, Math.min(underscoresPerSentence, 200)); // 最少0个下划线，最多200个下划线
+  return Math.max(0, Math.min(adjustedUnderscores, 200)); // 最少0个下划线，最多200个下划线
 };
 
   // ===== 数据库状态检查辅助函数 =====
@@ -3971,12 +3991,12 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // 为第一行每个元素后面添加下划线
       const firstLine = firstLineSentences.map((text: string) => text + safeRepeat('_', firstLineUnderscores)).join('')
       
-      console.log(`🔄 调用对齐函数 - 第2-4行`)
+      console.log(`🔄 调用对齐函数 - 第2-4行，使用第1行下划线数: ${firstLineUnderscores}`)
       
-      // 其他行使用第一行的列坐标对齐（使用下划线对齐）
-      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
-      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily)
+      // 其他行使用第一行的列坐标对齐（使用下划线对齐），并直接使用第一行的下划线数量
+      const secondLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, secondLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const thirdLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, thirdLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
+      const fourthLine = alignColumnsToFirstLineWithUnderscores(firstLineSentences, fourthLineSentences, containerWidth, labelData.fontSize, labelData.fontFamily, firstLineUnderscores)
       
       formattedText = [firstLine, secondLine, thirdLine, fourthLine].filter(line => line.trim() !== '').join('\n')
     } else if (nextFormatState === 4) {
