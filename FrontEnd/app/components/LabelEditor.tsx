@@ -1013,60 +1013,27 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     if (isLadderMode) {
       handleFormatBasicInfo()
     } else {
-      // 非阶梯标模式：调用非阶梯标格式化函数
-      if (!selectedProject) {
-        showToast('请先选择项目', 'info')
-        return
-      }
+      const prepared = await prepareNonLadderDataWithTextMap()
+      if (!prepared) return
       
-      // 加载 'all' 数据
-      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
-      if (!originalSummaryToUse) {
-        showToast('未找到原始状态，请先点击初始化', 'info')
-        return
-      }
-      
-      // 解析原始状态
-      const originalData: any = parseOriginalSummary(originalSummaryToUse)
-      if (!originalData) {
-        showToast('无法解析原始状态数据', 'error')
-        return
-      }
-      
-      // 获取或构建 originalTextMap
-      let originalTextMapToUse = labelData.originalTextMap
-      if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
-        try {
-          originalTextMapToUse = await buildOriginalTextMapForNonLadder(selectedProject.id)
-          updateLabelData({ originalTextMap: originalTextMapToUse })
-        } catch (error: any) {
-          showToast(error.message || '无法构建变量映射，请先导入翻译内容', 'error')
-          return
-        }
-      }
-      
-      // 准备变量标记和累计变量数量
+      const { originalData, originalTextMap } = prepared
       const variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}> = []
       const totalVariableCount = { value: 0 }
       
-      // 调用非阶梯标格式化函数
       const formattedText = handleFormatBasicInfoNonLadder(
         originalData.basicInfo || '',
-        originalTextMapToUse,
+        originalTextMap,
         variableMarkers,
         totalVariableCount
       )
       
-      // 更新状态
       formattedFieldsRef.current.basicInfo = formattedText
-      // 合并变量标记（只保留当前字段的标记，因为每个字段格式化是独立的）
       const existingMarkers = (labelData.variableMarkers || []).filter(m => m.fieldName !== 'basicInfo')
       updateLabelData({ 
         basicInfo: formattedText,
         variableMarkers: [...existingMarkers, ...variableMarkers]
       })
       
-      // 更新格式化状态
       const newStates = {
         ...formatStatesRef.current,
         basicInfo: 1
@@ -1084,42 +1051,23 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     if (isLadderMode) {
       handleFormatNumberField()
     } else {
-      // 非阶梯标模式：调用非阶梯标格式化函数
-      if (!selectedProject) {
-        showToast('请先选择项目', 'info')
-        return
-      }
+      const originalData = await prepareNonLadderDataForRouting()
+      if (!originalData) return
       
-      // 加载 'all' 数据
-      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
-      if (!originalSummaryToUse) {
-        showToast('未找到原始状态，请先点击初始化', 'info')
-        return
-      }
+      const result = handleFormatNumberFieldNonLadder(originalData.numberField || '')
       
-      // 解析原始状态
-      const originalData: any = parseOriginalSummary(originalSummaryToUse)
-      if (!originalData) {
-        showToast('无法解析原始状态数据', 'error')
-        return
-      }
+      formattedFieldsRef.current.numberField = result.formattedText
+      updateLabelData({ numberField: result.formattedText })
       
-      // 调用非阶梯标格式化函数（非阶梯标模式下不格式化，返回原文本）
-      const formattedText = handleFormatNumberFieldNonLadder(originalData.numberField || '')
-      
-      // 更新状态
-      formattedFieldsRef.current.numberField = formattedText
-      updateLabelData({ numberField: formattedText })
-      
-      // 更新格式化状态
       const newStates = {
         ...formatStatesRef.current,
-        numberField: 0
+        numberField: result.nextState
       }
       formatStatesRef.current = newStates
       setFormatStates(newStates)
       
-      showToast('编号栏字段（非阶梯标模式下不格式化）', 'info')
+      const stateNames = ['一行', '两行', '三行', '四行', '五行']
+      showToast(`编号栏格式化完成（${stateNames[result.nextState]}）`, 'success')
     }
   }
 
@@ -1129,60 +1077,27 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     if (isLadderMode) {
       handleFormatDrugName()
     } else {
-      // 非阶梯标模式：调用非阶梯标格式化函数
-      if (!selectedProject) {
-        showToast('请先选择项目', 'info')
-        return
-      }
+      const prepared = await prepareNonLadderDataWithTextMap()
+      if (!prepared) return
       
-      // 加载 'all' 数据
-      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
-      if (!originalSummaryToUse) {
-        showToast('未找到原始状态，请先点击初始化', 'info')
-        return
-      }
-      
-      // 解析原始状态
-      const originalData: any = parseOriginalSummary(originalSummaryToUse)
-      if (!originalData) {
-        showToast('无法解析原始状态数据', 'error')
-        return
-      }
-      
-      // 获取或构建 originalTextMap
-      let originalTextMapToUse = labelData.originalTextMap
-      if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
-        try {
-          originalTextMapToUse = await buildOriginalTextMapForNonLadder(selectedProject.id)
-          updateLabelData({ originalTextMap: originalTextMapToUse })
-        } catch (error: any) {
-          showToast(error.message || '无法构建变量映射，请先导入翻译内容', 'error')
-          return
-        }
-      }
-      
-      // 准备变量标记和累计变量数量
+      const { originalData, originalTextMap } = prepared
       const variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}> = []
       const totalVariableCount = { value: 0 }
       
-      // 调用非阶梯标格式化函数
       const formattedText = handleFormatDrugNameNonLadder(
         originalData.drugName || '',
-        originalTextMapToUse,
+        originalTextMap,
         variableMarkers,
         totalVariableCount
       )
       
-      // 更新状态
       formattedFieldsRef.current.drugName = formattedText
-      // 合并变量标记（只保留当前字段的标记，因为每个字段格式化是独立的）
       const existingMarkers = (labelData.variableMarkers || []).filter(m => m.fieldName !== 'drugName')
       updateLabelData({ 
         drugName: formattedText,
         variableMarkers: [...existingMarkers, ...variableMarkers]
       })
       
-      // 更新格式化状态
       const newStates = {
         ...formatStatesRef.current,
         drugName: 1
@@ -1200,60 +1115,27 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     if (isLadderMode) {
       handleFormatNumberOfSheets()
     } else {
-      // 非阶梯标模式：调用非阶梯标格式化函数
-      if (!selectedProject) {
-        showToast('请先选择项目', 'info')
-        return
-      }
+      const prepared = await prepareNonLadderDataWithTextMap()
+      if (!prepared) return
       
-      // 加载 'all' 数据
-      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
-      if (!originalSummaryToUse) {
-        showToast('未找到原始状态，请先点击初始化', 'info')
-        return
-      }
-      
-      // 解析原始状态
-      const originalData: any = parseOriginalSummary(originalSummaryToUse)
-      if (!originalData) {
-        showToast('无法解析原始状态数据', 'error')
-        return
-      }
-      
-      // 获取或构建 originalTextMap
-      let originalTextMapToUse = labelData.originalTextMap
-      if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
-        try {
-          originalTextMapToUse = await buildOriginalTextMapForNonLadder(selectedProject.id)
-          updateLabelData({ originalTextMap: originalTextMapToUse })
-        } catch (error: any) {
-          showToast(error.message || '无法构建变量映射，请先导入翻译内容', 'error')
-          return
-        }
-      }
-      
-      // 准备变量标记和累计变量数量
+      const { originalData, originalTextMap } = prepared
       const variableMarkers: Array<{fieldName: string; lineIndex: number; startPos: number; endPos: number; isVariable: boolean}> = []
       const totalVariableCount = { value: 0 }
       
-      // 调用非阶梯标格式化函数
       const formattedText = handleFormatNumberOfSheetsNonLadder(
         originalData.numberOfSheets || '',
-        originalTextMapToUse,
+        originalTextMap,
         variableMarkers,
         totalVariableCount
       )
       
-      // 更新状态
       formattedFieldsRef.current.numberOfSheets = formattedText
-      // 合并变量标记（只保留当前字段的标记，因为每个字段格式化是独立的）
       const existingMarkers = (labelData.variableMarkers || []).filter(m => m.fieldName !== 'numberOfSheets')
       updateLabelData({ 
         numberOfSheets: formattedText,
         variableMarkers: [...existingMarkers, ...variableMarkers]
       })
       
-      // 更新格式化状态
       const newStates = {
         ...formatStatesRef.current,
         numberOfSheets: 1
@@ -1271,41 +1153,20 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     if (isLadderMode) {
       handleFormatDrugDescription()
     } else {
-      // 非阶梯标模式：调用非阶梯标格式化函数
-      if (!selectedProject) {
-        showToast('请先选择项目', 'info')
-        return
-      }
+      const originalData = await prepareNonLadderDataForRouting()
+      if (!originalData) return
       
-      // 加载 'all' 数据
-      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
-      if (!originalSummaryToUse) {
-        showToast('未找到原始状态，请先点击初始化', 'info')
-        return
-      }
-      
-      // 解析原始状态
-      const originalData: any = parseOriginalSummary(originalSummaryToUse)
-      if (!originalData) {
-        showToast('无法解析原始状态数据', 'error')
-        return
-      }
-      
-      // 计算累计变量数量（从其他字段的变量标记中获取）
       const existingVariableCount = (labelData.variableMarkers || []).filter(m => m.isVariable).length
       const totalVariableCount = { value: existingVariableCount }
       
-      // 调用非阶梯标格式化函数
       const formattedText = handleFormatDrugDescriptionNonLadder(
         originalData.drugDescription || '',
         totalVariableCount
       )
       
-      // 更新状态
       formattedFieldsRef.current.drugDescription = formattedText
       updateLabelData({ drugDescription: formattedText })
       
-      // 更新格式化状态
       const newStates = {
         ...formatStatesRef.current,
         drugDescription: 1
@@ -1323,40 +1184,18 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     if (isLadderMode) {
       handleFormatCompanyName()
     } else {
-      // 非阶梯标模式：调用非阶梯标格式化函数
-      if (!selectedProject) {
-        showToast('请先选择项目', 'info')
-        return
-      }
+      const originalData = await prepareNonLadderDataForRouting()
+      if (!originalData) return
       
-      // 加载 'all' 数据
-      const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
-      if (!originalSummaryToUse) {
-        showToast('未找到原始状态，请先点击初始化', 'info')
-        return
-      }
-      
-      // 解析原始状态
-      const originalData: any = parseOriginalSummary(originalSummaryToUse)
-      if (!originalData) {
-        showToast('无法解析原始状态数据', 'error')
-        return
-      }
-      
-      // 获取当前格式化状态
       const currentFormatState = formatStatesRef.current.companyName || 0
-      
-      // 调用非阶梯标格式化函数
       const { formattedText, nextState, toastMessage } = handleFormatCompanyNameNonLadder(
         originalData.companyName || '',
         currentFormatState
       )
       
-      // 更新状态
       formattedFieldsRef.current.companyName = formattedText
       updateLabelData({ companyName: formattedText })
       
-      // 更新格式化状态
       const newStates = {
         ...formatStatesRef.current,
         companyName: nextState
@@ -3365,6 +3204,51 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
     return result
   }
 
+  // ========== 非阶梯标公共辅助函数 ==========
+  
+  // 为路由函数准备非阶梯标数据（不含变量映射）
+  const prepareNonLadderDataForRouting = async () => {
+    if (!selectedProject) {
+      showToast('请先选择项目', 'info')
+      return null
+    }
+    
+    const originalSummaryToUse = await loadAllCountryDataForNonLadder(selectedProject.id)
+    if (!originalSummaryToUse) {
+      showToast('未找到原始状态，请先点击初始化', 'info')
+      return null
+    }
+    
+    const originalData: any = parseOriginalSummary(originalSummaryToUse)
+    if (!originalData) {
+      showToast('无法解析原始状态数据', 'error')
+      return null
+    }
+    
+    return originalData
+  }
+
+  // 为路由函数准备非阶梯标数据（含变量映射）
+  const prepareNonLadderDataWithTextMap = async () => {
+    const originalData = await prepareNonLadderDataForRouting()
+    if (!originalData) return null
+    
+    if (!selectedProject) return null  // 额外检查以满足TypeScript
+    
+    let originalTextMapToUse = labelData.originalTextMap
+    if (!originalTextMapToUse || Object.keys(originalTextMapToUse).length === 0) {
+      try {
+        originalTextMapToUse = await buildOriginalTextMapForNonLadder(selectedProject.id)
+        updateLabelData({ originalTextMap: originalTextMapToUse })
+      } catch (error: any) {
+        showToast(error.message || '无法构建变量映射，请先导入翻译内容', 'error')
+        return null
+      }
+    }
+    
+    return { originalData, originalTextMap: originalTextMapToUse }
+  }
+
   // ========== 非阶梯标字段格式化函数 ==========
   
   // 处理 basicInfo 字段的非阶梯标格式化（包含变量添加、行数控制和对齐功能）
@@ -3959,22 +3843,22 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
   }
 
   // 处理 numberField 字段的非阶梯标格式化（包含行数控制和对齐功能）
-  const handleFormatNumberFieldNonLadder = (originalText: string): string => {
+  const handleFormatNumberFieldNonLadder = (originalText: string): { formattedText: string; nextState: number } => {
     if (!originalText || !originalText.trim()) {
-      return originalText || ''
+      return { formattedText: originalText || '', nextState: 0 }
     }
 
     // 【已禁用】行数控制和对齐功能已禁用，仅返回原文本
     // 如需启用，请删除下面的 return 语句，并取消注释下面的代码块
-    return originalText
+    // return { formattedText: originalText, nextState: 0 }
     
-    /* ========== 以下代码已禁用，但保留供将来使用 ==========
+    
     // 将原始状态按行分割为数组
     const sentences = originalText.split('\n').filter((line: string) => line.trim() !== '')
     const sentenceCount = sentences.length
 
     if (sentenceCount === 0) {
-      return originalText
+      return { formattedText: originalText, nextState: 0 }
     }
 
     // 获取当前格式化状态并计算下一个状态
@@ -4078,12 +3962,9 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // 为每个元素后面添加下划线
       formattedText = sentences.map((text: string) => text + safeRepeat('_', lineUnderscores)).join('')
     }
-
-    // 在处理完对齐计算后，将结果中的下划线替换为两个空格（保持相同视觉宽度）
-    formattedText = formattedText.replace(/_/g, '  ')
     
-    return formattedText
-    ========== 行数控制和对齐功能代码结束 ========== */
+    return { formattedText, nextState: nextFormatState }
+
   }
 
   // 检测文本行的主要语言类型（中文或英文）
@@ -4371,7 +4252,7 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
         totalVariableCount
       )
       
-      const formattedNumberField = handleFormatNumberFieldNonLadder(
+      const { formattedText: formattedNumberField } = handleFormatNumberFieldNonLadder(
         originalData.numberField || ''
       )
       
@@ -4397,11 +4278,11 @@ const spacingToUnderscores = (spacing: number, fontSize: number, fontFamily: str
       // 设置格式化状态（非阶梯标模式：所有字段设置为 1，表示已格式化）
       const newFormatStates = {
         basicInfo: 1,
-        numberField: 0, // numberField 在非阶梯标模式下不格式化
+        numberField: 1,
         drugName: 1,
         numberOfSheets: 1,
         drugDescription: 1,
-        companyName: 0 // companyName 在非阶梯标模式下不格式化
+        companyName: 0 // companyName 初始状态为0，需要点击闪电图标才能格式化
       }
       formatStatesRef.current = newFormatStates
       setFormatStates(newFormatStates)
