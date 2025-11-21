@@ -76,6 +76,12 @@ Font.register({
   src: '/fonts/Arial Unicode.ttf'
 });
 
+// 在字体注册部分添加（约在第74行之后）
+Font.register({
+  family: 'IDaideCircleSS',
+  src: '/fonts/IDaideCircleSS.ttf'
+});
+
 // 创建字体回退配置
 Font.registerHyphenationCallback((word: string) => {
   return [word];
@@ -836,24 +842,6 @@ export default function PDFPreview() {
     direction: textAlign === 'right' ? 'rtl' : 'ltr',  // 右对齐时使用rtl方向
   };
 
-  // // ============================================
-  // // 旧的处理方式：合成为三段落处理（保留作为参考）
-  // // ============================================
-  // const combinedContent = [
-  //   basicInfo,
-  //   numberField,
-  //   drugName,
-  //   numberOfSheets,
-  //   drugDescription,
-  //   companyName
-  // ].filter(content => content && content.trim() !== '').join('\n\n\n');
-  
-  // // 处理文本（旧方式）
-  // const paragraphs = splitIntoParagraphs(combinedContent);
-  // const processedFirstParagraph = paragraphs.length > 0 ? processFirstParagraph(paragraphs[0]) : [];
-  // const processedSecondParagraph = paragraphs.length > 1 ? processOtherParagraph(paragraphs[1]) : [];
-  // const processedRemainingParagraphs = paragraphs.slice(2).map(para => processRemainingParagraphs(para));
-
   // ============================================
   // 新的处理方式：将编号栏、药品名称、片数、药品说明、公司名称组合成一个文本域
   // 保持基本信息字段独立，其他字段合并处理以实现行距一致
@@ -1243,24 +1231,12 @@ export default function PDFPreview() {
       // 将数字转换为带圆圈的数字（使用 Unicode 字符）
       // 支持1-100的圆圈数字
       const getCircledNumber = (num: number) => {
-        if (num >= 1 && num <= 20) {
-          // Unicode 字符：①-⑳ (U+2460 到 U+2473)
-          return String.fromCharCode(0x245F + num);
-        } else if (num >= 21 && num <= 35) {
-          // Unicode 字符：㉑-㉟ (U+3251 到 U+325F)
-          return String.fromCharCode(0x3250 + (num - 20));
-        } else if (num >= 36 && num <= 50) {
-          // Unicode 字符：㊱-㊿ (U+32B1 到 U+32BF)
-          return String.fromCharCode(0x32B0 + (num - 35));
-        } else if (num >= 51 && num <= 100) {
-          // 对于51-100，使用组合方式：圆圈符号 + 数字
-          // 使用全角圆圈符号（○）和数字组合
-          const numStr = num.toString();
-          // 将数字的每一位用圆圈包围，或者使用单个圆圈+数字
-          // 使用 U+25CB (○) 作为圆圈符号
-          return `○${numStr}`;
+        // 使用IDaideCircleSS字体时，直接返回数字字符串即可
+        // 该字体会自动将数字0-1000显示为带阳圈的样式
+        if (num >= 0 && num <= 1000) {
+          return num.toString();
         }
-        // 如果超过100，返回原数字加括号
+        // 如果超过1000，返回原数字加括号作为降级处理
         return `(${num})`;
       };
       
@@ -1314,7 +1290,7 @@ export default function PDFPreview() {
       }}>
         <Text style={{
           fontSize: labelData.sequenceFontSize,  // 使用用户设置的字体大小
-          fontFamily: 'Arial Unicode',  // 使用 Arial Unicode MS 以支持圆圈数字
+          fontFamily: 'IDaideCircleSS',  // 改用IDaideCircleSS字体
           textAlign: textAlign,
           transform: `rotate(${labelData.sequenceRotation || 0}deg)`,  // 将旋转应用到Text组件本身
           transformOrigin: 'center',  // 以文本中心为旋转中心
