@@ -187,12 +187,12 @@ export default function LabelEditor() {
     companyName?: string
   }) => {
     return JSON.stringify({
-      basicInfo: (data?.basicInfo ?? labelData.basicInfo) || '',
-      numberField: (data?.numberField ?? labelData.numberField) || '',
-      drugName: (data?.drugName ?? labelData.drugName) || '',
-      numberOfSheets: (data?.numberOfSheets ?? labelData.numberOfSheets) || '',
-      drugDescription: (data?.drugDescription ?? labelData.drugDescription) || '',
-      companyName: (data?.companyName ?? labelData.companyName) || ''
+      basicInfo: data?.basicInfo ?? '',
+      numberField: data?.numberField ?? '',
+      drugName: data?.drugName ?? '',
+      numberOfSheets: data?.numberOfSheets ?? '',
+      drugDescription: data?.drugDescription ?? '',
+      companyName: data?.companyName ?? ''
     })
   }
 
@@ -2525,12 +2525,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
           const mergedData = {
             ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
             labelCategory: labelData.labelCategory,  // 保留当前的 labelCategory，不被数据库值覆盖
-            basicInfo: formattedData.basicInfo || '',
-            numberField: formattedData.numberField || '',
-            drugName: formattedData.drugName || '',
-            numberOfSheets: formattedData.numberOfSheets || '',
-            drugDescription: formattedData.drugDescription || '',
-            companyName: formattedData.companyName || '',
+            basicInfo: formattedData.basicInfo ?? '',
+            numberField: formattedData.numberField ?? '',
+            drugName: formattedData.drugName ?? '',
+            numberOfSheets: formattedData.numberOfSheets ?? '',
+            drugDescription: formattedData.drugDescription ?? '',
+            companyName: formattedData.companyName ?? '',
             originalSummary: countryDetail.original_summary,
             formatted_summary: countryDetail.formatted_summary
           }
@@ -2551,12 +2551,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
             const mergedData = {
               ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
               labelCategory: labelData.labelCategory,  // 保留当前的 labelCategory，不被数据库值覆盖
-              basicInfo: originalData.basicInfo || '',
-              numberField: originalData.numberField || '',
-              drugName: originalData.drugName || '',
-              numberOfSheets: originalData.numberOfSheets || '',
-              drugDescription: originalData.drugDescription || '',
-              companyName: originalData.companyName || '',
+              basicInfo: originalData.basicInfo ?? '',
+              numberField: originalData.numberField ?? '',
+              drugName: originalData.drugName ?? '',
+              numberOfSheets: originalData.numberOfSheets ?? '',
+              drugDescription: originalData.drugDescription ?? '',
+              companyName: originalData.companyName ?? '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
             }
@@ -2748,12 +2748,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       if (formattedData && formattedData.formatStates) {
         // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
         updateLabelData({ 
-          basicInfo: formattedData.basicInfo || '',
-          numberField: formattedData.numberField || '',
-          drugName: formattedData.drugName || '',
-          numberOfSheets: formattedData.numberOfSheets || '',
-          drugDescription: formattedData.drugDescription || '',
-          companyName: formattedData.companyName || '',
+          basicInfo: formattedData.basicInfo ?? '',
+          numberField: formattedData.numberField ?? '',
+          drugName: formattedData.drugName ?? '',
+          numberOfSheets: formattedData.numberOfSheets ?? '',
+          drugDescription: formattedData.drugDescription ?? '',
+          companyName: formattedData.companyName ?? '',
           originalSummary: countryDetail.original_summary,
           formatted_summary: countryDetail.formatted_summary
         })
@@ -2802,12 +2802,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       if (originalData) {
         // 如果有JSON格式的原始状态，恢复6个字段
         updateLabelData({ 
-          basicInfo: originalData.basicInfo || '',
-          numberField: originalData.numberField || '',
-          drugName: originalData.drugName || '',
-          numberOfSheets: originalData.numberOfSheets || '',
-          drugDescription: originalData.drugDescription || '',
-          companyName: originalData.companyName || '',
+          basicInfo: originalData.basicInfo ?? '',
+          numberField: originalData.numberField ?? '',
+          drugName: originalData.drugName ?? '',
+          numberOfSheets: originalData.numberOfSheets ?? '',
+          drugDescription: originalData.drugDescription ?? '',
+          companyName: originalData.companyName ?? '',
           originalSummary: countryDetail.original_summary,
           formatted_summary: countryDetail.formatted_summary
         })
@@ -3028,7 +3028,8 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
             })
           } else {
             // 其他字段：用 " / " 连接所有翻译
-            const mergedText = translations.map(t => t.text).join(' / ')
+            // 先trim每个翻译文本，去除前后空格，再用 " / " 连接
+            const mergedText = translations.map(t => t.text.trim()).join(' / ')
             
             // 分类到对应字段组
             if (fieldType && fieldTypeGroups[fieldType as keyof typeof fieldTypeGroups]) {
@@ -4485,12 +4486,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
   const createFormattedSummary = () => {
     // 优先使用 ref 中的值（格式化函数已更新），如果没有则使用 labelData
     const summary = {
-      basicInfo: (formattedFieldsRef.current.basicInfo ?? labelData.basicInfo) || '',
-      numberField: (formattedFieldsRef.current.numberField ?? labelData.numberField) || '',
-      drugName: (formattedFieldsRef.current.drugName ?? labelData.drugName) || '',
-      numberOfSheets: (formattedFieldsRef.current.numberOfSheets ?? labelData.numberOfSheets) || '',
-      drugDescription: (formattedFieldsRef.current.drugDescription ?? labelData.drugDescription) || '',
-      companyName: (formattedFieldsRef.current.companyName ?? labelData.companyName) || '',
+      basicInfo: (formattedFieldsRef.current.basicInfo ?? labelData.basicInfo) ?? '',
+      numberField: (formattedFieldsRef.current.numberField ?? labelData.numberField) ?? '',
+      drugName: (formattedFieldsRef.current.drugName ?? labelData.drugName) ?? '',
+      numberOfSheets: (formattedFieldsRef.current.numberOfSheets ?? labelData.numberOfSheets) ?? '',
+      drugDescription: (formattedFieldsRef.current.drugDescription ?? labelData.drugDescription) ?? '',
+      companyName: (formattedFieldsRef.current.companyName ?? labelData.companyName) ?? '',
       formatStates: formatStatesRef.current // 使用 ref 中的最新值，避免状态更新延迟问题
     }
     return JSON.stringify(summary)
@@ -4746,12 +4747,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
               spacing: countryDetail.spacing || labelData.spacing,
               lineHeight: countryDetail.line_height || labelData.lineHeight,
               selectedNumber: sequence.toString(),
-              basicInfo: formattedData.basicInfo || '',
-              numberField: formattedData.numberField || '',
-              drugName: formattedData.drugName || '',
-              numberOfSheets: formattedData.numberOfSheets || '',
-              drugDescription: formattedData.drugDescription || '',
-              companyName: formattedData.companyName || '',
+              basicInfo: formattedData.basicInfo ?? '',
+              numberField: formattedData.numberField ?? '',
+              drugName: formattedData.drugName ?? '',
+              numberOfSheets: formattedData.numberOfSheets ?? '',
+              drugDescription: formattedData.drugDescription ?? '',
+              companyName: formattedData.companyName ?? '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
             }
@@ -4776,12 +4777,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
                 spacing: countryDetail.spacing || labelData.spacing,
                 lineHeight: countryDetail.line_height || labelData.lineHeight,
                 selectedNumber: sequence.toString(),
-                basicInfo: originalData.basicInfo || '',
-                numberField: originalData.numberField || '',
-                drugName: originalData.drugName || '',
-                numberOfSheets: originalData.numberOfSheets || '',
-                drugDescription: originalData.drugDescription || '',
-                companyName: originalData.companyName || '',
+                basicInfo: originalData.basicInfo ?? '',
+                numberField: originalData.numberField ?? '',
+                drugName: originalData.drugName ?? '',
+                numberOfSheets: originalData.numberOfSheets ?? '',
+                drugDescription: originalData.drugDescription ?? '',
+                companyName: originalData.companyName ?? '',
                 originalSummary: countryDetail.original_summary,
                 formatted_summary: countryDetail.formatted_summary
               }
@@ -4921,12 +4922,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
               fontSize: countryDetail.font_size || labelData.fontSize,
               spacing: countryDetail.spacing || labelData.spacing,
               lineHeight: countryDetail.line_height || labelData.lineHeight,
-              basicInfo: formattedData.basicInfo || '',
-              numberField: formattedData.numberField || '',
-              drugName: formattedData.drugName || '',
-              numberOfSheets: formattedData.numberOfSheets || '',
-              drugDescription: formattedData.drugDescription || '',
-              companyName: formattedData.companyName || '',
+              basicInfo: formattedData.basicInfo ?? '',
+              numberField: formattedData.numberField ?? '',
+              drugName: formattedData.drugName ?? '',
+              numberOfSheets: formattedData.numberOfSheets ?? '',
+              drugDescription: formattedData.drugDescription ?? '',
+              companyName: formattedData.companyName ?? '',
               originalSummary: countryDetail.original_summary,
               formatted_summary: countryDetail.formatted_summary
             }
@@ -4951,12 +4952,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
                 lineHeight: countryDetail.line_height || labelData.lineHeight,
-                basicInfo: originalData.basicInfo || '',
-                numberField: originalData.numberField || '',
-                drugName: originalData.drugName || '',
-                numberOfSheets: originalData.numberOfSheets || '',
-                drugDescription: originalData.drugDescription || '',
-                companyName: originalData.companyName || '',
+                basicInfo: originalData.basicInfo ?? '',
+                numberField: originalData.numberField ?? '',
+                drugName: originalData.drugName ?? '',
+                numberOfSheets: originalData.numberOfSheets ?? '',
+                drugDescription: originalData.drugDescription ?? '',
+                companyName: originalData.companyName ?? '',
                 originalSummary: countryDetail.original_summary,
                 formatted_summary: countryDetail.formatted_summary
               }
