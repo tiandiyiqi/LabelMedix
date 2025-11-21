@@ -95,6 +95,64 @@ export default function ProjectList() {
     return fullCountryCode.split(' ')[0]
   }
 
+  // 根据语言自动选择字体（定义在外层，供 try 和 catch 块使用）
+  const getAutoFontsByLanguageForProject = (language: string): { fontFamily: string; secondaryFontFamily: string } => {
+    // 检查是否为从右到左的语言
+    const isRTL = () => {
+      if (!language) return false;
+      const rtlKeywords = ['Arabic', 'Hebrew', 'Persian', 'Farsi', 'Urdu', 'Punjabi', 'Somali'];
+      return rtlKeywords.some(keyword => language.includes(keyword));
+    };
+    
+    // 检查是否为需要特殊字体的语言
+    const needsUnicodeFont = () => {
+      if (!language) return false;
+      const unicodeFontLanguages = ['Georgian','Hebrew','Korean', 'Thai','Thailand', 'Vietnamese', 'Hindi', 'Bengali', 'Tamil', 'Telugu', 'Gujarati', 'Kannada', 'Malayalam', 'Punjabi', 'Urdu'];
+      return unicodeFontLanguages.some(lang => language.includes(lang)) || 
+             language.includes('KR') || language.includes('TH') || language.includes('VN');
+    };
+    
+    // 检查是否为意大利语
+    const isItalian = () => {
+      if (!language) return false;
+      return language.includes('IT') || language.includes('Italy') || language.includes('Italian');
+    };
+    
+    // 根据语言设置对应的字体
+    if (language === 'CN' || language.includes('Chinese')) {
+      return { fontFamily: 'STHeiti', secondaryFontFamily: 'Arial' };
+    } else if (language === 'JP' || language.includes('Japanese')) {
+      return { fontFamily: 'Arial Unicode MS', secondaryFontFamily: 'Arial Unicode MS' };
+    } else if (isRTL() || needsUnicodeFont()) {
+      return { fontFamily: 'Arial Unicode MS', secondaryFontFamily: 'Arial Unicode MS' };
+    } else if (isItalian()) {
+      return { fontFamily: 'Arial', secondaryFontFamily: 'Arial' };
+    } else {
+      return { fontFamily: 'Arial', secondaryFontFamily: 'Arial' };
+    }
+  };
+  
+  // 智能选择字体（定义在外层，供 try 和 catch 块使用）
+  const getSmartFontForProject = (dbFont: string | null | undefined, autoFont: string, language?: string): string => {
+    // 如果数据库值为null、undefined或空字符串，使用自动选择的字体
+    if (!dbFont || dbFont === '') return autoFont;
+    
+    // 如果数据库值与自动选择的字体一致，使用自动选择的字体
+    if (dbFont === autoFont) return autoFont;
+    
+    // 特殊处理：如果数据库值是STHeiti或Arial，且当前语言不是中文，则使用自动选择的字体
+    if (language) {
+      const autoFonts = getAutoFontsByLanguageForProject(language);
+      if ((dbFont === 'STHeiti' || dbFont === 'Arial') && 
+          (dbFont !== autoFonts.fontFamily && dbFont !== autoFonts.secondaryFontFamily)) {
+        return autoFont;
+      }
+    }
+    
+    // 否则使用数据库中的字体（用户手动修改过的）
+    return dbFont;
+  };
+
   // 点击项目时选中
   const handleProjectClick = async (project: Project) => {
     try {
@@ -145,11 +203,25 @@ export default function ProjectList() {
           // console.log('🎯🎯🎯 [ProjectList] sequenceRotation转换后值:', labelDataFromSettings.sequenceRotation)
           // console.log('✅ [ProjectList] 标签预览区参数已从数据库加载')
           
+          const autoFonts = getAutoFontsByLanguageForProject(firstGroup.country_code);
+          const smartFont = getSmartFontForProject(countryDetail.font_family, autoFonts.fontFamily, firstGroup.country_code);
+          const smartSecondaryFont = getSmartFontForProject(countryDetail.secondary_font_family, autoFonts.secondaryFontFamily, firstGroup.country_code);
+          
+          console.log('🔓 [项目加载] 字体选择:', {
+            countryCode: firstGroup.country_code,
+            dbFontFamily: countryDetail.font_family,
+            dbSecondaryFont: countryDetail.secondary_font_family,
+            autoFontFamily: autoFonts.fontFamily,
+            autoSecondaryFont: autoFonts.secondaryFontFamily,
+            selectedFontFamily: smartFont,
+            selectedSecondaryFont: smartSecondaryFont
+          })
+          
           // 准备要合并的数据
           const mergedData = {
             ...labelDataFromSettings,  // 先合并标签预览区参数
-            fontFamily: countryDetail.font_family || 'Arial',
-            secondaryFontFamily: countryDetail.secondary_font_family || 'Arial',
+            fontFamily: smartFont,
+            secondaryFontFamily: smartSecondaryFont,
             textAlign: countryDetail.text_align || 'left',
             fontSize: countryDetail.font_size || 10,
             spacing: countryDetail.spacing || 1,
@@ -162,10 +234,11 @@ export default function ProjectList() {
           updateLabelData(mergedData)
         } catch (labelError) {
           // console.warn('⚠️ 加载标签设置失败，使用默认字体设置:', labelError)
-          // 如果加载标签设置失败，只同步字体设置
+          // 如果加载标签设置失败，使用智能字体选择
+          const autoFonts = getAutoFontsByLanguageForProject(firstGroup.country_code);
           updateLabelData({
-            fontFamily: countryDetail.font_family || 'Arial',
-            secondaryFontFamily: countryDetail.secondary_font_family || 'Arial',
+            fontFamily: getSmartFontForProject(countryDetail.font_family, autoFonts.fontFamily, firstGroup.country_code),
+            secondaryFontFamily: getSmartFontForProject(countryDetail.secondary_font_family, autoFonts.secondaryFontFamily, firstGroup.country_code),
             textAlign: countryDetail.text_align || 'left',
             fontSize: countryDetail.font_size || 10,
             spacing: countryDetail.spacing || 1,

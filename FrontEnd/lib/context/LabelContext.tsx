@@ -104,8 +104,8 @@ const defaultLabelData: LabelData = {
   fontSize: 10,
   labelWidth: 100,  // 120mm - PDF实际宽度
   labelHeight: 60,  // 80mm - PDF实际高度
-  fontFamily: 'STHeiti', // 主语言字体（中文/日文/韩文等）
-  secondaryFontFamily: 'Arial', // 次语言字体（通常为英文/数字）
+  fontFamily: '', // 空值表示使用自动字体选择，会根据语言自动设置
+  secondaryFontFamily: '', // 空值表示使用自动字体选择，会根据语言自动设置
   textAlign: 'left', // 文本对齐方式，默认左对齐
   // 序号设置默认值
   showSequenceNumber: true, // 默认显示序号

@@ -158,13 +158,13 @@ module.exports = (sequelize) => {
       font_family: {
         type: DataTypes.STRING(100),
         allowNull: true,
-        defaultValue: "STHeiti",
+        defaultValue: null,
         comment: "主语言字体（用于中文、日文、韩文等CJK字符）",
       },
       secondary_font_family: {
         type: DataTypes.STRING(100),
         allowNull: true,
-        defaultValue: "Arial",
+        defaultValue: null,
         comment: "次语言字体（用于英文、数字等拉丁字符）",
       },
       text_align: {

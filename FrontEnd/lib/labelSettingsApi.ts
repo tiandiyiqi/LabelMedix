@@ -236,6 +236,9 @@ export function convertLabelDataToSettings(labelData: any): Partial<LabelSetting
 export function convertSettingsToLabelData(settings: LabelSettings): any {
   // Sequelize的DECIMAL类型返回字符串，需要显式转换为数字
   // 使用parseFloat确保字符串格式的数字被正确转换
+  // 
+  // 🔧 重要：不从 LabelSettings 中读取 fontFamily 和 secondaryFontFamily
+  // 字体应该由 CountryTranslationGroup 表和自动字体选择逻辑控制
   return {
     labelWidth: parseFloat(String(settings.label_width)) || 100,
     labelHeight: parseFloat(String(settings.label_height)) || 60,
@@ -246,8 +249,8 @@ export function convertSettingsToLabelData(settings: LabelSettings): any {
     adhesiveArea: parseInt(String(settings.adhesive_area)) || 0,
     wasteArea: parseInt(String(settings.waste_area)) || 0,
     codingArea: parseInt(String(settings.coding_area)) || 0,
-    fontFamily: settings.font_family || 'Arial',
-    secondaryFontFamily: settings.secondary_font_family || 'Arial',
+    // fontFamily: 不再从这里读取，避免覆盖正确的字体选择
+    // secondaryFontFamily: 不再从这里读取，避免覆盖正确的字体选择
     fontSize: parseFloat(String(settings.font_size)) || 10,
     textAlign: settings.text_align || 'left',
     spacing: parseFloat(String(settings.spacing)) || 1,

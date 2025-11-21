@@ -399,8 +399,8 @@ export const updateFormattedSummary = async (
   countryCode: string,
   formattedSummary?: string,
   fontSettings?: {
-    fontFamily?: string;
-    secondaryFontFamily?: string;
+    fontFamily?: string | null;
+    secondaryFontFamily?: string | null;
     textAlign?: string;
     fontSize?: number;
     spacing?: number;
@@ -429,6 +429,7 @@ export const updateFormattedSummary = async (
     
     // 如果提供了字体设置，添加到请求体中
     if (fontSettings) {
+      // 支持传递 null 来清除字体设置
       if (fontSettings.fontFamily !== undefined) requestBody.font_family = fontSettings.fontFamily;
       if (fontSettings.secondaryFontFamily !== undefined) requestBody.secondary_font_family = fontSettings.secondaryFontFamily;
       if (fontSettings.textAlign !== undefined) requestBody.text_align = fontSettings.textAlign;

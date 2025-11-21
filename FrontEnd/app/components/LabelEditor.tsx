@@ -15,7 +15,7 @@ export default function LabelEditor() {
   const { theme } = themeContext
 
   const { labelData, updateLabelData, setSelectedProject } = useLabelContext()
-  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, labelCategory } = labelData
+  const { selectedLanguage, selectedNumber, drugInfo, fontFamily, secondaryFontFamily, fontSize, spacing, lineHeight, labelWidth, labelHeight, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, labelCategory } = labelData
 
   const [selectedNumberState, setSelectedNumberState] = useState<number>(Number(selectedNumber))
   
@@ -130,6 +130,15 @@ export default function LabelEditor() {
   useEffect(() => {
     formatStatesRef.current = formatStates
   }, [formatStates])
+  
+  // 监控 fontFamily 变化（调试用）
+  useEffect(() => {
+    console.log('🎨 [Context更新] fontFamily变化:', {
+      newFontFamily: fontFamily,
+      newSecondaryFont: secondaryFontFamily,
+      selectedLanguage: selectedLanguage
+    })
+  }, [fontFamily, secondaryFontFamily, selectedLanguage])
   // 轻量提示（非阻断式）
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>(
     { visible: false, message: '', type: 'info' }
@@ -2922,6 +2931,11 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
         }
         
         // 更新到对应的字段类型区域，同时更新字体
+        console.log('📥 [导入] 设置字体:', {
+          selectedLanguage,
+          autoFontFamily: autoFonts.fontFamily,
+          autoSecondaryFont: autoFonts.secondaryFontFamily
+        })
         updateLabelData({
           ...importedData,
           fontFamily: autoFonts.fontFamily,
@@ -4618,15 +4632,93 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       // 确定保存时使用的国别码
       const targetCountryCode = isNonLadderMode ? 'all' : selectedLanguage
       
-      // 1. 保存格式化翻译汇总和字体设置
-      await updateFormattedSummary(selectedProject.id, targetCountryCode, formattedSummaryJson, {
-        fontFamily: labelData.fontFamily,
-        secondaryFontFamily: labelData.secondaryFontFamily,
+      // 获取当前语言自动选择的字体
+      const autoFonts = getAutoFontsByLanguage(selectedLanguage)
+      
+      // 🔧 修复：如果当前字体与当前语言不匹配（可能是旧值），强制使用自动选择的字体
+      let effectiveFontFamily = labelData.fontFamily
+      let effectiveSecondaryFont = labelData.secondaryFontFamily
+      
+      // 检测是否为旧默认值且与当前语言不匹配
+      const isOldDefaultFont = (font: string, autoFont: string) => {
+        return (font === 'STHeiti' || font === 'Arial') && font !== autoFont
+      }
+      
+      if (isOldDefaultFont(effectiveFontFamily, autoFonts.fontFamily)) {
+        console.log('💾 [保存前] 检测到旧默认字体，强制使用自动选择:', {
+          oldFont: effectiveFontFamily,
+          newFont: autoFonts.fontFamily
+        })
+        effectiveFontFamily = autoFonts.fontFamily
+      }
+      
+      if (isOldDefaultFont(effectiveSecondaryFont, autoFonts.secondaryFontFamily)) {
+        console.log('💾 [保存前] 检测到旧默认次字体，强制使用自动选择:', {
+          oldFont: effectiveSecondaryFont,
+          newFont: autoFonts.secondaryFontFamily
+        })
+        effectiveSecondaryFont = autoFonts.secondaryFontFamily
+      }
+      
+      console.log('💾 [保存前] 当前状态:', {
+        selectedLanguage,
+        originalFontFamily: labelData.fontFamily,
+        originalSecondaryFont: labelData.secondaryFontFamily,
+        effectiveFontFamily,
+        effectiveSecondaryFont,
+        autoFontFamily: autoFonts.fontFamily,
+        autoSecondaryFont: autoFonts.secondaryFontFamily,
+        targetCountryCode
+      })
+      
+      // 智能保存字体：如果字体与自动选择的字体一致，则不保存（保存为null）
+      // 这样可以避免保存默认值，切换时会自动使用正确的字体
+      const fontSettingsToSave: {
+        fontFamily?: string | null;
+        secondaryFontFamily?: string | null;
+        textAlign?: string;
+        fontSize?: number;
+        spacing?: number;
+        lineHeight?: number;
+      } = {
         textAlign: labelData.textAlign,
         fontSize: labelData.fontSize,
         spacing: labelData.spacing,
         lineHeight: labelData.lineHeight
+      }
+      
+      // 如果字体与自动选择的字体不一致，且不为空，说明用户手动修改过，需要保存
+      // 空字符串或与自动选择一致，都保存为 null
+      console.log('💾 [保存] 字体判断:', {
+        effectiveFontFamily,
+        autoFontFamily: autoFonts.fontFamily,
+        isMatch: effectiveFontFamily === autoFonts.fontFamily,
+        isEmpty: !effectiveFontFamily || effectiveFontFamily === '',
+        willSaveFontFamily: (effectiveFontFamily && effectiveFontFamily !== '' && effectiveFontFamily !== autoFonts.fontFamily) ? effectiveFontFamily : 'NULL',
+        effectiveSecondaryFont,
+        autoSecondaryFont: autoFonts.secondaryFontFamily,
+        isSecondaryMatch: effectiveSecondaryFont === autoFonts.secondaryFontFamily,
+        willSaveSecondaryFont: (effectiveSecondaryFont && effectiveSecondaryFont !== '' && effectiveSecondaryFont !== autoFonts.secondaryFontFamily) ? effectiveSecondaryFont : 'NULL'
       })
+      
+      if (effectiveFontFamily && effectiveFontFamily !== '' && effectiveFontFamily !== autoFonts.fontFamily) {
+        fontSettingsToSave.fontFamily = effectiveFontFamily
+        console.log('💾 [保存] fontFamily: 保存用户值 =', effectiveFontFamily)
+      } else {
+        fontSettingsToSave.fontFamily = null // 保存为null，表示使用自动选择
+        console.log('💾 [保存] fontFamily: 保存NULL')
+      }
+      
+      if (effectiveSecondaryFont && effectiveSecondaryFont !== '' && effectiveSecondaryFont !== autoFonts.secondaryFontFamily) {
+        fontSettingsToSave.secondaryFontFamily = effectiveSecondaryFont
+        console.log('💾 [保存] secondaryFontFamily: 保存用户值 =', effectiveSecondaryFont)
+      } else {
+        fontSettingsToSave.secondaryFontFamily = null // 保存为null，表示使用自动选择
+        console.log('💾 [保存] secondaryFontFamily: 保存NULL')
+      }
+      
+      // 1. 保存格式化翻译汇总和字体设置
+      await updateFormattedSummary(selectedProject.id, targetCountryCode, formattedSummaryJson, fontSettingsToSave)
 
       // 立即更新本地状态，确保后续操作可以访问到最新的格式化状态
       updateLabelData({
@@ -4707,6 +4799,12 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       return result;
     };
     
+    // 检查是否为意大利语
+    const isItalian = () => {
+      if (!language) return false;
+      return language.includes('IT') || language.includes('Italy') || language.includes('Italian');
+    };
+    
     // 根据语言设置对应的字体
     if (language === 'CN' || language.includes('Chinese')) {
       return {
@@ -4715,13 +4813,18 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       };
     } else if (language === 'JP' || language.includes('Japanese')) {
       return {
-        fontFamily: 'Arial Unicode MS',  // 日文也可以使用STHeiti
+        fontFamily: 'Arial Unicode MS',  // 日文使用Arial Unicode MS
         secondaryFontFamily: 'Arial Unicode MS'
       };
     } else if (isRTL() || needsUnicodeFont()) {
       return {
         fontFamily: 'Arial Unicode MS',
         secondaryFontFamily: 'Arial Unicode MS'
+      };
+    } else if (isItalian()) {
+      return {
+        fontFamily: 'Arial',
+        secondaryFontFamily: 'Arial'
       };
     } else {
       return {
@@ -4730,14 +4833,54 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       };
     }
   };
-
+  
+  // 智能选择字体：处理各种情况，自动选择最合适的字体
+  // 优先级：用户手动设置 > 自动选择
+  const getSmartFont = (
+    dbFont: string | null | undefined,
+    autoFont: string,
+    language?: string
+  ): string => {
+    // 如果数据库值为null、undefined或空字符串，使用自动选择的字体
+    if (!dbFont || dbFont === '') return autoFont;
+    
+    // 如果数据库值与自动选择的字体一致，使用自动选择的字体
+    // 这样可以处理旧数据中可能存在的默认值（STHeiti/Arial）
+    if (dbFont === autoFont) return autoFont;
+    
+    // 特殊处理：如果数据库值是STHeiti或Arial，且当前语言不是中文，则使用自动选择的字体
+    // 这样可以处理旧数据中的默认值
+    if (language) {
+      const autoFonts = getAutoFontsByLanguage(language);
+      if ((dbFont === 'STHeiti' || dbFont === 'Arial') && 
+          (dbFont !== autoFonts.fontFamily && dbFont !== autoFonts.secondaryFontFamily)) {
+        return autoFont;
+      }
+    }
+    
+    // 否则使用数据库中的字体（用户手动修改过的）
+    return dbFont;
+  };
+  
   // 处理语言选择变化
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newLanguage = e.target.value
-
+    
+    console.log('🔄 [切换国别] 开始:', {
+      oldLanguage: selectedLanguage,
+      newLanguage: newLanguage,
+      currentFontFamily: fontFamily,
+      currentSecondaryFont: labelData.secondaryFontFamily
+    })
     
     // 使用统一的字体选择函数
     const autoFonts = getAutoFontsByLanguage(newLanguage)
+    
+    console.log('🔄 [切换国别] 自动字体:', {
+      newLanguage,
+      autoFontFamily: autoFonts.fontFamily,
+      autoSecondaryFont: autoFonts.secondaryFontFamily
+    })
     
     // 如果有选中的项目，需要查找对应的序号和加载数据
     if (selectedProject) {
@@ -4776,6 +4919,13 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
             setBackendDataExists(backendSettingsExist)
             
             labelDataFromSettings = convertSettingsToLabelData(labelSettings)
+            
+            console.log('🔧 [切换国别-handleLanguageChange] labelDataFromSettings字体:', {
+              fontFamily: labelDataFromSettings?.fontFamily,
+              secondaryFontFamily: labelDataFromSettings?.secondaryFontFamily,
+              rawSettingsFontFamily: labelSettings.font_family,
+              rawSettingsSecondaryFont: labelSettings.secondary_font_family
+            })
 
           } catch (labelError) {
             // console.warn('⚠️ 加载标签设置失败，使用默认设置:', labelError)
@@ -4787,11 +4937,27 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
           
           if (formattedData && formattedData.formatStates) {
             // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
+            const smartFont = getSmartFont(countryDetail.font_family, autoFonts.fontFamily, newLanguage);
+            const smartSecondaryFont = getSmartFont(countryDetail.secondary_font_family, autoFonts.secondaryFontFamily, newLanguage);
+            
+            console.log('🔄 [切换国别] 有格式化状态，字体选择:', {
+              dbFontFamily: countryDetail.font_family,
+              dbSecondaryFont: countryDetail.secondary_font_family,
+              smartFont,
+              smartSecondaryFont
+            })
+            console.log('🔄 [切换国别] 调用updateLabelData前 - 当前Context字体:', {
+              currentContextFontFamily: fontFamily,
+              currentContextSecondaryFont: secondaryFontFamily,
+              willUpdateToFont: smartFont,
+              willUpdateToSecondaryFont: smartSecondaryFont
+            })
+            
             const mergedData = {
               ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
               selectedLanguage: newLanguage,
-              fontFamily: countryDetail.font_family || autoFonts.fontFamily,
-              secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
+              fontFamily: smartFont,
+              secondaryFontFamily: smartSecondaryFont,
               textAlign: countryDetail.text_align || 'left',
               fontSize: countryDetail.font_size || labelData.fontSize,
               spacing: countryDetail.spacing || labelData.spacing,
@@ -4809,6 +4975,11 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
 
             updateLabelData(mergedData)
             
+            console.log('🔄 [切换国别] updateLabelData已调用，传递的字体:', {
+              mergedDataFontFamily: mergedData.fontFamily,
+              mergedDataSecondaryFont: mergedData.secondaryFontFamily
+            })
+            
             // 恢复格式化状态
             setFormatStates(formattedData.formatStates)
           } else {
@@ -4817,11 +4988,21 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
             
             if (originalData) {
               // 如果有JSON格式的原始状态，恢复6个字段
+              const smartFont = getSmartFont(countryDetail.font_family, autoFonts.fontFamily, newLanguage);
+              const smartSecondaryFont = getSmartFont(countryDetail.secondary_font_family, autoFonts.secondaryFontFamily, newLanguage);
+              
+              console.log('🔄 [切换国别] 有原始状态，字体选择:', {
+                dbFontFamily: countryDetail.font_family,
+                dbSecondaryFont: countryDetail.secondary_font_family,
+                smartFont,
+                smartSecondaryFont
+              })
+              
               const mergedDataOriginal = {
                 ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedLanguage: newLanguage,
-                fontFamily: countryDetail.font_family || autoFonts.fontFamily,
-                secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
+                fontFamily: smartFont,
+                secondaryFontFamily: smartSecondaryFont,
                 textAlign: countryDetail.text_align || 'left',
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
@@ -4840,11 +5021,21 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
               updateLabelData(mergedDataOriginal)
             } else {
               // 如果没有JSON格式数据，使用旧逻辑
+              const smartFont = getSmartFont(countryDetail.font_family, autoFonts.fontFamily, newLanguage);
+              const smartSecondaryFont = getSmartFont(countryDetail.secondary_font_family, autoFonts.secondaryFontFamily, newLanguage);
+              
+              console.log('🔄 [切换国别] 无JSON数据，字体选择:', {
+                dbFontFamily: countryDetail.font_family,
+                dbSecondaryFont: countryDetail.secondary_font_family,
+                smartFont,
+                smartSecondaryFont
+              })
+              
               const mergedDataOld = {
                 ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedLanguage: newLanguage,
-                fontFamily: countryDetail.font_family || autoFonts.fontFamily,
-                secondaryFontFamily: countryDetail.secondary_font_family || autoFonts.secondaryFontFamily,
+                fontFamily: smartFont,
+                secondaryFontFamily: smartSecondaryFont,
                 textAlign: countryDetail.text_align || 'left',
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
@@ -4962,13 +5153,16 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
           
           if (formattedData && formattedData.formatStates) {
             // 如果有JSON格式的格式化状态，恢复6个字段和格式化状态
+            // 切换序号时也需要根据国别码自动选择字体
+            const autoFontsForSequence = getAutoFontsByLanguage(countryCode)
+            
             const mergedDataFormatStates = {
               ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
               selectedNumber: e.target.value,
               selectedLanguage: countryCode,
               currentWidth,
-              fontFamily: countryDetail.font_family || labelData.fontFamily,
-              secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
+              fontFamily: getSmartFont(countryDetail.font_family, autoFontsForSequence.fontFamily, countryCode),
+              secondaryFontFamily: getSmartFont(countryDetail.secondary_font_family, autoFontsForSequence.secondaryFontFamily, countryCode),
               fontSize: countryDetail.font_size || labelData.fontSize,
               spacing: countryDetail.spacing || labelData.spacing,
               lineHeight: countryDetail.line_height || labelData.lineHeight,
@@ -4992,13 +5186,16 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
             
             if (originalData) {
               // 如果有JSON格式的原始状态，恢复6个字段
+              // 切换序号时也需要根据国别码自动选择字体
+              const autoFontsForSequence = getAutoFontsByLanguage(countryCode)
+              
               const mergedData = {
                 ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedNumber: e.target.value,
                 selectedLanguage: countryCode,
                 currentWidth,
-                fontFamily: countryDetail.font_family || labelData.fontFamily,
-                secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
+                fontFamily: getSmartFont(countryDetail.font_family, autoFontsForSequence.fontFamily, countryCode),
+                secondaryFontFamily: getSmartFont(countryDetail.secondary_font_family, autoFontsForSequence.secondaryFontFamily, countryCode),
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
                 lineHeight: countryDetail.line_height || labelData.lineHeight,
@@ -5014,13 +5211,16 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
               updateLabelData(mergedData)
             } else {
               // 如果没有JSON格式数据，使用旧逻辑
+              // 切换序号时也需要根据国别码自动选择字体
+              const autoFontsForSequence = getAutoFontsByLanguage(countryCode)
+              
               const mergedData = {
                 ...(labelDataFromSettings || {}),  // 先合并标签预览区参数
                 selectedNumber: e.target.value,
                 selectedLanguage: countryCode,
                 currentWidth,
-                fontFamily: countryDetail.font_family || labelData.fontFamily,
-                secondaryFontFamily: countryDetail.secondary_font_family || labelData.secondaryFontFamily,
+                fontFamily: getSmartFont(countryDetail.font_family, autoFontsForSequence.fontFamily, countryCode),
+                secondaryFontFamily: getSmartFont(countryDetail.secondary_font_family, autoFontsForSequence.secondaryFontFamily, countryCode),
                 fontSize: countryDetail.font_size || labelData.fontSize,
                 spacing: countryDetail.spacing || labelData.spacing,
                 lineHeight: countryDetail.line_height || labelData.lineHeight,

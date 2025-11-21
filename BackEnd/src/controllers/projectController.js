@@ -966,6 +966,8 @@ exports.updateFormattedSummary = async (req, res) => {
           country_code: countryCode,
           sequence_number: sequenceNumber,
           total_items: 0,
+          font_family: null,  // 显式设置为null，使用自动字体选择
+          secondary_font_family: null,  // 显式设置为null，使用自动字体选择
         });
 
         console.log(
@@ -993,9 +995,13 @@ exports.updateFormattedSummary = async (req, res) => {
       updateData.original_summary = original_summary;
 
     // 如果提供了字体参数，则一并更新
-    if (font_family !== undefined) updateData.font_family = font_family;
-    if (secondary_font_family !== undefined)
-      updateData.secondary_font_family = secondary_font_family;
+    // 支持传递 null 来清除字体设置（设置为 NULL）
+    if (font_family !== undefined) {
+      updateData.font_family = font_family === null ? null : font_family;
+    }
+    if (secondary_font_family !== undefined) {
+      updateData.secondary_font_family = secondary_font_family === null ? null : secondary_font_family;
+    }
     if (font_size !== undefined) updateData.font_size = font_size;
     if (spacing !== undefined) updateData.spacing = spacing;
     if (line_height !== undefined) updateData.line_height = line_height;
