@@ -591,6 +591,27 @@ export default function PDFPreview() {
   const { labelData, updateLabelData } = useLabelContext()
   const { labelWidth, labelHeight, drugInfo, selectedLanguage, fontSize, fontFamily, secondaryFontFamily, spacing, lineHeight, selectedNumber, labelCategory, isWrapped, baseSheet, adhesiveArea, wasteArea, codingArea, selectedProject, basicInfo, numberField, drugName, numberOfSheets, drugDescription, companyName, textAlign } = labelData
   
+  // 本地state用于临时存储标签尺寸输入值
+  const [localLabelWidth, setLocalLabelWidth] = useState(labelWidth);
+  const [localLabelHeight, setLocalLabelHeight] = useState(labelHeight);
+  
+  // 页面边距state（用户可以手动修改）
+  const [margins, setMargins] = useState(calculatePageMargins(Number(selectedNumber) || 1));
+  
+  // 同步context中的值到本地state
+  useEffect(() => {
+    setLocalLabelWidth(labelWidth);
+  }, [labelWidth]);
+  
+  useEffect(() => {
+    setLocalLabelHeight(labelHeight);
+  }, [labelHeight]);
+  
+  // 当序号变化时，更新边距的默认值
+  useEffect(() => {
+    setMargins(calculatePageMargins(Number(selectedNumber) || 1));
+  }, [selectedNumber]);
+  
   // 获取包装的updateLabelData函数
   const wrappedUpdateLabelData = useCallback((data: Partial<typeof labelData>) => {
     // 如果更新中包含sequencePosition，则使用包装函数
@@ -825,7 +846,6 @@ export default function PDFPreview() {
   //   currentWidthType: typeof currentWidth,
   //   timestamp: new Date().toISOString()
   // });
-  const margins = calculatePageMargins(Number(selectedNumber) || 1);
 
   // 创建动态页面样式
   const pageStyle = {
@@ -1461,19 +1481,38 @@ export default function PDFPreview() {
               </label>
               <div>
                 <input
-                  type="number"
-                  value={labelWidth.toFixed(1)}
+                  type="text"
+                  value={localLabelWidth}
                   placeholder="最小值: 40mm"
-                  step="0.5"
-                  min="40"
-                  max="1000"
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (!isNaN(value)) {
-                      updateLabelData({ labelWidth: parseFloat(value.toFixed(1)) });
+                      setLocalLabelWidth(value);
+                    } else if (e.target.value === '') {
+                      setLocalLabelWidth('' as any);
                     }
                   }}
-                  onKeyDown={(e) => handleDimensionInput(e, 'width')}
+                  onBlur={() => {
+                    const formatted = parseFloat(localLabelWidth as any);
+                    if (!isNaN(formatted)) {
+                      const finalValue = parseFloat(formatted.toFixed(1));
+                      setLocalLabelWidth(finalValue);
+                      updateLabelData({ labelWidth: finalValue });
+                    } else {
+                      setLocalLabelWidth(labelWidth);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const formatted = parseFloat(localLabelWidth as any);
+                      if (!isNaN(formatted)) {
+                        const finalValue = parseFloat(formatted.toFixed(1));
+                        setLocalLabelWidth(finalValue);
+                        updateLabelData({ labelWidth: finalValue });
+                      }
+                      e.currentTarget.blur();
+                    }
+                  }}
                   className="px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
                     color: theme.text,
@@ -1491,19 +1530,38 @@ export default function PDFPreview() {
               </label>
               <div>
                 <input
-                  type="number"
-                  value={labelHeight.toFixed(1)}
+                  type="text"
+                  value={localLabelHeight}
                   placeholder="最小值: 40mm"
-                  step="0.5"
-                  min="40"
-                  max="1000"
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (!isNaN(value)) {
-                      updateLabelData({ labelHeight: parseFloat(value.toFixed(1)) });
+                      setLocalLabelHeight(value);
+                    } else if (e.target.value === '') {
+                      setLocalLabelHeight('' as any);
                     }
                   }}
-                  onKeyDown={(e) => handleDimensionInput(e, 'height')}
+                  onBlur={() => {
+                    const formatted = parseFloat(localLabelHeight as any);
+                    if (!isNaN(formatted)) {
+                      const finalValue = parseFloat(formatted.toFixed(1));
+                      setLocalLabelHeight(finalValue);
+                      updateLabelData({ labelHeight: finalValue });
+                    } else {
+                      setLocalLabelHeight(labelHeight);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const formatted = parseFloat(localLabelHeight as any);
+                      if (!isNaN(formatted)) {
+                        const finalValue = parseFloat(formatted.toFixed(1));
+                        setLocalLabelHeight(finalValue);
+                        updateLabelData({ labelHeight: finalValue });
+                      }
+                      e.currentTarget.blur();
+                    }
+                  }}
                   className="px-2 py-0.5 text-sm focus:outline-none border-b border-gray-300"
                   style={{
                     color: theme.text,
@@ -1568,19 +1626,43 @@ export default function PDFPreview() {
               <div className="flex items-center gap-2 px-2 py-0.5">
                 <div className="flex items-center gap-1">
                   <span className="text-sm" style={{ color: theme.text }}>上</span>
-                  <input type="text" value={margins.top} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
+                  <input 
+                    type="number" 
+                    value={margins.top} 
+                    onChange={(e) => setMargins({ ...margins, top: Number(e.target.value) })}
+                    className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" 
+                    style={{ color: theme.text, backgroundColor: "white" }} 
+                  />
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-sm" style={{ color: theme.text }}>下</span>
-                  <input type="text" value={margins.bottom} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
+                  <input 
+                    type="number" 
+                    value={margins.bottom} 
+                    onChange={(e) => setMargins({ ...margins, bottom: Number(e.target.value) })}
+                    className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" 
+                    style={{ color: theme.text, backgroundColor: "white" }} 
+                  />
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-sm" style={{ color: theme.text }}>左</span>
-                  <input type="text" value={margins.left} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
+                  <input 
+                    type="number" 
+                    value={margins.left} 
+                    onChange={(e) => setMargins({ ...margins, left: Number(e.target.value) })}
+                    className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" 
+                    style={{ color: theme.text, backgroundColor: "white" }} 
+                  />
                 </div>
                 <div className="flex items-center gap-1">
                   <span className="text-sm" style={{ color: theme.text }}>右</span>
-                  <input type="text" value={margins.right} readOnly className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" style={{ color: theme.text }} />
+                  <input 
+                    type="number" 
+                    value={margins.right} 
+                    onChange={(e) => setMargins({ ...margins, right: Number(e.target.value) })}
+                    className="w-14 px-1.5 py-0.5 focus:outline-none text-sm text-center border-b border-gray-300" 
+                    style={{ color: theme.text, backgroundColor: "white" }} 
+                  />
                 </div>
               </div>
             </div>

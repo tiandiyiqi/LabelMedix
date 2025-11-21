@@ -1019,13 +1019,31 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
         return
       }
       
-      // 创建包含6个字段的JSON格式原始状态（传递导入的数据）
-      const originalSummaryJson = createOriginalSummary(importedData)
+      // 创建包含6个字段的JSON格式原始状态
+      // 如果有导入数据则使用导入数据，否则使用 labelData 中的当前值
+      const dataToSave = importedData || {
+        basicInfo: labelData.basicInfo ?? '',
+        numberField: labelData.numberField ?? '',
+        drugName: labelData.drugName ?? '',
+        numberOfSheets: labelData.numberOfSheets ?? '',
+        drugDescription: labelData.drugDescription ?? '',
+        companyName: labelData.companyName ?? ''
+      }
+      
+      const originalSummaryJson = createOriginalSummary(dataToSave)
       
       // 根据标签分类决定保存到哪个国别码
       // 阶梯标模式：保存到当前选中的国别码
       // 非阶梯标模式：保存到特殊国别码 "all"
       const targetCountryCode = isLadderMode ? selectedLanguage : "all"
+      
+      console.log('🔍 初始化数据检查:', {
+        hasImportedData: !!importedData,
+        dataToSave,
+        isLadderMode,
+        targetCountryCode,
+        originalSummaryJson
+      })
       
       // 保存原始状态到数据库
       await updateFormattedSummary(
@@ -1035,6 +1053,8 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
         undefined, // 不更新字体设置
         originalSummaryJson // 保存JSON格式的原始状态
       )
+      
+      console.log('✅ 初始化保存成功，originalSummaryJson:', originalSummaryJson)
       
       // 立即更新 ref 和状态，确保格式化功能可以访问到原始状态
       originalSummaryRef.current = originalSummaryJson
@@ -2799,6 +2819,14 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
       // 尝试解析JSON格式的原始状态
       const originalData = parseOriginalSummary(countryDetail.original_summary)
       
+      console.log('🔍 恢复初始化数据检查:', {
+        hasOriginalSummary: !!countryDetail.original_summary,
+        originalSummary: countryDetail.original_summary,
+        parsedData: originalData,
+        isLadderMode,
+        targetCountryCode
+      })
+      
       if (originalData) {
         // 如果有JSON格式的原始状态，恢复6个字段
         updateLabelData({ 
@@ -3121,7 +3149,29 @@ const applyUnderscoreAdjustment = (originalCount: number, firstLineUnderscores: 
         
         showToast(`已导入 ${validGroups.length} 个国别的翻译内容`, 'success')
         
-        // 注意：非阶梯标模式不自动初始化
+        // 导入完成后，检查是否需要初始化（非阶梯标模式也需要）
+        if (selectedProject) {
+          // 检查数据库是否已初始化（使用"all"国别码）
+          const isInitialized = await checkIfInitialized(selectedProject.id, 'all')
+          
+          console.log('🔍 非阶梯标导入后检查初始化状态:', {
+            isInitialized,
+            projectId: selectedProject.id,
+            importedData
+          })
+          
+          if (!isInitialized) {
+            // 直接传递导入的数据，不依赖状态更新
+            setTimeout(async () => {
+              try {
+                console.log('🚀 开始非阶梯标自动初始化...')
+                await handleInitializeInternal(importedData) // 传递导入的实际数据
+              } catch (error) {
+                console.error('❌ 非阶梯标自动初始化失败:', error)
+              }
+            }, 300)
+          }
+        }
       }
       
     } catch (error) {
