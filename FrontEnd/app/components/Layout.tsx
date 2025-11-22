@@ -70,7 +70,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
-          <main className="container mx-auto py-8 flex-1">
+          <main className="px-4 md:px-8 py-8 flex-1">
             {children}
           </main>
           <footer className="p-4" style={{ backgroundColor: theme.primary, color: theme.buttonText }}>

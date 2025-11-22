@@ -952,7 +952,7 @@ export default function ProjectList() {
   return (
     <div className="flex flex-col h-full bg-white bg-opacity-75">
       <div 
-        className="flex items-center h-[60px] px-6"
+        className="flex items-center justify-between h-[60px] px-6"
         style={{ 
           backgroundColor: theme.secondary,
           borderBottom: `1px solid ${theme.neutral}`
@@ -961,6 +961,290 @@ export default function ProjectList() {
         <div className="text-xl font-bold text-white">
           项目管理
         </div>
+        <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
+          <DialogTrigger asChild>
+            <button
+              className="p-2 rounded-lg text-white hover:opacity-80 transition-opacity"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+              title="新建项目"
+            >
+              <Plus size={20} />
+            </button>
+          </DialogTrigger>
+          
+          <DialogContent className="sm:max-w-[600px] bg-white">
+            <DialogHeader>
+              <DialogTitle>新建项目</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* 文件上传区域 */}
+              <div className="space-y-2">
+                <Label>上传文件</Label>
+                <label htmlFor="file-upload" className="cursor-pointer block">
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
+                      isDragOver 
+                        ? 'border-blue-400 bg-blue-50 scale-105' 
+                        : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <Upload className={`mx-auto h-12 w-12 transition-colors ${
+                      isDragOver ? 'text-blue-500' : 'text-gray-400'
+                    }`} />
+                    <div className="mt-4">
+                      <span className={`mt-2 block text-sm font-medium transition-colors ${
+                        isDragOver ? 'text-blue-700' : 'text-gray-900'
+                      }`}>
+                        {isDragOver ? '释放文件以上传' : '点击上传文件或拖拽文件到此处'}
+                      </span>
+                      <p className="mt-1 text-xs text-gray-500">
+                        支持 PDF、JPG、PNG 格式，可选择多个文件
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    id="file-upload"
+                    name="file-upload"
+                    type="file"
+                    multiple
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="sr-only"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+              </div>
+
+              {/* 工单名输入 */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-3">
+                  <Label htmlFor="project-name" className="text-base font-semibold text-gray-800 whitespace-nowrap">工单名称 *</Label>
+                  <Input
+                    id="project-name"
+                    placeholder="请输入工单名称"
+                    value={projectName}
+                    onChange={(e) => {
+                      setProjectName(e.target.value)
+                      // 清除错误状态
+                      if (hasError && e.target.value.trim()) {
+                        setHasError(false)
+                        setWorkStatus('idle')
+                        setStatusMessage('')
+                      }
+                    }}
+                    className={`placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] ${
+                      hasError && !projectName.trim() ? 'border-red-500 bg-red-50' : 'border-gray-200'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* 工单类型选择和缠绕标 */}
+              <div className="space-y-2">
+                <div className="flex space-x-3">
+                  {/* 标签分类 */}
+                  <div className="flex items-center space-x-2 flex-1">
+                    <Label htmlFor="project-type" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签分类 *</Label>
+                    <Select value={projectType} onValueChange={(value) => {
+                      setProjectType(value)
+                      // 清除错误状态
+                      if (hasError && value.trim()) {
+                        setHasError(false)
+                        setWorkStatus('idle')
+                        setStatusMessage('')
+                      }
+                    }}>
+                      <SelectTrigger className={`w-full bg-white focus:ring-2 focus:ring-blue-500 transition-all rounded-md px-3 py-2 !border-[1px] !border-solid ${
+                        hasError && !projectType.trim() ? '!border-red-500 bg-red-50' : '!border-gray-200'
+                      } ${projectType ? 'text-gray-900' : 'text-gray-400'}`}>
+                        <SelectValue placeholder="请选择标签类型" />
+                      </SelectTrigger>
+                      <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
+                        <SelectItem value="阶梯标" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯标</SelectItem>
+                        <SelectItem value="单页左右1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右1</SelectItem>
+                        <SelectItem value="单页左右2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右2</SelectItem>
+                        <SelectItem value="单页上下1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下1</SelectItem>
+                        <SelectItem value="单页上下2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下2</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* 缠绕标 */}
+                  <div className="flex items-center space-x-2 flex-1">
+                    <input
+                      type="checkbox"
+                      id="is-wrapped"
+                      checked={isWrapped}
+                      onChange={(e) => setIsWrapped(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <Label htmlFor="is-wrapped" className="text-base font-semibold text-gray-800 whitespace-nowrap">缠绕标</Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* 标签宽度和标签高度 */}
+              <div className="flex space-x-3">
+                {/* 标签宽度 */}
+                <div className="flex items-center space-x-2 flex-1">
+                  <Label htmlFor="label-width" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签宽度</Label>
+                  <Input
+                    id="label-width"
+                    type="text"
+                    placeholder=""
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value)) {
+                        setLabelWidth(value);
+                      }
+                    }}
+                    onBlur={() => {
+                      setLabelWidth(parseFloat(labelWidth.toFixed(1)));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setLabelWidth(parseFloat(labelWidth.toFixed(1)));
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
+                  />
+                </div>
+                
+                {/* 标签高度 */}
+                <div className="flex items-center space-x-2 flex-1">
+                  <Label htmlFor="label-height" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签高度</Label>
+                  <Input
+                    id="label-height"
+                    type="text"
+                    placeholder=""
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      if (!isNaN(value)) {
+                        setLabelHeight(value);
+                      }
+                    }}
+                    onBlur={() => {
+                      setLabelHeight(parseFloat(labelHeight.toFixed(1)));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setLabelHeight(parseFloat(labelHeight.toFixed(1)));
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
+                  />
+                </div>
+              </div>
+
+              {/* 上传文件列表 */}
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-2">
+                  <Label>已上传文件</Label>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                        <div className="flex items-center space-x-2 flex-1 min-w-0">
+                          <FileText className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                          <span className="text-xs text-gray-700 truncate">{file.name}</span>
+                          <span className="text-xs text-gray-500 flex-shrink-0">
+                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="ml-2 px-2 py-1 text-xs bg-red-100 text-white rounded hover:bg-red-300 transition-colors flex-shrink-0"
+                          title="删除文件"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 工作状态显示 */}
+              <div className={`p-3 rounded ${hasError || workStatus === 'error' ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon()}
+                    <span className="text-sm font-medium">工作状态：</span>
+                    <span className={`text-sm ${hasError || workStatus === 'error' ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                      {statusMessage || '等待操作...'}
+                    </span>
+                  </div>
+                  {workStatus === 'success' && parseResults.length > 0 && (
+                    <Button
+                      onClick={() => {
+                        // 先关闭新建项目窗口
+                        setIsNewProjectOpen(false)
+                        // 然后显示解析结果
+                        setShowParseResults(true)
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                    >
+                      查看解析结果
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* 操作按钮 */}
+              <div className="space-y-3">
+                {/* 第一行：AI解析和创建项目按钮 */}
+                <div className="flex space-x-3">
+                  <Button
+                    onClick={handleAIParse}
+                    disabled={uploadedFiles.length === 0 || workStatus === 'parsing'}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {workStatus === 'parsing' ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        AI解析中...
+                      </>
+                    ) : (
+                      'AI解析'
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={!projectName.trim() || !projectType.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                  >
+                    创建项目
+                  </Button>
+                </div>
+                
+                {/* 第二行：解析并创建项目按钮 */}
+                <div className="flex">
+                  <Button
+                    onClick={handleParseAndCreate}
+                    disabled={!projectName.trim() || !projectType.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium"
+                  >
+                    {workStatus === 'parsing' ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        处理中...
+                      </>
+                    ) : (
+                      '解析并创建项目'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="p-4 flex-1 flex flex-col min-h-0">
@@ -1083,293 +1367,6 @@ export default function ProjectList() {
             </ul>
           </div>
         )}
-        
-        {/* 新建项目按钮 - 固定在容器底部 */}
-        <div className="mt-4 flex-shrink-0">
-          <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
-            <DialogTrigger asChild>
-              <button
-                className="w-full py-3 px-4 rounded-lg text-white font-medium hover:bg-blue-700 transition-colors"
-                style={{ backgroundColor: theme.secondary }}
-              >
-                + 新建项目
-              </button>
-            </DialogTrigger>
-            
-            <DialogContent className="sm:max-w-[600px] bg-white">
-              <DialogHeader>
-                <DialogTitle>新建项目</DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-6 py-4">
-                {/* 文件上传区域 */}
-                <div className="space-y-2">
-                  <Label>上传文件</Label>
-                  <label htmlFor="file-upload" className="cursor-pointer block">
-                    <div 
-                      className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
-                        isDragOver 
-                          ? 'border-blue-400 bg-blue-50 scale-105' 
-                          : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                      }`}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                    >
-                      <Upload className={`mx-auto h-12 w-12 transition-colors ${
-                        isDragOver ? 'text-blue-500' : 'text-gray-400'
-                      }`} />
-                      <div className="mt-4">
-                        <span className={`mt-2 block text-sm font-medium transition-colors ${
-                          isDragOver ? 'text-blue-700' : 'text-gray-900'
-                        }`}>
-                          {isDragOver ? '释放文件以上传' : '点击上传文件或拖拽文件到此处'}
-                        </span>
-                        <p className="mt-1 text-xs text-gray-500">
-                          支持 PDF、JPG、PNG 格式，可选择多个文件
-                        </p>
-                      </div>
-                    </div>
-                    <input
-                      id="file-upload"
-                      name="file-upload"
-                      type="file"
-                      multiple
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      className="sr-only"
-                      onChange={handleFileUpload}
-                    />
-                  </label>
-                </div>
-
-                {/* 工单名输入 */}
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-3">
-                    <Label htmlFor="project-name" className="text-base font-semibold text-gray-800 whitespace-nowrap">工单名称 *</Label>
-                    <Input
-                      id="project-name"
-                      placeholder="请输入工单名称"
-                      value={projectName}
-                      onChange={(e) => {
-                        setProjectName(e.target.value)
-                        // 清除错误状态
-                        if (hasError && e.target.value.trim()) {
-                          setHasError(false)
-                          setWorkStatus('idle')
-                          setStatusMessage('')
-                        }
-                      }}
-                      className={`placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] ${
-                        hasError && !projectName.trim() ? 'border-red-500 bg-red-50' : 'border-gray-200'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                {/* 工单类型选择和缠绕标 */}
-                <div className="space-y-2">
-                  <div className="flex space-x-3">
-                    {/* 标签分类 */}
-                    <div className="flex items-center space-x-2 flex-1">
-                      <Label htmlFor="project-type" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签分类 *</Label>
-                      <Select value={projectType} onValueChange={(value) => {
-                        setProjectType(value)
-                        // 清除错误状态
-                        if (hasError && value.trim()) {
-                          setHasError(false)
-                          setWorkStatus('idle')
-                          setStatusMessage('')
-                        }
-                      }}>
-                        <SelectTrigger className={`w-full bg-white focus:ring-2 focus:ring-blue-500 transition-all rounded-md px-3 py-2 !border-[1px] !border-solid ${
-                          hasError && !projectType.trim() ? '!border-red-500 bg-red-50' : '!border-gray-200'
-                        } ${projectType ? 'text-gray-900' : 'text-gray-400'}`}>
-                          <SelectValue placeholder="请选择标签类型" />
-                        </SelectTrigger>
-                        <SelectContent className="z-50 bg-white border border-gray-200 shadow-lg rounded-md">
-                          <SelectItem value="阶梯标" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">阶梯标</SelectItem>
-                          <SelectItem value="单页左右1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右1</SelectItem>
-                          <SelectItem value="单页左右2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页左右2</SelectItem>
-                          <SelectItem value="单页上下1" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下1</SelectItem>
-                          <SelectItem value="单页上下2" className="cursor-pointer text-gray-900 hover:bg-gray-100 focus:bg-gray-100">单页上下2</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {/* 缠绕标 */}
-                    <div className="flex items-center space-x-2 flex-1">
-                      <input
-                        type="checkbox"
-                        id="is-wrapped"
-                        checked={isWrapped}
-                        onChange={(e) => setIsWrapped(e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <Label htmlFor="is-wrapped" className="text-base font-semibold text-gray-800 whitespace-nowrap">缠绕标</Label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 标签宽度和标签高度 */}
-                <div className="flex space-x-3">
-                  {/* 标签宽度 */}
-                  <div className="flex items-center space-x-2 flex-1">
-                    <Label htmlFor="label-width" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签宽度</Label>
-                    <Input
-                      id="label-width"
-                      type="text"
-                      placeholder=""
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (!isNaN(value)) {
-                          setLabelWidth(value);
-                        }
-                      }}
-                      onBlur={() => {
-                        setLabelWidth(parseFloat(labelWidth.toFixed(1)));
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          setLabelWidth(parseFloat(labelWidth.toFixed(1)));
-                          e.currentTarget.blur();
-                        }
-                      }}
-                      className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
-                    />
-                  </div>
-                  
-                  {/* 标签高度 */}
-                  <div className="flex items-center space-x-2 flex-1">
-                    <Label htmlFor="label-height" className="text-base font-semibold text-gray-800 whitespace-nowrap">标签高度</Label>
-                    <Input
-                      id="label-height"
-                      type="text"
-                      placeholder=""
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        if (!isNaN(value)) {
-                          setLabelHeight(value);
-                        }
-                      }}
-                      onBlur={() => {
-                        setLabelHeight(parseFloat(labelHeight.toFixed(1)));
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          setLabelHeight(parseFloat(labelHeight.toFixed(1)));
-                          e.currentTarget.blur();
-                        }
-                      }}
-                      className="placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all border-[1px] border-gray-200"
-                    />
-                  </div>
-                </div>
-
-                {/* 上传文件列表 */}
-                {uploadedFiles.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>已上传文件</Label>
-                    <div className="max-h-32 overflow-y-auto space-y-1">
-                      {uploadedFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <div className="flex items-center space-x-2 flex-1 min-w-0">
-                            <FileText className="h-3 w-3 text-gray-500 flex-shrink-0" />
-                            <span className="text-xs text-gray-700 truncate">{file.name}</span>
-                            <span className="text-xs text-gray-500 flex-shrink-0">
-                              ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => removeFile(index)}
-                            className="ml-2 px-2 py-1 text-xs bg-red-100 text-white rounded hover:bg-red-300 transition-colors flex-shrink-0"
-                            title="删除文件"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 工作状态显示 */}
-                <div className={`p-3 rounded ${hasError || workStatus === 'error' ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon()}
-                      <span className="text-sm font-medium">工作状态：</span>
-                      <span className={`text-sm ${hasError || workStatus === 'error' ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
-                        {statusMessage || '等待操作...'}
-                      </span>
-                    </div>
-                    {workStatus === 'success' && parseResults.length > 0 && (
-                      <Button
-                        onClick={() => {
-                          // 先关闭新建项目窗口
-                          setIsNewProjectOpen(false)
-                          // 然后显示解析结果
-                          setShowParseResults(true)
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                      >
-                        查看解析结果
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* 操作按钮 */}
-                <div className="space-y-3">
-                  {/* 第一行：AI解析和创建项目按钮 */}
-                  <div className="flex space-x-3">
-                    <Button
-                      onClick={handleAIParse}
-                      disabled={uploadedFiles.length === 0 || workStatus === 'parsing'}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      {workStatus === 'parsing' ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          AI解析中...
-                        </>
-                      ) : (
-                        'AI解析'
-                      )}
-                    </Button>
-                    
-                    <Button
-                      onClick={handleSubmit}
-                      disabled={!projectName.trim() || !projectType.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
-                    >
-                      创建项目
-                    </Button>
-                  </div>
-                  
-                  {/* 第二行：解析并创建项目按钮 */}
-                  <div className="flex">
-                    <Button
-                      onClick={handleParseAndCreate}
-                      disabled={!projectName.trim() || !projectType.trim() || uploadedFiles.length === 0 || workStatus === 'parsing'}
-                      className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium"
-                    >
-                      {workStatus === 'parsing' ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          处理中...
-                        </>
-                      ) : (
-                        '解析并创建项目'
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
 
         {/* 编辑项目对话框 */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
