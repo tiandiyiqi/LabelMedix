@@ -1941,7 +1941,7 @@ export default function PDFPreview() {
 
       <div className="flex-grow">
         {typeof window !== 'undefined' && (
-          <PDFViewer width="100%" height="100%" showToolbar={true} style={{ backgroundColor: theme.background }}>
+          <PDFViewer width="100%" height="400px" showToolbar={true} style={{ backgroundColor: theme.background }}>
           <Document>
             <Page size={[mmToPt(currentWidth), mmToPt(labelHeight)]} style={pageStyle}>
               {/* 恢复边距矩形框 */}
