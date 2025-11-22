@@ -963,13 +963,16 @@ export default function ProjectList() {
         </div>
         <Dialog open={isNewProjectOpen} onOpenChange={setIsNewProjectOpen}>
           <DialogTrigger asChild>
-            <button
-              className="p-2 rounded-lg text-white hover:opacity-80 transition-opacity"
-              style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
-              title="新建项目"
-            >
-              <Plus size={20} />
-            </button>
+          <button
+            className="p-2 rounded-lg text-white hover:opacity-90 transition-all shadow-md hover:shadow-lg"
+            style={{ 
+              backgroundColor: theme.accent,
+              color: theme.buttonText 
+            }}
+            title="新建项目"
+          >
+            <Plus size={20} />
+          </button>
           </DialogTrigger>
           
           <DialogContent className="sm:max-w-[600px] bg-white">
