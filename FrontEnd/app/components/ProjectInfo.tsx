@@ -233,12 +233,6 @@ export default function ProjectInfo() {
     }
   };
 
-  // 重新生成并导出（暂时只弹出提示）
-  const handleRegenerate = () => {
-    setShowExportDialog(false);
-    alert('重新生成并导出功能开发中，敬请期待！\n\n此功能将实时生成最新的PDF文件，确保内容与当前编辑器中的数据完全一致。');
-  };
-
   return (
     <>
       <div 
@@ -290,7 +284,7 @@ export default function ProjectInfo() {
         files={fileInfoList}
         onClose={() => setShowExportDialog(false)}
         onExportFromHistory={handleExportFromHistory}
-        onRegenerate={handleRegenerate}
+        onRegenerate={() => setShowExportDialog(false)}
       />
     </>
   )

@@ -2,7 +2,7 @@
 
 import { useContext } from "react"
 import { ThemeContext } from "./Layout"
-import { FileDown, RefreshCw, X, Clock } from "lucide-react"
+import { FileDown, X, Clock } from "lucide-react"
 
 interface FileInfo {
   countryCode: string
@@ -183,9 +183,9 @@ export default function BatchExportDialog({
 
         {/* 按钮区 */}
         <div className="px-6 py-4 border-t flex gap-4" style={{ borderColor: theme.border }}>
-          {/* 小按钮 - 重新生成并导出 */}
+          {/* 小按钮 - 退出 */}
           <button
-            onClick={onRegenerate}
+            onClick={onClose}
             className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90 border"
             style={{
               backgroundColor: 'white',
@@ -194,8 +194,7 @@ export default function BatchExportDialog({
               fontSize: '14px'
             }}
           >
-            <RefreshCw className="mr-2" size={16} />
-            重新生成并导出
+            退出
           </button>
 
           {/* 大按钮 - 从历史记录中导出 */}
