@@ -8,6 +8,7 @@ import { Document, Page, Text, View, StyleSheet, Font, pdf } from '@react-pdf/re
 import { SmartMixedFontText } from './SmartMixedFontText'
 import { getProjectById, getTranslationsByCountry } from "../../lib/projectApi"
 import { getApiBaseUrl } from '@/lib/apiConfig'
+import BatchExportDialog from './BatchExportDialog'
 
 // 字体文件路径
 const ArialFont = '/fonts/Arial.ttf'
@@ -109,7 +110,16 @@ export default function ProjectInfo() {
 
 
   const [isExporting, setIsExporting] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [fileInfoList, setFileInfoList] = useState<Array<{
+    countryCode: string
+    sequenceNumber: number
+    pdfFilePath: string | null
+    lastModified: string | null
+    exists: boolean
+  }>>([]);
 
+  // 点击批量导出按钮时，先获取文件列表并显示对话框
   const handleBatchExport = async () => {
     if (!selectedProject) {
       alert('请先选择一个项目');
@@ -117,8 +127,6 @@ export default function ProjectInfo() {
     }
 
     try {
-      setIsExporting(true);
-
       // 获取项目完整信息
       const projectDetail = await getProjectById(selectedProject.id);
       
@@ -127,7 +135,40 @@ export default function ProjectInfo() {
         return;
       }
 
+      // 构建文件信息列表
+      const files = projectDetail.translationGroups.map(group => ({
+        countryCode: group.country_code,
+        sequenceNumber: group.sequence_number,
+        pdfFilePath: group.pdf_file_path || null,
+        lastModified: group.updatedAt || null,
+        exists: !!group.pdf_file_path
+      }));
 
+      setFileInfoList(files);
+      setShowExportDialog(true);
+
+    } catch (error) {
+      console.error('获取文件列表失败:', error);
+      alert('获取文件列表失败，请查看控制台了解详细信息');
+    }
+  };
+
+  // 从历史记录中导出（原有功能）
+  const handleExportFromHistory = async () => {
+    if (!selectedProject) return;
+
+    try {
+      setIsExporting(true);
+      setShowExportDialog(false);
+
+      // 获取项目完整信息
+      const projectDetail = await getProjectById(selectedProject.id);
+      
+      if (!projectDetail.translationGroups) {
+        alert('该项目没有翻译数据');
+        return;
+      }
+      
       let successCount = 0;
       let failCount = 0;
       let notSavedCount = 0;
@@ -135,7 +176,6 @@ export default function ProjectInfo() {
       // 遍历所有翻译组
       for (const group of projectDetail.translationGroups) {
         try {
-
           // 检查是否有保存的PDF文件
           if (!group.pdf_file_path) {
             notSavedCount++;
@@ -180,7 +220,6 @@ export default function ProjectInfo() {
         }
       }
 
-      
       let message = `批量导出完成！\n成功下载: ${successCount} 个PDF`;
       if (failCount > 0) message += `\n失败: ${failCount} 个PDF`;
       if (notSavedCount > 0) message += `\n未保存: ${notSavedCount} 个PDF（请先保存标签）`;
@@ -192,50 +231,67 @@ export default function ProjectInfo() {
     } finally {
       setIsExporting(false);
     }
-  }
+  };
+
+  // 重新生成并导出（暂时只弹出提示）
+  const handleRegenerate = () => {
+    setShowExportDialog(false);
+    alert('重新生成并导出功能开发中，敬请期待！\n\n此功能将实时生成最新的PDF文件，确保内容与当前编辑器中的数据完全一致。');
+  };
 
   return (
-    <div 
-      className="flex items-center justify-between h-[60px] px-6"
-      style={{ 
-        backgroundColor: theme.secondary,
-        borderBottom: `1px solid ${theme.neutral}`
-      }}
-    >
-      <div className="text-xl font-bold text-white">
-        {selectedProject ? selectedProject.job_name : '示例项目'}
+    <>
+      <div 
+        className="flex items-center justify-between h-[60px] px-6"
+        style={{ 
+          backgroundColor: theme.secondary,
+          borderBottom: `1px solid ${theme.neutral}`
+        }}
+      >
+        <div className="text-xl font-bold text-white">
+          {selectedProject ? selectedProject.job_name : '项目名称'}
+        </div>
+        <div className="flex gap-4">
+          <button
+            onClick={handleBatchFormat}
+            className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
+            style={{
+              backgroundColor: theme.primary,
+              color: theme.buttonText,
+              border: `1px solid ${theme.neutral}`,
+              boxShadow: `0 2px 4px ${theme.neutral}33`
+            }}
+          >
+            <Wand2 className="mr-2" size={20} />
+            <span style={{ color: theme.buttonText }}>批量格式化</span>
+          </button>
+          <button
+            onClick={handleBatchExport}
+            disabled={isExporting}
+            className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              backgroundColor: theme.accent,
+              color: theme.buttonText,
+              border: `1px solid ${theme.neutral}`,
+              boxShadow: `0 2px 4px ${theme.neutral}33`
+            }}
+          >
+            <FileDown className="mr-2" size={20} />
+            <span style={{ color: theme.buttonText }}>
+              {isExporting ? '正在导出...' : '批量导出PDF'}
+            </span>
+          </button>
+        </div>
       </div>
-      <div className="flex gap-4">
-        <button
-          onClick={handleBatchFormat}
-          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90"
-          style={{
-            backgroundColor: theme.primary,
-            color: theme.buttonText,
-            border: `1px solid ${theme.neutral}`,
-            boxShadow: `0 2px 4px ${theme.neutral}33`
-          }}
-        >
-          <Wand2 className="mr-2" size={20} />
-          <span style={{ color: theme.buttonText }}>批量格式化</span>
-        </button>
-        <button
-          onClick={handleBatchExport}
-          disabled={isExporting}
-          className="px-4 py-2 rounded-lg flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            backgroundColor: theme.accent,
-            color: theme.buttonText,
-            border: `1px solid ${theme.neutral}`,
-            boxShadow: `0 2px 4px ${theme.neutral}33`
-          }}
-        >
-          <FileDown className="mr-2" size={20} />
-          <span style={{ color: theme.buttonText }}>
-            {isExporting ? '正在导出...' : '批量导出PDF'}
-          </span>
-        </button>
-      </div>
-    </div>
+
+      {/* 批量导出选择对话框 */}
+      <BatchExportDialog
+        isOpen={showExportDialog}
+        files={fileInfoList}
+        onClose={() => setShowExportDialog(false)}
+        onExportFromHistory={handleExportFromHistory}
+        onRegenerate={handleRegenerate}
+      />
+    </>
   )
 }
